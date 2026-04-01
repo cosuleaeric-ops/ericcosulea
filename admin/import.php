@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/auth.php';
+require_login();
+
 $dbPath = __DIR__ . '/../data/blog.sqlite';
 $message = '';
 $error = '';
@@ -10,7 +13,9 @@ if (!extension_loaded('sqlite3')) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
-    if (!isset($_FILES['wxr']) || $_FILES['wxr']['error'] !== UPLOAD_ERR_OK) {
+    if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+        $error = 'Sesiune invalida. Reincarca pagina si incearca din nou.';
+    } elseif (!isset($_FILES['wxr']) || $_FILES['wxr']['error'] !== UPLOAD_ERR_OK) {
         $error = 'Incarcarea fisierului a esuat.';
     } else {
         $tmp = $_FILES['wxr']['tmp_name'];
@@ -105,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
         <div class="msg err"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
       <?php endif; ?>
       <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
         <input type="file" name="wxr" accept=".xml" required>
         <div>
           <button type="submit">Importa</button>
