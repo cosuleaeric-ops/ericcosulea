@@ -361,8 +361,18 @@ function setStorageStatus(message) {
   }
 }
 
-function exportStateToFile() {
-  const blob = new Blob([JSON.stringify(buildStateSnapshot(), null, 2)], {
+async function exportStateToFile() {
+  const json = JSON.stringify(buildStateSnapshot(), null, 2);
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(json);
+      setStorageStatus("Backup copied to clipboard.");
+    }
+  } catch (error) {
+    console.warn("EliteDeux clipboard export unavailable", error);
+  }
+
+  const blob = new Blob([json], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
