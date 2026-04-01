@@ -20,68 +20,6 @@ function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-function markdown_inline(string $text): string {
-    $text = preg_replace_callback('/`([^`]+)`/', fn($m) => '<code>' . $m[1] . '</code>', $text);
-    $text = preg_replace('/\\*\\*([^*]+)\\*\\*/', '<strong>$1</strong>', $text);
-    $text = preg_replace('/\\*([^*]+)\\*/', '<em>$1</em>', $text);
-    $text = preg_replace('/\\[([^\\]]+)\\]\\(([^)]+)\\)/', '<a href="$2">$1</a>', $text);
-    return $text;
-}
-
-function markdown_to_html(string $text): string {
-    $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
-    $lines = preg_split("/\\r\\n|\\n|\\r/", $escaped);
-    $out = [];
-    $inList = false;
-
-    foreach ($lines as $line) {
-        $line = rtrim($line);
-        if ($line === '') {
-            if ($inList) {
-                $out[] = '</ul>';
-                $inList = false;
-            }
-            continue;
-        }
-
-        if (preg_match('/^###\\s+(.+)/', $line, $m)) {
-            if ($inList) { $out[] = '</ul>'; $inList = false; }
-            $out[] = '<h3>' . markdown_inline($m[1]) . '</h3>';
-            continue;
-        }
-        if (preg_match('/^##\\s+(.+)/', $line, $m)) {
-            if ($inList) { $out[] = '</ul>'; $inList = false; }
-            $out[] = '<h2>' . markdown_inline($m[1]) . '</h2>';
-            continue;
-        }
-        if (preg_match('/^#\\s+(.+)/', $line, $m)) {
-            if ($inList) { $out[] = '</ul>'; $inList = false; }
-            $out[] = '<h1>' . markdown_inline($m[1]) . '</h1>';
-            continue;
-        }
-        if (preg_match('/^-\\s+(.+)/', $line, $m)) {
-            if (!$inList) {
-                $out[] = '<ul>';
-                $inList = true;
-            }
-            $out[] = '<li>' . markdown_inline($m[1]) . '</li>';
-            continue;
-        }
-
-        if ($inList) {
-            $out[] = '</ul>';
-            $inList = false;
-        }
-        $out[] = '<p>' . markdown_inline($line) . '</p>';
-    }
-
-    if ($inList) {
-        $out[] = '</ul>';
-    }
-
-    return implode("\n", $out);
-}
-
 function slugify(string $text): string {
     $map = [
         'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ș' => 's', 'ţ' => 't', 'ț' => 't',
@@ -125,14 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $title = trim($_POST['title'] ?? '');
     $slug = trim($_POST['slug'] ?? '');
-    $contentMd = trim($_POST['content_markdown'] ?? '');
+    $contentHtml = trim($_POST['content_html'] ?? '');
     $publishedAt = trim($_POST['published_at'] ?? '');
     $excerpt = trim($_POST['excerpt'] ?? '');
 
-    if ($title === '' || $contentMd === '' || $publishedAt === '') {
+    if ($title === '' || $contentHtml === '' || $publishedAt === '') {
         $error = 'Titlu, continut si data sunt obligatorii.';
     } else {
-        $contentHtml = markdown_to_html($contentMd);
         if ($slug === '') {
             $slug = slugify($title);
         } else {
@@ -149,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':slug', $slug, SQLITE3_TEXT);
         $stmt->bindValue(':title', $title, SQLITE3_TEXT);
         $stmt->bindValue(':content_html', $contentHtml, SQLITE3_TEXT);
-        $stmt->bindValue(':content_md', $contentMd, SQLITE3_TEXT);
+        $stmt->bindValue(':content_md', null, SQLITE3_NULL);
         $stmt->bindValue(':excerpt', $excerpt, SQLITE3_TEXT);
         $stmt->bindValue(':published_at', $publishedAt, SQLITE3_TEXT);
         $stmt->execute();
@@ -160,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $defaultDate = $post ? $post['published_at'] : date('Y-m-d H:i:s');
-$defaultContent = $post['content_md'] ?? $post['content_html'] ?? '';
+$defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
 ?>
 <!doctype html>
 <html lang="ro">
@@ -173,18 +110,66 @@ $defaultContent = $post['content_md'] ?? $post['content_html'] ?? '';
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
-    .wrap { max-width: 820px; margin: 60px auto; padding: 24px; }
-    .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 16px; padding: 24px; }
+    .wrap { max-width: 980px; margin: 48px auto; padding: 24px; }
+    .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 22px; padding: 28px; box-shadow: 0 18px 44px rgba(90, 67, 39, 0.08); }
     label { display: block; margin: 12px 0 6px; font-weight: 600; }
-    input[type=text], textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d9d0c2; font-size: 16px; }
-    textarea { min-height: 280px; font-family: inherit; }
-    .toolbar { display: flex; gap: 8px; margin: 8px 0 6px; }
-    .toolbar button { border: 1px solid #d9d0c2; background: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+    input[type=text] { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid #d9d0c2; font-size: 16px; background: #fffefb; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0 0;
+      padding: 12px;
+      border: 1px solid #e5d8c5;
+      border-bottom: 0;
+      border-radius: 18px 18px 0 0;
+      background: linear-gradient(180deg, #fbf4e8 0%, #f7eddf 100%);
+    }
+    .toolbar button, .toolbar select {
+      border: 1px solid #d7c8b1;
+      background: rgba(255,255,255,0.86);
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-family: "Crimson Pro", serif;
+      font-size: 15px;
+      color: #3f2d1b;
+    }
     .row { display: flex; gap: 16px; }
     .row > div { flex: 1; }
     .btn { margin-top: 16px; min-height: 28px; background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 5px 12px; font-size: 15px; font-family: "Crimson Pro", serif; font-weight: 600; letter-spacing: 0.01em; text-transform: lowercase; }
     .link { text-decoration: none; color: #111; }
     .err { background: #fdecec; border: 1px solid #f3caca; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
+    .editor-shell { border: 1px solid #e5d8c5; border-radius: 0 0 18px 18px; background: #fffefb; overflow: hidden; }
+    .editor {
+      min-height: 460px;
+      padding: 22px;
+      font-size: 20px;
+      line-height: 1.75;
+      outline: none;
+    }
+    .editor:empty:before {
+      content: attr(data-placeholder);
+      color: #a09282;
+    }
+    .editor p, .editor ul, .editor ol, .editor blockquote, .editor h2, .editor h3 { margin-top: 0; }
+    .editor h2 { font-size: 32px; line-height: 1.2; }
+    .editor h3 { font-size: 26px; line-height: 1.25; }
+    .editor blockquote {
+      margin-left: 0;
+      padding-left: 18px;
+      border-left: 3px solid #d9c4a2;
+      color: #6d6255;
+      font-style: italic;
+    }
+    .editor-toolbar-note { margin: 10px 0 0; font-size: 14px; color: #8a7b68; }
+    .editor-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+    @media (max-width: 720px) {
+      .wrap { margin: 24px auto; padding: 16px; }
+      .card { padding: 18px; border-radius: 18px; }
+      .row { flex-direction: column; gap: 0; }
+      .editor { min-height: 340px; padding: 18px; font-size: 18px; }
+    }
   </style>
 </head>
 <body class="admin">
@@ -197,6 +182,7 @@ $defaultContent = $post['content_md'] ?? $post['content_html'] ?? '';
       <?php endif; ?>
       <form method="post">
         <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+        <input type="hidden" id="content_html" name="content_html" value="<?php echo h($defaultContent); ?>">
         <label for="title">Titlu</label>
         <input type="text" id="title" name="title" value="<?php echo h($post['title'] ?? ($_POST['title'] ?? '')); ?>" required>
 
@@ -214,42 +200,84 @@ $defaultContent = $post['content_md'] ?? $post['content_html'] ?? '';
         <label for="excerpt">Excerpt (optional)</label>
         <input type="text" id="excerpt" name="excerpt" value="<?php echo h($post['excerpt'] ?? ($_POST['excerpt'] ?? '')); ?>">
 
-        <label for="content_markdown">Continut (Markdown)</label>
+        <label for="editor">Continut</label>
         <div class="toolbar">
-          <button type="button" data-md="bold"><strong>B</strong></button>
-          <button type="button" data-md="italic"><em>I</em></button>
-          <button type="button" data-md="link">Link</button>
-          <button type="button" data-md="h2">H2</button>
-          <button type="button" data-md="list">Lista</button>
+          <select id="formatBlock" aria-label="Format paragraf">
+            <option value="P">paragraf</option>
+            <option value="H2">heading mare</option>
+            <option value="H3">heading mic</option>
+          </select>
+          <button type="button" data-command="bold"><strong>B</strong></button>
+          <button type="button" data-command="italic"><em>I</em></button>
+          <button type="button" data-command="insertUnorderedList">lista</button>
+          <button type="button" data-command="insertOrderedList">1. 2. 3.</button>
+          <button type="button" data-command="formatBlock" data-value="blockquote">quote</button>
+          <button type="button" data-action="link">link</button>
+          <button type="button" data-action="unlink">scoate link</button>
         </div>
-        <textarea id="content_markdown" name="content_markdown" required><?php echo h($defaultContent !== '' ? $defaultContent : ($_POST['content_markdown'] ?? '')); ?></textarea>
+        <div class="editor-shell">
+          <div
+            id="editor"
+            class="editor"
+            contenteditable="true"
+            data-placeholder="scrie aici exact cum vrei sa apara articolul..."
+          ><?php echo $defaultContent; ?></div>
+        </div>
+        <p class="editor-toolbar-note">poti scrie direct in editor, selectezi textul si folosesti butoanele de sus pentru formatare.</p>
 
-        <button class="btn" type="submit">Salveaza</button>
+        <div class="editor-actions">
+          <button class="btn" type="submit">Salveaza</button>
+        </div>
       </form>
     </div>
   </div>
 <script>
+  const form = document.querySelector('form');
+  const editor = document.getElementById('editor');
+  const contentInput = document.getElementById('content_html');
   const toolbar = document.querySelector('.toolbar');
-  const textarea = document.getElementById('content_markdown');
-  if (toolbar && textarea) {
-    toolbar.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-md]');
-      if (!btn) return;
-      const type = btn.getAttribute('data-md');
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selected = textarea.value.slice(start, end);
-      const wrap = (before, after) => {
-        const text = before + (selected || '') + after;
-        textarea.setRangeText(text, start, end, 'end');
-      };
-      if (type === 'bold') wrap('**', '**');
-      if (type === 'italic') wrap('*', '*');
-      if (type === 'link') wrap('[', '](https://)');
-      if (type === 'h2') wrap('## ', '');
-      if (type === 'list') wrap('- ', '');
-      textarea.focus();
+  const formatBlock = document.getElementById('formatBlock');
+
+  const syncEditor = () => {
+    if (!editor || !contentInput) return;
+    contentInput.value = editor.innerHTML.trim();
+  };
+
+  if (toolbar && editor && contentInput) {
+    toolbar.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      event.preventDefault();
+      editor.focus();
+
+      const action = button.getAttribute('data-action');
+      const command = button.getAttribute('data-command');
+      const value = button.getAttribute('data-value');
+
+      if (action === 'link') {
+        const url = window.prompt('link-ul pe care vrei sa-l adaugi');
+        if (url) {
+          document.execCommand('createLink', false, url);
+        }
+      } else if (action === 'unlink') {
+        document.execCommand('unlink');
+      } else if (command === 'formatBlock') {
+        document.execCommand('formatBlock', false, value);
+      } else if (command) {
+        document.execCommand(command, false, value || null);
+      }
+
+      syncEditor();
     });
+
+    formatBlock.addEventListener('change', () => {
+      editor.focus();
+      document.execCommand('formatBlock', false, formatBlock.value);
+      syncEditor();
+    });
+
+    editor.addEventListener('input', syncEditor);
+    form.addEventListener('submit', syncEditor);
   }
 </script>
 </body>
