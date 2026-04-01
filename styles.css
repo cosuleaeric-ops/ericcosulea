@@ -112,9 +112,8 @@ body:has(.admin-bar) {
 }
 
 .hero-avatar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  position: relative;
+  display: inline-flex;
 }
 
 .hero-avatar img {
@@ -126,10 +125,9 @@ body:has(.admin-bar) {
 
 .hero-avatar-editor,
 .hero-avatar-reset {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100px;
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
 }
 
 .hero-avatar-input {
@@ -137,21 +135,24 @@ body:has(.admin-bar) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   min-height: 28px;
-  padding: 5px 10px;
+  padding: 0;
   border-radius: 999px;
   text-decoration: none;
   color: #3f2d1b;
-  background: rgba(108, 82, 51, 0.08);
-  border: 1px solid rgba(108, 82, 51, 0.12);
+  background: rgba(255, 248, 239, 0.92);
+  border: 1px solid rgba(108, 82, 51, 0.18);
   font-family: "Crimson Pro", serif;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   line-height: 1;
   text-transform: lowercase;
   cursor: pointer;
   overflow: hidden;
+  box-shadow: 0 10px 20px rgba(90, 67, 39, 0.14);
 }
 
 .hero-avatar-input input {
@@ -161,30 +162,22 @@ body:has(.admin-bar) {
   cursor: pointer;
 }
 
-.hero-avatar-editor button,
-.hero-avatar-reset button {
-  min-height: 28px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(108, 82, 51, 0.12);
-  background: rgba(108, 82, 51, 0.08);
-  color: #3f2d1b;
-  font-family: "Crimson Pro", serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  text-transform: lowercase;
-  cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+.hero-avatar-input:hover {
+  background: rgba(255, 244, 232, 0.98);
+  border-color: rgba(108, 82, 51, 0.24);
+  transform: translateY(-1px);
 }
 
-.hero-avatar-editor button:hover,
-.hero-avatar-reset button:hover,
-.hero-avatar-input:hover {
-  background: rgba(108, 82, 51, 0.14);
-  border-color: rgba(108, 82, 51, 0.2);
-  transform: translateY(-1px);
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .hero-title {
@@ -263,11 +256,6 @@ body:has(.admin-bar) {
 
   .hero-avatar {
     align-items: flex-start;
-  }
-
-  .hero-avatar-editor,
-  .hero-avatar-reset {
-    width: 140px;
   }
 }
 

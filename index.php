@@ -263,16 +263,10 @@ if ($uri === '/blog') {
             <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
             <input type="hidden" name="redirect_to" value="/">
             <label class="hero-avatar-input">
-              <span>schimba poza</span>
+              <span aria-hidden="true">+</span>
+              <span class="sr-only">schimba poza</span>
               <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required>
             </label>
-            <button type="submit">salveaza</button>
-          </form>
-          <form class="hero-avatar-reset" method="post" action="/admin/avatar.php">
-            <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-            <input type="hidden" name="redirect_to" value="/">
-            <input type="hidden" name="action" value="reset">
-            <button type="submit">poza initiala</button>
           </form>
         <?php endif; ?>
       </div>
@@ -377,6 +371,17 @@ if ($uri === '/blog') {
     </section>
 
   </main>
+  <?php if ($isLoggedIn): ?>
+    <script>
+      document.querySelectorAll('.hero-avatar-editor input[type="file"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.files && input.files.length > 0) {
+            input.form.submit();
+          }
+        });
+      });
+    </script>
+  <?php endif; ?>
 <?php endif; ?>
 </body>
 </html>
