@@ -391,7 +391,10 @@ function getIstoricDays() {
   const list = [];
   for (let d = new Date(first); d <= today; d.setDate(d.getDate() + 1)) {
     const key = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-    list.push({ key, sesiuni: days[key] || 0, date: new Date(d) });
+    const sesiuni = days[key] || 0;
+    if (sesiuni > 0) {
+      list.push({ key, sesiuni, date: new Date(d) });
+    }
   }
   return list.reverse();
 }
@@ -415,11 +418,16 @@ function renderCalendar() {
 function renderIstoric() {
   const list = getIstoricDays();
   istoricList.innerHTML = "";
+  if (list.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "Nu exista sesiuni inca.";
+    istoricList.appendChild(li);
+    return;
+  }
   list.forEach(({ date, sesiuni }) => {
     const li = document.createElement("li");
     const cuv = sesiuni === 1 ? "sesiune" : "sesiuni";
-    const sufix = sesiuni ? " deep work" : "";
-    li.textContent = formatDataRo(date) + " – " + (sesiuni || 0) + " " + cuv + sufix;
+    li.textContent = formatDataRo(date) + " – " + sesiuni + " " + cuv + " deep work";
     istoricList.appendChild(li);
   });
 }
