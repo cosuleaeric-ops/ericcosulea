@@ -126,7 +126,7 @@ function fetch_images(string $dbPath, ?int $limit = null): array {
         original_name TEXT,
         created_at TEXT NOT NULL
     );');
-    $sql = 'SELECT filename, created_at FROM images ORDER BY created_at DESC';
+    $sql = 'SELECT id, filename, created_at FROM images ORDER BY created_at DESC';
     if ($limit !== null) {
         $sql .= ' LIMIT ' . (int)$limit;
     }
@@ -187,6 +187,62 @@ if ($uri === '/blog') {
 } elseif ($uri === '/tools') {
     $toolsPage = fetch_page('tools', $dbPath);
 } elseif ($uri === '/inspo') {
+    if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+            http_response_code(400);
+            exit('CSRF invalid');
+        }
+
+        $uploadDir = __DIR__ . '/uploads/inspo';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $db = new SQLite3($dbPath);
+        $db->exec('CREATE TABLE IF NOT EXISTS images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT UNIQUE NOT NULL,
+            original_name TEXT,
+            created_at TEXT NOT NULL
+        );');
+
+        if (isset($_POST['delete_id'])) {
+            $stmt = $db->prepare('SELECT filename FROM images WHERE id = :id');
+            $stmt->bindValue(':id', (int)$_POST['delete_id'], SQLITE3_INTEGER);
+            $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+            if ($row) {
+                $filePath = $uploadDir . '/' . $row['filename'];
+                if (is_file($filePath)) {
+                    @unlink($filePath);
+                }
+                $deleteStmt = $db->prepare('DELETE FROM images WHERE id = :id');
+                $deleteStmt->bindValue(':id', (int)$_POST['delete_id'], SQLITE3_INTEGER);
+                $deleteStmt->execute();
+            }
+            header('Location: /inspo');
+            exit;
+        }
+
+        if (isset($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $name = $_FILES['image']['name'] ?? 'image';
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            if (in_array($ext, $allowed, true)) {
+                $safeName = bin2hex(random_bytes(8)) . '-' . time() . '.' . $ext;
+                $destination = $uploadDir . '/' . $safeName;
+                if (move_uploaded_file($_FILES['image']['tmp_name'], $destination)) {
+                    $stmt = $db->prepare('INSERT INTO images (filename, original_name, created_at) VALUES (:filename, :original_name, :created_at)');
+                    $stmt->bindValue(':filename', $safeName, SQLITE3_TEXT);
+                    $stmt->bindValue(':original_name', $name, SQLITE3_TEXT);
+                    $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+                    $stmt->execute();
+                }
+            }
+            header('Location: /inspo');
+            exit;
+        }
+    }
+
     $images = fetch_images($dbPath);
 } elseif (!in_array($uri, $reserved, true) && !str_starts_with($uri, '/assets/') && !str_starts_with($uri, '/uploads/')) {
     $slug = ltrim($uri, '/');
@@ -212,7 +268,6 @@ if ($uri === '/blog') {
     <div class="admin-bar-inner">
       <a href="/admin/">dashboard</a>
       <a href="/">website</a>
-      <a href="/admin/inspo.php">inspo</a>
       <button type="button" class="admin-bar-button" data-site-text-toggle>edit text</button>
     </div>
   </div>
@@ -269,9 +324,8 @@ if ($uri === '/blog') {
       <?php echo editable_text($isLoggedIn, 'inspo.title', site_text_value($siteTextMap, 'inspo.title', 'inspo'), 'h1', 'page-title'); ?>
       <?php echo editable_text($isLoggedIn, 'inspo.lead', site_text_value($siteTextMap, 'inspo.lead', 'imagini salvate pentru zile negre'), 'p', 'page-lead'); ?>
       <?php if ($isLoggedIn): ?>
-        <form class="inspo-upload" method="post" enctype="multipart/form-data" action="/admin/inspo.php">
+        <form class="inspo-upload" method="post" enctype="multipart/form-data" action="/inspo">
           <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-          <input type="hidden" name="redirect_to" value="/inspo">
           <label class="inspo-upload-label">
             <span>adauga imagine</span>
             <input type="file" name="image" accept="image/*" required>
@@ -280,9 +334,18 @@ if ($uri === '/blog') {
       <?php endif; ?>
       <div class="inspo-grid">
         <?php foreach ($images as $img): ?>
-          <button class="inspo-card" type="button" data-inspo-open data-inspo-src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>">
-            <img src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>" alt="">
-          </button>
+          <div class="inspo-card">
+            <button class="inspo-card-open" type="button" data-inspo-open data-inspo-src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>">
+              <img src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>" alt="">
+            </button>
+            <?php if ($isLoggedIn && isset($img['id'])): ?>
+              <form class="inspo-card-delete" method="post" action="/inspo" onsubmit="return confirm('Stergi imaginea?');">
+                <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+                <input type="hidden" name="delete_id" value="<?php echo (int)$img['id']; ?>">
+                <button type="submit" aria-label="sterge imaginea">×</button>
+              </form>
+            <?php endif; ?>
+          </div>
         <?php endforeach; ?>
       </div>
       <div class="inspo-lightbox" data-inspo-lightbox hidden>
@@ -515,6 +578,14 @@ if ($uri === '/blog') {
 <?php if ($uri === '/inspo'): ?>
   <script>
     (() => {
+      document.querySelectorAll('.inspo-upload input[type="file"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.files && input.files.length > 0) {
+            input.form.submit();
+          }
+        });
+      });
+
       const lightbox = document.querySelector('[data-inspo-lightbox]');
       const lightboxImage = document.querySelector('[data-inspo-image]');
       if (!lightbox || !lightboxImage) return;

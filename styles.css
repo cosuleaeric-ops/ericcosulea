@@ -569,19 +569,51 @@ body.site-text-editing [data-site-text] {
 .inspo-card {
   break-inside: avoid;
   margin-bottom: 16px;
+  position: relative;
+}
+
+.inspo-card-open {
+  display: block;
+  width: 100%;
+  border: 0;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid #eee3d4;
   background: #fffaf2;
   padding: 0;
-  width: 100%;
   cursor: zoom-in;
 }
 
-.inspo-card img {
+.inspo-card-open img {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.inspo-card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.inspo-card-delete button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(28, 28, 28, 0.82);
+  color: #fff;
+  font-family: "Crimson Pro", serif;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.inspo-card-delete button:hover {
+  background: rgba(28, 28, 28, 0.94);
 }
 
 .inspo-lightbox {

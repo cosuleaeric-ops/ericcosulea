@@ -201,7 +201,6 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
   <div class="admin-bar">
     <div class="admin-bar-inner">
       <a class="btn" href="/">Website</a>
-      <a class="btn" href="/admin/inspo.php">Inspo</a>
       <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
       <a class="btn" href="/admin/edit.php">Articol nou</a>
     </div>

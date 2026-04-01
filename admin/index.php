@@ -140,7 +140,6 @@ $latestPost = $posts[0] ?? null;
   <div class="admin-bar">
     <div class="admin-bar-inner">
       <a class="btn" href="/">Website</a>
-      <a class="btn" href="/admin/inspo.php">Inspo</a>
       <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
       <a class="btn" href="/admin/edit.php">Articol nou</a>
     </div>
@@ -152,20 +151,15 @@ $latestPost = $posts[0] ?? null;
     <p class="intro">hub-ul tau intern pentru scris, organizare si sprinturi scurte de lucru.</p>
 
     <section class="quick-grid" aria-label="Actiuni rapide">
+      <a class="quick-card" href="/">
+        <span class="quick-card-kicker">public</span>
+        <h2>website</h2>
+        <p>vezi homepage-ul live si editezi direct in paginile publice cat timp esti logat.</p>
+      </a>
       <a class="quick-card" href="/admin/edit.php">
         <span class="quick-card-kicker">scris</span>
         <h2>articol nou</h2>
         <p>deschide editorul si porneste direct un draft nou.</p>
-      </a>
-      <a class="quick-card" href="/admin/inspo.php">
-        <span class="quick-card-kicker">material</span>
-        <h2>inspo</h2>
-        <p>adaugi sau cureti imaginile salvate pentru inspiratie.</p>
-      </a>
-      <a class="quick-card" href="/">
-        <span class="quick-card-kicker">public</span>
-        <h2>website</h2>
-        <p>vezi homepage-ul live si editarile tale direct pe site.</p>
       </a>
     </section>
 
