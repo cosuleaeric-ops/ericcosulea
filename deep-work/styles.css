@@ -1,21 +1,13 @@
-/* elite deep work – dark theme, paletă ca în mockup */
-
 :root {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --border: #30363d;
-  --text: #c9d1d9;
-  --text-muted: #8b949e;
-  --tab-active: #21262d;
-  --tab-inactive: #161b22;
-  --btn-border: #30363d;
-  --btn-start-bg: #21262d;
-  --green: #39d353;
-  --green-mid: #26a641;
-  --green-low: #0e4429;
-  --orange: #d29922;
-  --red: #da3633;
-  --red-low: #3d1f1f;
+  --bg: #fffdf7;
+  --panel: #fdfaf5;
+  --border: #e7ddce;
+  --text: #1c1c1c;
+  --text-muted: #6d6a64;
+  --tab-active: #f2ede3;
+  --tab-inactive: #fdfaf5;
+  --btn-border: #d9d0c2;
+  --btn-start-bg: #f2ede3;
 }
 
 * {
@@ -24,7 +16,7 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Crimson Pro", serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -78,7 +70,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: #d9d0c2;
 }
 
 .main {
@@ -90,7 +82,7 @@ body {
 .timer-panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -147,9 +139,9 @@ body {
   border: 1px solid var(--btn-border);
   background: var(--btn-start-bg);
   color: var(--text);
-  border-radius: 6px;
+  border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .btn-start:hover {
@@ -192,15 +184,14 @@ body {
 .calendar-cell[data-level="4"] { background: var(--calendar-4); }
 .calendar-cell[data-level="5"] { background: var(--calendar-5); }
 
-/* Paletă: 0=gri, 1–5=verde pal → verde intens (strict crescător, trepte bine diferențiate) */
 .calendar-cell,
 .legend-cell {
-  --calendar-0: #161b22;
-  --calendar-1: #b8f0c0;
-  --calendar-2: #8ae28f;
-  --calendar-3: #5cd36a;
-  --calendar-4: #40c652;
-  --calendar-5: #238636;
+  --calendar-0: #ebe3d6;
+  --calendar-1: #d7ead0;
+  --calendar-2: #b7d8a8;
+  --calendar-3: #93c17f;
+  --calendar-4: #6ca85a;
+  --calendar-5: #4f8f42;
 }
 
 .legend {
