@@ -234,8 +234,10 @@ if ($uri === '/blog') {
         <form class="inspo-upload" method="post" enctype="multipart/form-data" action="/admin/inspo.php">
           <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
           <input type="hidden" name="redirect_to" value="/inspo">
-          <input type="file" name="image" accept="image/*" required>
-          <button type="submit">upload</button>
+          <label class="inspo-upload-label">
+            <span>adauga imagine</span>
+            <input type="file" name="image" accept="image/*" required>
+          </label>
         </form>
       <?php endif; ?>
       <div class="inspo-grid">
@@ -390,6 +392,14 @@ if ($uri === '/blog') {
   <?php if ($isLoggedIn): ?>
     <script>
       document.querySelectorAll('.hero-avatar-editor input[type="file"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.files && input.files.length > 0) {
+            input.form.submit();
+          }
+        });
+      });
+
+      document.querySelectorAll('.inspo-upload input[type="file"]').forEach((input) => {
         input.addEventListener('change', () => {
           if (input.files && input.files.length > 0) {
             input.form.submit();

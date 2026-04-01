@@ -130,8 +130,10 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       <form method="post" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
         <input type="hidden" name="redirect_to" value="/admin/inspo.php">
-        <input type="file" name="image" accept="image/*" required>
-        <button class="btn" type="submit">Upload</button>
+        <label class="upload-label">
+          <span>Alege imagine</span>
+          <input type="file" name="image" accept="image/*" required>
+        </label>
       </form>
     </div>
 
@@ -152,5 +154,14 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       </div>
     </div>
   </div>
+  <script>
+    document.querySelectorAll('input[type="file"][name="image"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (input.files && input.files.length > 0) {
+          input.form.submit();
+        }
+      });
+    });
+  </script>
 </body>
 </html>

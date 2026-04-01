@@ -504,17 +504,29 @@ body:has(.admin-bar) {
   margin: 16px 0 22px;
 }
 
-.inspo-upload input[type="file"] {
-  font-family: inherit;
+.inspo-upload-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(108, 82, 51, 0.08);
+  border: 1px solid rgba(108, 82, 51, 0.12);
+  color: #3f2d1b;
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: lowercase;
+  cursor: pointer;
+  overflow: hidden;
 }
 
-.inspo-upload button {
-  background: #111;
-  color: #fff;
-  border: 0;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 16px;
+.inspo-upload-label input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .inspo-card {
