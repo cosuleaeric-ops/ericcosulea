@@ -1,11 +1,12 @@
-const BLOCK_RULE_IDS = [1001, 1002, 1003, 1004, 1005, 1006];
+const BLOCK_RULE_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007];
 const BLOCKED_SITES = [
   { id: 1001, site: "facebook", regex: "^https?://([^.]+\\.)?facebook\\.com/.*" },
   { id: 1002, site: "instagram", regex: "^https?://([^.]+\\.)?instagram\\.com/.*" },
   { id: 1003, site: "x", regex: "^https?://([^.]+\\.)?x\\.com/.*" },
   { id: 1004, site: "twitter", regex: "^https?://([^.]+\\.)?twitter\\.com/.*" },
   { id: 1005, site: "reddit", regex: "^https?://([^.]+\\.)?reddit\\.com/.*" },
-  { id: 1006, site: "tiktok", regex: "^https?://([^.]+\\.)?tiktok\\.com/.*" }
+  { id: 1006, site: "tiktok", regex: "^https?://([^.]+\\.)?tiktok\\.com/.*" },
+  { id: 1007, site: "linkedin", regex: "^https?://([^.]+\\.)?linkedin\\.com/.*" }
 ];
 
 function getBlockedPage(site) {

@@ -21,6 +21,8 @@
     "*://*.reddit.com/*",
     "*://tiktok.com/*",
     "*://*.tiktok.com/*",
+    "*://linkedin.com/*",
+    "*://*.linkedin.com/*",
     "*://ericcosulea.ro/*",
     "*://*.ericcosulea.ro/*"
   ],
