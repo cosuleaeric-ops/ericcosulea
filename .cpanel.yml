@@ -1,3 +1,4 @@
+---
 deployment:
   tasks:
     - export DEPLOYPATH=/home/jszsrbkh/public_html/
@@ -11,4 +12,3 @@ deployment:
     - /bin/cp styles.css $DEPLOYPATH
     - /bin/cp inspo.html $DEPLOYPATH
     - /bin/cp tools.html $DEPLOYPATH
-
