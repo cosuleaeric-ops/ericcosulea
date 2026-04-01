@@ -434,10 +434,11 @@ function renderIstoric() {
 
 function renderLegend() {
   legendSquares.innerHTML = "";
-  for (let i = 0; i <= 4; i++) {
+  const legendLevels = [0, 4, 3, 2, 1];
+  for (const level of legendLevels) {
     const cell = document.createElement("div");
     cell.className = "legend-cell";
-    cell.setAttribute("data-level", i);
+    cell.setAttribute("data-level", level);
     legendSquares.appendChild(cell);
   }
 }
