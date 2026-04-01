@@ -9,11 +9,17 @@
     "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
+    "*://facebook.com/*",
     "*://*.facebook.com/*",
+    "*://instagram.com/*",
     "*://*.instagram.com/*",
+    "*://x.com/*",
     "*://*.x.com/*",
+    "*://twitter.com/*",
     "*://*.twitter.com/*",
+    "*://reddit.com/*",
     "*://*.reddit.com/*",
+    "*://tiktok.com/*",
     "*://*.tiktok.com/*",
     "*://ericcosulea.ro/*",
     "*://*.ericcosulea.ro/*"
