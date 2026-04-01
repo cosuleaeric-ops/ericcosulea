@@ -139,9 +139,10 @@ if ($uri === '/blog') {
 <?php if ($isLoggedIn): ?>
   <div class="admin-bar">
     <div class="admin-bar-inner">
-      <a href="/admin/">Dashboard</a>
-      <a href="/admin/edit.php">Articol nou</a>
-      <a href="/admin/inspo.php">Inspo</a>
+      <span class="admin-bar-label">admin mode</span>
+      <a href="/admin/">dashboard</a>
+      <a href="/admin/edit.php">articol nou</a>
+      <a href="/admin/inspo.php">inspo</a>
     </div>
   </div>
 <?php endif; ?>

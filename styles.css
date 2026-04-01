@@ -30,6 +30,64 @@ body {
   line-height: 1.5;
 }
 
+body:has(.admin-bar) {
+  padding-top: 86px;
+}
+
+.admin-bar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: min(720px, calc(100% - 24px));
+}
+
+.admin-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid #e6dccd;
+  border-radius: 18px;
+  background: rgba(253, 250, 245, 0.92);
+  box-shadow: 0 10px 30px rgba(34, 26, 15, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.admin-bar-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #111111;
+  color: #fffdf7;
+  font-size: 14px;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+.admin-bar a {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--text);
+  background: #f4ede1;
+  border: 1px solid transparent;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+
+.admin-bar a:hover {
+  background: #efe5d5;
+  border-color: #ddcfb8;
+  transform: translateY(-1px);
+}
+
 .page {
   max-width: 700px;
   padding: 72px 36px 96px;
@@ -106,6 +164,27 @@ body {
 
 .hero-social a:hover {
   background: #f2ede3;
+}
+
+@media (max-width: 720px) {
+  body:has(.admin-bar) {
+    padding-top: 116px;
+  }
+
+  .admin-bar {
+    top: 12px;
+    width: calc(100% - 20px);
+  }
+
+  .admin-bar-inner {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .admin-bar a,
+  .admin-bar-label {
+    font-size: 14px;
+  }
 }
 
 .hero-sub {
