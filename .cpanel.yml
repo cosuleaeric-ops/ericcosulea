@@ -1,0 +1,14 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/jszsrbkh/public_html/
+    - /bin/cp -R assets $DEPLOYPATH
+    - /bin/cp -R admin $DEPLOYPATH
+    - /bin/cp -R data $DEPLOYPATH
+    - /bin/cp -R deep-work $DEPLOYPATH
+    - /bin/cp -R uploads $DEPLOYPATH
+    - /bin/cp index.php $DEPLOYPATH
+    - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp styles.css $DEPLOYPATH
+    - /bin/cp inspo.html $DEPLOYPATH
+    - /bin/cp tools.html $DEPLOYPATH
+
