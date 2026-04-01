@@ -184,15 +184,14 @@ body {
 .calendar-cell[data-level="2"] { background: var(--calendar-2); }
 .calendar-cell[data-level="3"] { background: var(--calendar-3); }
 .calendar-cell[data-level="4"] { background: var(--calendar-4); }
-.calendar-cell[data-level="5"] { background: var(--calendar-4); }
 
 .calendar-cell,
 .legend-cell {
-  --calendar-0: #253029;
-  --calendar-1: #416848;
-  --calendar-2: #5c8f5f;
-  --calendar-3: #79b46e;
-  --calendar-4: #a7df7f;
+  --calendar-0: #3a403d;
+  --calendar-1: #355c41;
+  --calendar-2: #3f7a4c;
+  --calendar-3: #54a35f;
+  --calendar-4: #79cf7d;
 }
 
 .legend {
@@ -223,7 +222,6 @@ body {
 .legend-cell[data-level="2"] { background: var(--calendar-2); }
 .legend-cell[data-level="3"] { background: var(--calendar-3); }
 .legend-cell[data-level="4"] { background: var(--calendar-4); }
-.legend-cell[data-level="5"] { background: var(--calendar-4); }
 
 /* Istoric */
 .istoric-list {

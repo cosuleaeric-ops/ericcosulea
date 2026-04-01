@@ -356,10 +356,10 @@ function stopTimer() {
   btnStart.textContent = "start";
 }
 
-// --- Calendar: doar luna curentă; nivel = nr sesiuni în zi (0–5)
-// gri=0, roșu1=1, roșu2=2, verde1=3, verde2=4, verde3=5 sesiuni
+// --- Calendar: doar luna curentă; nivel = nr sesiuni în zi (0–4)
+// 0 = gri, 1-4 = verde din ce in ce mai intens
 function getLevel(sesiuni) {
-  return Math.min(Number(sesiuni) || 0, 5);
+  return Math.min(Number(sesiuni) || 0, 4);
 }
 
 function getDaysInMonth(year, month) {
@@ -434,7 +434,7 @@ function renderIstoric() {
 
 function renderLegend() {
   legendSquares.innerHTML = "";
-  for (let i = 0; i <= 5; i++) {
+  for (let i = 0; i <= 4; i++) {
     const cell = document.createElement("div");
     cell.className = "legend-cell";
     cell.setAttribute("data-level", i);
