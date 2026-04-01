@@ -97,10 +97,17 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
+    body:has(.actions) { padding-top: 86px; }
     .wrap { max-width: 820px; margin: 60px auto; padding: 24px; }
-    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .top { display: block; }
     .top h1 { margin: 0; }
     .actions {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: min(720px, calc(100% - 24px));
       display: flex;
       gap: 8px;
       align-items: center;
@@ -146,9 +153,13 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     .err { background: #fdecec; border: 1px solid #f3caca; }
     .logout-row { display: flex; justify-content: flex-end; margin-top: 24px; }
     @media (max-width: 720px) {
+      body:has(.actions) { padding-top: 116px; }
       .wrap { margin: 28px auto; padding: 18px; }
-      .top { flex-direction: column; align-items: stretch; }
-      .actions { justify-content: flex-start; }
+      .actions {
+        top: 12px;
+        width: calc(100% - 20px);
+        justify-content: flex-start;
+      }
     }
   </style>
 </head>
