@@ -131,16 +131,16 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       justify-content: center;
       min-height: 28px;
       padding: 5px 12px;
-      background: rgba(255, 248, 237, 0.08);
-      color: #fff8ed;
-      border: 1px solid rgba(255, 248, 237, 0.08);
+      background: #d7c2a5;
+      color: #3f2d1b;
+      border: 1px solid rgba(143, 111, 74, 0.18);
       border-radius: 999px;
       font-size: 15px;
       text-decoration: none;
       line-height: 1;
       transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
     }
-    .btn:hover { background: rgba(255, 248, 237, 0.16); border-color: rgba(255, 248, 237, 0.24); transform: translateY(-1px); }
+    .btn:hover { background: #cfb792; border-color: rgba(143, 111, 74, 0.26); transform: translateY(-1px); }
     .list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
     .item { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: baseline; }
     .item a { color: #111; text-decoration: none; font-weight: 600; }

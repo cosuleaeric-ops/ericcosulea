@@ -104,7 +104,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
     .wrap { max-width: 900px; margin: 60px auto; padding: 24px; }
     .top { display: flex; justify-content: space-between; align-items: center; }
-    .btn { background: #111; color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; font-size: 16px; text-decoration: none; }
+    .btn { background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 8px 14px; font-size: 16px; text-decoration: none; }
     .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 16px; padding: 24px; margin-top: 16px; }
     .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
     .thumb { position: relative; }

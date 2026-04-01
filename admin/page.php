@@ -140,7 +140,7 @@ $defaultContent = $page['content_md'] ?? "## lista\n- Cloudflare — securitate 
     textarea { min-height: 280px; font-family: inherit; }
     .toolbar { display: flex; gap: 8px; margin: 8px 0 6px; }
     .toolbar button { border: 1px solid #d9d0c2; background: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
-    .btn { margin-top: 16px; background: #111; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 16px; }
+    .btn { margin-top: 16px; background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 10px 16px; font-size: 16px; }
     .link { text-decoration: none; color: #111; }
     .err { background: #fdecec; border: 1px solid #f3caca; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
   </style>

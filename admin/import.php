@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
     .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 16px; padding: 24px; }
     h1 { margin-top: 0; }
     input[type=file] { margin: 12px 0 18px; }
-    button { background: #111; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 16px; }
+    button { background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 10px 16px; font-size: 16px; }
     .msg { margin: 12px 0; padding: 10px 12px; border-radius: 8px; }
     .ok { background: #eef8ee; border: 1px solid #cfe8cf; }
     .err { background: #fdecec; border: 1px solid #f3caca; }
