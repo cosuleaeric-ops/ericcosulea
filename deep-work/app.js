@@ -95,7 +95,7 @@ function postData() {
   return fetch(DATA_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer }),
+    body: JSON.stringify({ days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer }),
   }).catch(() => {});
 }
 
@@ -552,6 +552,7 @@ async function init() {
       memory.days = data.days || {};
       memory.settings = data.settings || {};
       memory.activeTimer = data.activeTimer ?? null;
+      memory.pausedTimer = data.pausedTimer ?? null;
       useFileStorage = true;
       // Backup: dacă serverul nu are zile, încarcă din localStorage și sincronizează
       try {
