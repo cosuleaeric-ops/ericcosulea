@@ -37,6 +37,18 @@
         "deep-work-bridge.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://x.com/*",
+        "*://*.x.com/*",
+        "*://twitter.com/*",
+        "*://*.twitter.com/*"
+      ],
+      "js": [
+        "site-blocker.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
