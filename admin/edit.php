@@ -64,11 +64,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $slug = trim($_POST['slug'] ?? '');
     $contentHtml = trim($_POST['content_html'] ?? '');
-    $publishedAt = trim($_POST['published_at'] ?? '');
     $excerpt = trim($_POST['excerpt'] ?? '');
 
-    if ($title === '' || $contentHtml === '' || $publishedAt === '') {
-        $error = 'Titlu, continut si data sunt obligatorii.';
+    if ($title === '' || $contentHtml === '') {
+        $error = 'Titlu si continut sunt obligatorii.';
     } else {
         if ($slug === '') {
             $slug = slugify($title);
@@ -88,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':content_html', $contentHtml, SQLITE3_TEXT);
         $stmt->bindValue(':content_md', null, SQLITE3_NULL);
         $stmt->bindValue(':excerpt', $excerpt, SQLITE3_TEXT);
+        $publishedAt = $post ? $post['published_at'] : date('Y-m-d H:i:s');
         $stmt->bindValue(':published_at', $publishedAt, SQLITE3_TEXT);
         $stmt->execute();
 
@@ -96,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$defaultDate = $post ? $post['published_at'] : date('Y-m-d H:i:s');
 $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
 ?>
 <!doctype html>
@@ -224,8 +223,6 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
             <input type="text" id="slug" name="slug" value="<?php echo h($post['slug'] ?? ($_POST['slug'] ?? '')); ?>" placeholder="titlu-articol">
           </div>
           <div>
-            <label for="published_at">Data publicarii</label>
-            <input type="text" id="published_at" name="published_at" value="<?php echo h($post['published_at'] ?? ($_POST['published_at'] ?? $defaultDate)); ?>" placeholder="YYYY-MM-DD HH:MM:SS" required>
           </div>
         </div>
 
