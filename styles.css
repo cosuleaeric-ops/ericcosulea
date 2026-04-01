@@ -515,12 +515,61 @@ body:has(.admin-bar) {
   overflow: hidden;
   border: 1px solid #eee3d4;
   background: #fffaf2;
+  padding: 0;
+  width: 100%;
+  cursor: zoom-in;
 }
 
 .inspo-card img {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.inspo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(20, 14, 8, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.inspo-lightbox[hidden] {
+  display: none;
+}
+
+.inspo-lightbox-image {
+  max-width: min(1100px, calc(100vw - 56px));
+  max-height: calc(100vh - 56px);
+  width: auto;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
+  background: #fffaf2;
+}
+
+.inspo-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 248, 239, 0.92);
+  color: #3f2d1b;
+  font-family: "Crimson Pro", serif;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body.lightbox-open {
+  overflow: hidden;
 }
 
 .tool-list {

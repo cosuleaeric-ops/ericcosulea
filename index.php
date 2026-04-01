@@ -240,10 +240,14 @@ if ($uri === '/blog') {
       <?php endif; ?>
       <div class="inspo-grid">
         <?php foreach ($images as $img): ?>
-          <div class="inspo-card">
+          <button class="inspo-card" type="button" data-inspo-open data-inspo-src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>">
             <img src="<?php echo '/uploads/inspo/' . h($img['filename']); ?>" alt="">
-          </div>
+          </button>
         <?php endforeach; ?>
+      </div>
+      <div class="inspo-lightbox" data-inspo-lightbox hidden>
+        <button class="inspo-lightbox-close" type="button" aria-label="inchide" data-inspo-close>×</button>
+        <img class="inspo-lightbox-image" src="" alt="" data-inspo-image>
       </div>
     </section>
   </main>
@@ -397,6 +401,43 @@ if ($uri === '/blog') {
 <?php endif; ?>
 <?php if ($postHasTwitterEmbeds): ?>
   <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<?php endif; ?>
+<?php if ($uri === '/inspo'): ?>
+  <script>
+    (() => {
+      const lightbox = document.querySelector('[data-inspo-lightbox]');
+      const lightboxImage = document.querySelector('[data-inspo-image]');
+      if (!lightbox || !lightboxImage) return;
+
+      const closeLightbox = () => {
+        lightbox.hidden = true;
+        lightboxImage.src = '';
+        document.body.classList.remove('lightbox-open');
+      };
+
+      document.querySelectorAll('[data-inspo-open]').forEach((card) => {
+        card.addEventListener('click', () => {
+          const src = card.getAttribute('data-inspo-src');
+          if (!src) return;
+          lightboxImage.src = src;
+          lightbox.hidden = false;
+          document.body.classList.add('lightbox-open');
+        });
+      });
+
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox || event.target.hasAttribute('data-inspo-close')) {
+          closeLightbox();
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !lightbox.hidden) {
+          closeLightbox();
+        }
+      });
+    })();
+  </script>
 <?php endif; ?>
 </body>
 </html>
