@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 $dbPath = __DIR__ . '/data/blog.sqlite';
+require_once __DIR__ . '/lib/article_images.php';
 
 function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -27,10 +28,14 @@ function fetch_post(string $slug, string $dbPath): ?array {
         excerpt TEXT,
         published_at TEXT NOT NULL
     );');
+    ensure_article_image_table($db);
     $stmt = $db->prepare('SELECT id, slug, title, content_html, excerpt, published_at FROM posts WHERE slug = :slug LIMIT 1');
     $stmt->bindValue(':slug', $slug, SQLITE3_TEXT);
     $result = $stmt->execute();
     $row = $result->fetchArray(SQLITE3_ASSOC);
+    if ($row) {
+        $row['content_html'] = replace_article_image_urls($row['content_html'], article_image_replacement_map($db));
+    }
     return $row ?: null;
 }
 
