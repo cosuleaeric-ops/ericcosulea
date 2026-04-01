@@ -96,7 +96,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: "Crimson Pro", serif; background: #f5efe3; color: #1c1c1c; }
+    body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
     body:has(.admin-bar) { padding-top: 86px; }
     .admin-bar {
       position: fixed;
