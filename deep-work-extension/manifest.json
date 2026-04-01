@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Elite Deep Work Blocker",
+  "version": "1.0.0",
+  "description": "Blocks distracting social media sites while the Elite Deep Work timer is running.",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "*://*.instagram.com/*",
+    "*://*.x.com/*",
+    "*://*.twitter.com/*",
+    "*://*.reddit.com/*",
+    "*://*.tiktok.com/*",
+    "*://ericcosulea.ro/*",
+    "*://*.ericcosulea.ro/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://ericcosulea.ro/deep-work/*",
+        "*://*.ericcosulea.ro/deep-work/*"
+      ],
+      "js": [
+        "deep-work-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "blocked.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
