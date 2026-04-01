@@ -111,18 +111,18 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     .top h1 { margin: 0; }
     .admin-bar-inner {
       display: flex;
-      gap: 8px;
       align-items: center;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
       padding: 8px;
-      border: 1px solid rgba(255, 248, 237, 0.1);
+      border: 1px solid rgba(143, 111, 74, 0.18);
       border-radius: 20px;
       background:
-        linear-gradient(180deg, rgba(29, 27, 24, 0.96) 0%, rgba(15, 14, 12, 0.98) 100%);
+        linear-gradient(180deg, rgba(219, 204, 181, 0.96) 0%, rgba(206, 187, 160, 0.98) 100%);
       box-shadow:
-        0 18px 44px rgba(10, 8, 5, 0.32),
-        inset 0 1px 0 rgba(255, 248, 237, 0.06);
+        0 18px 44px rgba(90, 67, 39, 0.18),
+        inset 0 1px 0 rgba(255, 250, 242, 0.5);
       backdrop-filter: blur(12px);
     }
     .btn {
@@ -131,16 +131,20 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       justify-content: center;
       min-height: 28px;
       padding: 5px 12px;
-      background: #d7c2a5;
+      background: rgba(108, 82, 51, 0.08);
       color: #3f2d1b;
-      border: 1px solid rgba(143, 111, 74, 0.18);
+      border: 1px solid rgba(108, 82, 51, 0.12);
       border-radius: 999px;
       font-size: 15px;
       text-decoration: none;
       line-height: 1;
-      transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+      transition:
+        background 160ms ease,
+        transform 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease;
     }
-    .btn:hover { background: #cfb792; border-color: rgba(143, 111, 74, 0.26); transform: translateY(-1px); }
+    .btn:hover { background: rgba(108, 82, 51, 0.14); border-color: rgba(108, 82, 51, 0.2); transform: translateY(-1px); }
     .list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
     .item { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: baseline; }
     .item a { color: #111; text-decoration: none; font-weight: 600; }
