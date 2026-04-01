@@ -398,8 +398,15 @@ function stopTimer() {
     intervalId = null;
   }
   setExtensionBlockFlag(false);
-  clearActiveTimer();
-  savePausedTimer();
+  // Update activeTimer and pausedTimer atomically in a single request
+  if (useFileStorage) {
+    memory.activeTimer = null;
+    memory.pausedTimer = { remainingSeconds, mode };
+    postData();
+  } else {
+    try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
+    try { localStorage.setItem(STORAGE_PAUSED_TIMER, JSON.stringify({ remainingSeconds, mode })); } catch (_) {}
+  }
   btnStart.textContent = "start";
 }
 
