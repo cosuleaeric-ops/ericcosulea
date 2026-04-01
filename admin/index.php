@@ -98,13 +98,44 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   <style>
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
     .wrap { max-width: 820px; margin: 60px auto; padding: 24px; }
-    .top { display: flex; justify-content: space-between; align-items: center; }
-    .btn { background: #111; color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; font-size: 16px; text-decoration: none; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .top h1 { margin: 0; }
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 8px;
+      border: 1px solid rgba(255, 248, 237, 0.1);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(29, 27, 24, 0.96) 0%, rgba(15, 14, 12, 0.98) 100%);
+      box-shadow:
+        0 18px 44px rgba(10, 8, 5, 0.32),
+        inset 0 1px 0 rgba(255, 248, 237, 0.06);
+      backdrop-filter: blur(12px);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 5px 12px;
+      background: rgba(255, 248, 237, 0.08);
+      color: #fff8ed;
+      border: 1px solid rgba(255, 248, 237, 0.08);
+      border-radius: 999px;
+      font-size: 15px;
+      text-decoration: none;
+      line-height: 1;
+      transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+    }
+    .btn:hover { background: rgba(255, 248, 237, 0.16); border-color: rgba(255, 248, 237, 0.24); transform: translateY(-1px); }
     .list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
     .item { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: baseline; }
     .item a { color: #111; text-decoration: none; font-weight: 600; }
     .meta { color: #6d6a64; font-size: 14px; }
-    .actions { display: flex; gap: 10px; align-items: center; }
     .link { text-decoration: none; color: #111; font-size: 14px; }
     .danger { background: #f4d6d6; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
     .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 16px; padding: 24px; margin-top: 18px; }
@@ -114,6 +145,11 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     .ok { background: #eef8ee; border: 1px solid #cfe8cf; }
     .err { background: #fdecec; border: 1px solid #f3caca; }
     .logout-row { display: flex; justify-content: flex-end; margin-top: 24px; }
+    @media (max-width: 720px) {
+      .wrap { margin: 28px auto; padding: 18px; }
+      .top { flex-direction: column; align-items: stretch; }
+      .actions { justify-content: flex-start; }
+    }
   </style>
 </head>
 <body class="admin">
