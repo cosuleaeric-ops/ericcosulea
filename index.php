@@ -105,7 +105,7 @@ if ($uri === '') {
     $uri = '/';
 }
 
-$reserved = ['/', '/index.php', '/styles.css', '/admin', '/admin/import.php', '/tools', '/inspo'];
+$reserved = ['/', '/index.php', '/styles.css', '/admin', '/admin/import.php', '/tools', '/inspo', '/elite-deux'];
 $post = null;
 $posts = [];
 $images = [];
@@ -142,6 +142,7 @@ if ($uri === '/blog') {
       <a href="/admin/">dashboard</a>
       <a href="/admin/inspo.php">inspo</a>
       <a href="/deep-work/">deep work</a>
+      <a href="/elite-deux/">elite deux</a>
     </div>
   </div>
 <?php endif; ?>
