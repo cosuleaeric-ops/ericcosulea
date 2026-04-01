@@ -140,8 +140,8 @@ if ($uri === '/blog') {
   <div class="admin-bar">
     <div class="admin-bar-inner">
       <a href="/admin/">dashboard</a>
-      <a href="/admin/edit.php">articol nou</a>
       <a href="/admin/inspo.php">inspo</a>
+      <a href="/deep-work/">deep work</a>
     </div>
   </div>
 <?php endif; ?>

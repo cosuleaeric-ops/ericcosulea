@@ -64,14 +64,14 @@ body:has(.admin-bar) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 6px 14px;
+  min-height: 28px;
+  padding: 5px 12px;
   border-radius: 999px;
   text-decoration: none;
   color: #fff8ed;
   background: rgba(255, 248, 237, 0.08);
   border: 1px solid rgba(255, 248, 237, 0.08);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
   transition:
     background 160ms ease,
