@@ -1,13 +1,13 @@
 :root {
-  --bg: #fffdf7;
-  --panel: #fdfaf5;
-  --border: #e7ddce;
-  --text: #1c1c1c;
-  --text-muted: #6d6a64;
-  --tab-active: #f2ede3;
-  --tab-inactive: #fdfaf5;
-  --btn-border: #d9d0c2;
-  --btn-start-bg: #f2ede3;
+  --bg: #101412;
+  --panel: #171d1a;
+  --border: #283029;
+  --text: #f3efe6;
+  --text-muted: #a7ab9f;
+  --tab-active: #222a25;
+  --tab-inactive: #171d1a;
+  --btn-border: #384238;
+  --btn-start-bg: #222a25;
 }
 
 * {
@@ -31,10 +31,11 @@ body {
 }
 
 .title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 400;
   color: var(--text);
   margin: 0;
+  text-transform: lowercase;
 }
 
 .header-actions {
@@ -48,7 +49,7 @@ body {
   color: var(--text);
   border: 1px solid var(--btn-border);
   padding: 0.35rem 0.75rem;
-  border-radius: 6px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 0.875rem;
 }
@@ -70,7 +71,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #d9d0c2;
+  background: #6f7a70;
 }
 
 .main {
@@ -85,6 +86,7 @@ body {
   border-radius: 14px;
   padding: 1.5rem;
   margin-bottom: 2rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
 }
 
 .mode-tabs {
@@ -117,7 +119,7 @@ body {
 }
 
 .tab:hover:not(.active) {
-  background: var(--border);
+  background: #202721;
 }
 
 .timer-display {
@@ -145,7 +147,7 @@ body {
 }
 
 .btn-start:hover {
-  background: var(--border);
+  background: #2a332d;
 }
 
 /* Deep work section */
@@ -186,11 +188,11 @@ body {
 
 .calendar-cell,
 .legend-cell {
-  --calendar-0: #ebe3d6;
-  --calendar-1: #d7ead0;
-  --calendar-2: #b7d8a8;
-  --calendar-3: #93c17f;
-  --calendar-4: #4f8f42;
+  --calendar-0: #253029;
+  --calendar-1: #416848;
+  --calendar-2: #5c8f5f;
+  --calendar-3: #79b46e;
+  --calendar-4: #a7df7f;
 }
 
 .legend {
@@ -250,7 +252,7 @@ body {
 /* Modal */
 .modal {
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 0;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -286,7 +288,7 @@ body {
   padding: 0.5rem;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 12px;
   color: var(--text);
   font-size: 0.9375rem;
 }
@@ -311,7 +313,7 @@ body {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text-muted);
-  border-radius: 4px;
+  border-radius: 10px;
   cursor: pointer;
 }
 
