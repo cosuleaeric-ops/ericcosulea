@@ -11,7 +11,7 @@ function render_post_content(string $html): array {
     $hasTwitterEmbeds = false;
 
     $html = preg_replace_callback(
-        '~<!--\s*wp:embed\s+\{"url":"(https?://(?:www\.)?(?:twitter\.com|x\.com)/[^"]+)".*?\}\s*-->\s*<figure[^>]*class="wp-block-embed[^"]*"[^>]*>.*?<p>\s*<a href="[^"]+">[^<]+</a>\s*</p>.*?</figure>\s*<!--\s*/wp:embed\s*-->~si',
+        '~<!--\s*wp:embed\s+\{"url":"(https?://(?:www\.)?(?:twitter\.com|x\.com)/[^"]+)".*?\}\s*-->\s*<figure[^>]*class="wp-block-embed[^"]*"[^>]*>.*?</figure>\s*<!--\s*/wp:embed\s*-->~si',
         static function (array $matches) use (&$hasTwitterEmbeds): string {
             $hasTwitterEmbeds = true;
             $url = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
