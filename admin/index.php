@@ -20,12 +20,6 @@ function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-$root = realpath(__DIR__ . '/..');
-$uploadsRoot = $root . '/uploads/files';
-
-$message = '';
-$error = '';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['delete_id'])) {
         if (!verify_csrf($_POST['csrf_token'] ?? '')) {
@@ -38,46 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: /admin/');
         exit;
     }
-
-    if (isset($_FILES['files'])) {
-        if (!verify_csrf($_POST['csrf_token'] ?? '')) {
-            http_response_code(400);
-            exit('CSRF invalid');
-        }
-
-        $target = $_POST['target'] ?? 'root';
-        $count = 0;
-        $total = is_array($_FILES['files']['name']) ? count($_FILES['files']['name']) : 0;
-        for ($i = 0; $i < $total; $i++) {
-            if ($_FILES['files']['error'][$i] !== UPLOAD_ERR_OK) {
-                continue;
-            }
-            $orig = basename($_FILES['files']['name'][$i] ?? 'file');
-            $destDir = $root;
-            if ($target === 'assets') {
-                $destDir = $root . '/assets';
-            } elseif ($target === 'admin') {
-                $destDir = $root . '/admin';
-            } elseif ($target === 'inspo') {
-                $destDir = $root . '/uploads/inspo';
-            } elseif ($target === 'uploads') {
-                $destDir = $uploadsRoot;
-            }
-            if (!is_dir($destDir)) {
-                @mkdir($destDir, 0755, true);
-            }
-            $dest = $destDir . '/' . $orig;
-            $tmp = $_FILES['files']['tmp_name'][$i];
-            if (move_uploaded_file($tmp, $dest)) {
-                $count++;
-            }
-        }
-        if ($count > 0) {
-            $message = 'Fisiere actualizate: ' . $count;
-        } else {
-            $error = 'Incarcarea a esuat.';
-        }
-    }
 }
 
 $result = $db->query('SELECT id, slug, title, published_at FROM posts ORDER BY published_at DESC');
@@ -85,6 +39,9 @@ $posts = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $posts[] = $row;
 }
+
+$postCount = count($posts);
+$latestPost = $posts[0] ?? null;
 ?>
 <!doctype html>
 <html lang="ro">
@@ -149,18 +106,20 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         color 160ms ease;
     }
     .btn:hover { background: rgba(108, 82, 51, 0.14); border-color: rgba(108, 82, 51, 0.2); transform: translateY(-1px); }
-    .list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .intro { margin-top: 18px; color: #6d6a64; font-size: 18px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+    .quick-card { display: block; padding: 20px; background: #fffaf2; border: 1px solid #efe6d6; border-radius: 18px; text-decoration: none; color: #1c1c1c; transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+    .quick-card:hover { transform: translateY(-2px); border-color: #dcc9aa; box-shadow: 0 12px 28px rgba(90, 67, 39, 0.08); }
+    .quick-card-kicker { display: block; font-size: 13px; text-transform: lowercase; letter-spacing: 0.04em; color: #8a7b68; margin-bottom: 8px; }
+    .quick-card h2 { margin: 0; font-size: 32px; font-weight: 600; line-height: 0.95; text-transform: lowercase; }
+    .quick-card p { margin: 10px 0 0; color: #6d6a64; font-size: 16px; }
+    .section-title { margin: 28px 0 12px; font-size: 28px; font-weight: 600; text-transform: lowercase; }
+    .list { margin-top: 0; display: flex; flex-direction: column; gap: 10px; }
     .item { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: baseline; }
     .item a { color: #111; text-decoration: none; font-weight: 600; }
     .meta { color: #6d6a64; font-size: 14px; }
     .link { text-decoration: none; color: #111; font-size: 14px; }
     .danger { background: #f4d6d6; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-    .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 16px; padding: 24px; margin-top: 18px; }
-    label { display: block; margin: 12px 0 6px; font-weight: 600; }
-    input[type=file], select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d9d0c2; font-size: 16px; }
-    .msg { margin: 12px 0; padding: 10px 12px; border-radius: 8px; }
-    .ok { background: #eef8ee; border: 1px solid #cfe8cf; }
-    .err { background: #fdecec; border: 1px solid #f3caca; }
     .logout-row { display: flex; justify-content: flex-end; margin-top: 24px; }
     @media (max-width: 720px) {
       body:has(.admin-bar) { padding-top: 116px; }
@@ -172,6 +131,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       .admin-bar-inner {
         justify-content: flex-start;
       }
+      .quick-grid { grid-template-columns: 1fr; }
+      .quick-card h2 { font-size: 28px; }
     }
   </style>
 </head>
@@ -190,28 +151,50 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     <div class="top">
       <h1>Admin</h1>
     </div>
+    <p class="intro">hub-ul tau intern pentru scris, organizare si sprinturi scurte de lucru.</p>
 
-    <div class="card">
-      <h2>Upload fisiere</h2>
-      <p>Urca unul sau mai multe fisiere si alege unde se salveaza.</p>
-      <?php if ($message): ?><div class="msg ok"><?php echo h($message); ?></div><?php endif; ?>
-      <?php if ($error): ?><div class="msg err"><?php echo h($error); ?></div><?php endif; ?>
-      <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-        <label for="target">Destinatie</label>
-        <select id="target" name="target" required>
-          <option value="root">public_html</option>
-          <option value="assets">assets</option>
-          <option value="admin">admin</option>
-          <option value="inspo">uploads/inspo</option>
-          <option value="uploads">uploads/files</option>
-        </select>
-        <label for="files">Incarca fisiere</label>
-        <input id="files" type="file" name="files[]" multiple required>
-        <button class="btn" type="submit">Uploadeaza</button>
-      </form>
-    </div>
+    <section class="quick-grid" aria-label="Actiuni rapide">
+      <a class="quick-card" href="/admin/edit.php">
+        <span class="quick-card-kicker">scris</span>
+        <h2>articol nou</h2>
+        <p>deschide editorul si porneste direct un draft nou.</p>
+      </a>
+      <a class="quick-card" href="/elite-deux/">
+        <span class="quick-card-kicker">organizare</span>
+        <h2>elite deux</h2>
+        <p>intri in sistemul tau de todo-uri private, sincronizat pe server.</p>
+      </a>
+      <a class="quick-card" href="/deep-work/">
+        <span class="quick-card-kicker">focus</span>
+        <h2>deep work</h2>
+        <p>pornesti rapid o sesiune si iti blochezi distragerile.</p>
+      </a>
+      <a class="quick-card" href="/admin/inspo.php">
+        <span class="quick-card-kicker">material</span>
+        <h2>inspo</h2>
+        <p>adaugi sau cureti imaginile salvate pentru inspiratie.</p>
+      </a>
+    </section>
 
+    <section>
+      <h2 class="section-title">overview</h2>
+      <div class="quick-grid">
+        <a class="quick-card" href="/blog">
+          <span class="quick-card-kicker">public</span>
+          <h2><?php echo h((string)$postCount); ?> articole</h2>
+          <p><?php echo $latestPost ? 'ultimul: ' . h($latestPost['title']) : 'inca nu ai publicat nimic.'; ?></p>
+        </a>
+        <a class="quick-card" href="/admin/page.php?slug=tools">
+          <span class="quick-card-kicker">pagina</span>
+          <h2>tools</h2>
+          <p>actualizezi rapid pagina publica cu tool-urile si resursele tale.</p>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">articole recente</h2>
+    </section>
     <div class="list">
       <?php foreach ($posts as $p): ?>
         <div class="item">
