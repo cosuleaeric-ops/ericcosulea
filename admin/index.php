@@ -52,60 +52,11 @@ $latestPost = $posts[0] ?? null;
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
   <style>
-    body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
-    body:has(.admin-bar) { padding-top: 86px; }
-    .admin-bar {
-      position: fixed;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      width: min(720px, calc(100% - 24px));
-    }
     .wrap { max-width: 820px; margin: 60px auto; padding: 24px; }
     .top { display: block; }
     .top h1 { margin: 0; }
-    .admin-bar-inner {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 8px;
-      border: 1px solid rgba(143, 111, 74, 0.18);
-      border-radius: 20px;
-      background:
-        linear-gradient(180deg, rgba(219, 204, 181, 0.96) 0%, rgba(206, 187, 160, 0.98) 100%);
-      box-shadow:
-        0 18px 44px rgba(90, 67, 39, 0.18),
-        inset 0 1px 0 rgba(255, 250, 242, 0.5);
-      backdrop-filter: blur(12px);
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 28px;
-      padding: 5px 12px;
-      background: rgba(108, 82, 51, 0.08);
-      color: #3f2d1b;
-      border: 1px solid rgba(108, 82, 51, 0.12);
-      border-radius: 999px;
-      font-family: "Crimson Pro", serif;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      text-decoration: none;
-      line-height: 1;
-      text-transform: lowercase;
-      transition:
-        background 160ms ease,
-        transform 160ms ease,
-        border-color 160ms ease,
-        color 160ms ease;
-    }
-    .btn:hover { background: rgba(108, 82, 51, 0.14); border-color: rgba(108, 82, 51, 0.2); transform: translateY(-1px); }
     .intro { margin-top: 18px; color: #6d6a64; font-size: 18px; }
     .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
     .quick-card { display: block; padding: 20px; background: #fffaf2; border: 1px solid #efe6d6; border-radius: 18px; text-decoration: none; color: #1c1c1c; transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
@@ -122,21 +73,13 @@ $latestPost = $posts[0] ?? null;
     .danger { background: #f4d6d6; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
     .logout-row { display: flex; justify-content: flex-end; margin-top: 24px; }
     @media (max-width: 720px) {
-      body:has(.admin-bar) { padding-top: 116px; }
-      .admin-bar {
-        top: 12px;
-        width: calc(100% - 20px);
-      }
       .wrap { margin: 28px auto; padding: 18px; }
-      .admin-bar-inner {
-        justify-content: flex-start;
-      }
       .quick-grid { grid-template-columns: 1fr; }
       .quick-card h2 { font-size: 28px; }
     }
   </style>
 </head>
-<body class="admin">
+<body>
   <div class="admin-bar">
     <div class="admin-bar-inner">
       <a class="btn" href="/">Website</a>
