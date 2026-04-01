@@ -99,6 +99,22 @@ function fetch_images(string $dbPath, ?int $limit = null): array {
     return $images;
 }
 
+function hero_avatar_url(): string {
+    $customDir = __DIR__ . '/uploads/profile';
+    $extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+    foreach ($extensions as $extension) {
+        $file = $customDir . '/avatar-current.' . $extension;
+        if (file_exists($file)) {
+            return '/uploads/profile/avatar-current.' . $extension . '?v=' . filemtime($file);
+        }
+    }
+
+    $defaultAvatar = __DIR__ . '/assets/avatar.jpeg';
+    $version = file_exists($defaultAvatar) ? filemtime($defaultAvatar) : time();
+    return '/assets/avatar.jpeg?v=' . $version;
+}
+
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
 $uri = rtrim($uri, '/');
 if ($uri === '') {
@@ -110,6 +126,7 @@ $post = null;
 $posts = [];
 $images = [];
 $toolsPage = null;
+$heroAvatarUrl = hero_avatar_url();
 
 if ($uri === '/blog') {
     $posts = fetch_posts($dbPath);
@@ -235,7 +252,24 @@ if ($uri === '/blog') {
   <main class="page">
     <header class="hero">
       <div class="hero-avatar">
-        <img src="/assets/avatar.jpeg" alt="Eric Cosulea">
+        <img src="<?php echo h($heroAvatarUrl); ?>" alt="Eric Cosulea">
+        <?php if ($isLoggedIn): ?>
+          <form class="hero-avatar-editor" method="post" enctype="multipart/form-data" action="/admin/avatar.php">
+            <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+            <input type="hidden" name="redirect_to" value="/">
+            <label class="hero-avatar-input">
+              <span>schimba poza</span>
+              <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required>
+            </label>
+            <button type="submit">salveaza</button>
+          </form>
+          <form class="hero-avatar-reset" method="post" action="/admin/avatar.php">
+            <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+            <input type="hidden" name="redirect_to" value="/">
+            <input type="hidden" name="action" value="reset">
+            <button type="submit">poza initiala</button>
+          </form>
+        <?php endif; ?>
       </div>
       <div class="hero-text">
         <div class="hero-title">
