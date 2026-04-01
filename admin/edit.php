@@ -110,6 +110,28 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
+    body:has(.admin-bar) { padding-top: 86px; }
+    .admin-bar {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: min(720px, calc(100% - 24px));
+    }
+    .admin-bar-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 8px;
+      border: 1px solid rgba(143, 111, 74, 0.18);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(219, 204, 181, 0.96) 0%, rgba(206, 187, 160, 0.98) 100%);
+      box-shadow: 0 18px 44px rgba(90, 67, 39, 0.18), inset 0 1px 0 rgba(255, 250, 242, 0.5);
+      backdrop-filter: blur(12px);
+    }
     .wrap { max-width: 980px; margin: 48px auto; padding: 24px; }
     .card { background: #fffaf2; border: 1px solid #efe6d6; border-radius: 22px; padding: 28px; box-shadow: 0 18px 44px rgba(90, 67, 39, 0.08); }
     label { display: block; margin: 12px 0 6px; font-weight: 600; }
@@ -165,6 +187,9 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
     .editor-toolbar-note { margin: 10px 0 0; font-size: 14px; color: #8a7b68; }
     .editor-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
     @media (max-width: 720px) {
+      body:has(.admin-bar) { padding-top: 116px; }
+      .admin-bar { top: 12px; width: calc(100% - 20px); }
+      .admin-bar-inner { justify-content: flex-start; }
       .wrap { margin: 24px auto; padding: 16px; }
       .card { padding: 18px; border-radius: 18px; }
       .row { flex-direction: column; gap: 0; }
@@ -173,6 +198,14 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
   </style>
 </head>
 <body class="admin">
+  <div class="admin-bar">
+    <div class="admin-bar-inner">
+      <a class="btn" href="/">Website</a>
+      <a class="btn" href="/admin/inspo.php">Inspo</a>
+      <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
+      <a class="btn" href="/admin/edit.php">Articol nou</a>
+    </div>
+  </div>
   <div class="wrap">
     <a class="link" href="/admin/">← inapoi</a>
     <div class="card">

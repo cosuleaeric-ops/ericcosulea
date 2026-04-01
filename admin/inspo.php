@@ -102,6 +102,28 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body { font-family: "Crimson Pro", serif; background: #FFFDF7; color: #1c1c1c; }
+    body:has(.admin-bar) { padding-top: 86px; }
+    .admin-bar {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: min(720px, calc(100% - 24px));
+    }
+    .admin-bar-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 8px;
+      border: 1px solid rgba(143, 111, 74, 0.18);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(219, 204, 181, 0.96) 0%, rgba(206, 187, 160, 0.98) 100%);
+      box-shadow: 0 18px 44px rgba(90, 67, 39, 0.18), inset 0 1px 0 rgba(255, 250, 242, 0.5);
+      backdrop-filter: blur(12px);
+    }
     .wrap { max-width: 900px; margin: 60px auto; padding: 24px; }
     .top { display: flex; justify-content: space-between; align-items: center; }
     .btn { min-height: 28px; background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 5px 12px; font-size: 15px; font-family: "Crimson Pro", serif; font-weight: 600; letter-spacing: 0.01em; text-decoration: none; text-transform: lowercase; }
@@ -115,9 +137,22 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     .ok { background: #eef8ee; border: 1px solid #cfe8cf; }
     .err { background: #fdecec; border: 1px solid #f3caca; }
     @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 720px) {
+      body:has(.admin-bar) { padding-top: 116px; }
+      .admin-bar { top: 12px; width: calc(100% - 20px); }
+      .admin-bar-inner { justify-content: flex-start; }
+    }
   </style>
 </head>
 <body class="admin">
+  <div class="admin-bar">
+    <div class="admin-bar-inner">
+      <a class="btn" href="/">Website</a>
+      <a class="btn" href="/admin/inspo.php">Inspo</a>
+      <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
+      <a class="btn" href="/admin/edit.php">Articol nou</a>
+    </div>
+  </div>
   <div class="wrap">
     <div class="top">
       <h1>Inspo</h1>
