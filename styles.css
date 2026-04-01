@@ -533,9 +533,9 @@ body:has(.admin-bar) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px;
-  background: rgba(20, 14, 8, 0.78);
-  backdrop-filter: blur(6px);
+  padding: 20px;
+  background: rgba(10, 8, 5, 0.9);
+  backdrop-filter: blur(3px);
 }
 
 .inspo-lightbox[hidden] {
@@ -548,8 +548,9 @@ body:has(.admin-bar) {
   width: auto;
   height: auto;
   border-radius: 20px;
-  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
-  background: #fffaf2;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.42);
+  background: transparent;
+  object-fit: contain;
 }
 
 .inspo-lightbox-close {
