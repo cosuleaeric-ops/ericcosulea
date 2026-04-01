@@ -7,6 +7,29 @@ function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function ensure_site_texts_table(SQLite3 $db): void {
+    $db->exec('CREATE TABLE IF NOT EXISTS site_texts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text_key TEXT UNIQUE NOT NULL,
+        text_value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );');
+}
+
+function fetch_site_text_map(SQLite3 $db): array {
+    ensure_site_texts_table($db);
+    $result = $db->query('SELECT text_key, text_value FROM site_texts');
+    $map = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $map[$row['text_key']] = $row['text_value'];
+    }
+    return $map;
+}
+
+function site_text_value(array $map, string $key, string $default): string {
+    return $map[$key] ?? $default;
+}
+
 function render_post_content(string $html): array {
     $hasTwitterEmbeds = false;
 
@@ -131,6 +154,14 @@ function hero_avatar_url(): string {
     return '/assets/avatar.jpeg?v=' . $version;
 }
 
+function editable_text(bool $isLoggedIn, string $key, string $value, string $tag = 'span', string $class = ''): string {
+    $attrs = $class !== '' ? ' class="' . h($class) . '"' : '';
+    if ($isLoggedIn) {
+        $attrs .= ' data-site-text="' . h($key) . '"';
+    }
+    return '<' . $tag . $attrs . '>' . h($value) . '</' . $tag . '>';
+}
+
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
 $uri = rtrim($uri, '/');
 if ($uri === '') {
@@ -144,6 +175,12 @@ $images = [];
 $toolsPage = null;
 $heroAvatarUrl = hero_avatar_url();
 $postHasTwitterEmbeds = false;
+$siteTextMap = [];
+
+if (file_exists($dbPath)) {
+    $siteTextDb = new SQLite3($dbPath);
+    $siteTextMap = fetch_site_text_map($siteTextDb);
+}
 
 if ($uri === '/blog') {
     $posts = fetch_posts($dbPath);
@@ -176,6 +213,7 @@ if ($uri === '/blog') {
       <a href="/admin/">dashboard</a>
       <a href="/">website</a>
       <a href="/admin/inspo.php">inspo</a>
+      <button type="button" class="admin-bar-button" data-site-text-toggle>edit text</button>
     </div>
   </div>
 <?php endif; ?>
@@ -201,13 +239,13 @@ if ($uri === '/blog') {
       <?php if ($isLoggedIn): ?>
         <a class="post-edit" href="/admin/page.php?slug=tools">editeaza</a>
       <?php endif; ?>
-      <h1 class="page-title">tools</h1>
+      <?php echo editable_text($isLoggedIn, 'tools.title', site_text_value($siteTextMap, 'tools.title', 'tools'), 'h1', 'page-title'); ?>
       <?php if ($toolsPage && !empty($toolsPage['content_html'])): ?>
         <div class="post-content">
           <?php echo $toolsPage['content_html']; ?>
         </div>
       <?php else: ?>
-        <p class="page-lead">O colecție de programe/aplicații pe care le folosesc în proiectele mele.</p>
+        <?php echo editable_text($isLoggedIn, 'tools.lead', site_text_value($siteTextMap, 'tools.lead', 'O colecție de programe/aplicații pe care le folosesc în proiectele mele.'), 'p', 'page-lead'); ?>
         <div class="tool-list">
           <div class="tool-item"><span class="tool-name">Cloudflare</span> — securitate site-uri</div>
           <div class="tool-item"><span class="tool-name">Hostico</span> — hosting și achiziție domenii</div>
@@ -228,8 +266,8 @@ if ($uri === '/blog') {
   <main class="page page-wide">
     <section class="page-section">
       <a class="post-back" href="/">← homepage</a>
-      <h1 class="page-title">inspo</h1>
-      <p class="page-lead">imagini salvate pentru zile negre</p>
+      <?php echo editable_text($isLoggedIn, 'inspo.title', site_text_value($siteTextMap, 'inspo.title', 'inspo'), 'h1', 'page-title'); ?>
+      <?php echo editable_text($isLoggedIn, 'inspo.lead', site_text_value($siteTextMap, 'inspo.lead', 'imagini salvate pentru zile negre'), 'p', 'page-lead'); ?>
       <?php if ($isLoggedIn): ?>
         <form class="inspo-upload" method="post" enctype="multipart/form-data" action="/admin/inspo.php">
           <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
@@ -256,7 +294,7 @@ if ($uri === '/blog') {
 <?php elseif ($uri === '/blog'): ?>
   <main class="page">
     <section class="section">
-      <h2>articole</h2>
+      <?php echo editable_text($isLoggedIn, 'blog.title', site_text_value($siteTextMap, 'blog.title', 'articole'), 'h2'); ?>
       <?php if (empty($posts)): ?>
         <p>Nu exista articole inca.</p>
       <?php else: ?>
@@ -290,7 +328,7 @@ if ($uri === '/blog') {
       </div>
       <div class="hero-text">
         <div class="hero-title">
-          <h1>eric coșulea</h1>
+          <?php echo editable_text($isLoggedIn, 'home.hero_name', site_text_value($siteTextMap, 'home.hero_name', 'eric coșulea'), 'h1'); ?>
           <nav class="hero-social" aria-label="social">
             <a href="https://www.linkedin.com/in/eric-cosulea/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn">
               <img src="/assets/linkedin.svg" alt="">
@@ -303,12 +341,12 @@ if ($uri === '/blog') {
             </a>
           </nav>
         </div>
-        <p class="hero-sub">speedrunning failures.</p>
+        <?php echo editable_text($isLoggedIn, 'home.hero_sub', site_text_value($siteTextMap, 'home.hero_sub', 'speedrunning failures.'), 'p', 'hero-sub'); ?>
       </div>
     </header>
 
     <section class="section">
-      <h2>proiectele mele</h2>
+      <?php echo editable_text($isLoggedIn, 'home.projects_title', site_text_value($siteTextMap, 'home.projects_title', 'proiectele mele'), 'h2'); ?>
       <div class="projects">
         <a class="project" href="https://cursurilapahar.ro/" target="_blank" rel="noopener noreferrer">
           <img class="project-icon-img" src="/assets/logo-cursuri.png" alt="">
@@ -356,7 +394,7 @@ if ($uri === '/blog') {
     </section>
 
     <section class="section">
-      <h2>interesante</h2>
+      <?php echo editable_text($isLoggedIn, 'home.interesting_title', site_text_value($siteTextMap, 'home.interesting_title', 'interesante'), 'h2'); ?>
       <div class="topic-list">
         <a class="topic-item" href="/tools">
           <img class="project-icon-img" src="/assets/tools.webp" alt="">
@@ -376,8 +414,8 @@ if ($uri === '/blog') {
     </section>
 
     <section class="section">
-      <h2>inspo</h2>
-      <p class="page-lead">imagini salvate pentru zile negre</p>
+      <?php echo editable_text($isLoggedIn, 'home.inspo_title', site_text_value($siteTextMap, 'home.inspo_title', 'inspo'), 'h2'); ?>
+      <?php echo editable_text($isLoggedIn, 'home.inspo_lead', site_text_value($siteTextMap, 'home.inspo_lead', 'imagini salvate pentru zile negre'), 'p', 'page-lead'); ?>
       <div class="inspo-strip">
         <?php foreach (fetch_images($dbPath, 8) as $img): ?>
           <a class="inspo-thumb" href="/inspo">
@@ -406,6 +444,68 @@ if ($uri === '/blog') {
           }
         });
       });
+
+      (() => {
+        const toggle = document.querySelector('[data-site-text-toggle]');
+        const editableNodes = Array.from(document.querySelectorAll('[data-site-text]'));
+        if (!toggle || editableNodes.length === 0) return;
+
+        const csrfToken = <?php echo json_encode(csrf_token()); ?>;
+        let editMode = false;
+        let originalValues = new Map();
+
+        const setEditMode = (enabled) => {
+          editMode = enabled;
+          document.body.classList.toggle('site-text-editing', enabled);
+          toggle.textContent = enabled ? 'salveaza text' : 'edit text';
+          editableNodes.forEach((node) => {
+            if (enabled) {
+              originalValues.set(node.dataset.siteText, node.textContent.trim());
+              node.setAttribute('contenteditable', 'true');
+            } else {
+              node.removeAttribute('contenteditable');
+            }
+          });
+        };
+
+        toggle.addEventListener('click', async () => {
+          if (!editMode) {
+            setEditMode(true);
+            return;
+          }
+
+          const texts = {};
+          editableNodes.forEach((node) => {
+            texts[node.dataset.siteText] = node.textContent.trim();
+          });
+
+          const response = await fetch('/admin/site-texts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ csrf_token: csrfToken, texts }),
+          });
+
+          if (!response.ok) {
+            alert('Nu am putut salva textele.');
+            return;
+          }
+
+          setEditMode(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && editMode) {
+            editableNodes.forEach((node) => {
+              const original = originalValues.get(node.dataset.siteText);
+              if (typeof original === 'string') {
+                node.textContent = original;
+              }
+            });
+            setEditMode(false);
+          }
+        });
+      })();
     </script>
   <?php endif; ?>
 <?php endif; ?>

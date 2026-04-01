@@ -84,10 +84,47 @@ body:has(.admin-bar) {
     color 160ms ease;
 }
 
-.admin-bar a:hover {
+.admin-bar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #3f2d1b;
+  background: rgba(108, 82, 51, 0.08);
+  border: 1px solid rgba(108, 82, 51, 0.12);
+  font-family: "Crimson Pro", serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: lowercase;
+  transition:
+    background 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+  cursor: pointer;
+}
+
+.admin-bar a:hover,
+.admin-bar-button:hover {
   background: rgba(108, 82, 51, 0.14);
   border-color: rgba(108, 82, 51, 0.2);
   transform: translateY(-1px);
+}
+
+[data-site-text][contenteditable="true"] {
+  outline: 2px dashed rgba(143, 111, 74, 0.38);
+  outline-offset: 4px;
+  border-radius: 8px;
+  background: rgba(255, 248, 239, 0.84);
+}
+
+body.site-text-editing [data-site-text] {
+  cursor: text;
 }
 
 .page {
