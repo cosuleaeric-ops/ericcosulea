@@ -7,6 +7,7 @@
 const STORAGE_DAYS = "eliteDeepWork_days";   // { "YYYY-MM-DD": nr sesiuni }
 const STORAGE_SETTINGS = "eliteDeepWork_settings";
 const STORAGE_ACTIVE_TIMER = "eliteDeepWork_activeTimer"; // { endTimestamp, mode }
+const STORAGE_PAUSED_TIMER = "eliteDeepWork_pausedTimer"; // { remainingSeconds, mode }
 const EXTENSION_BLOCK_FLAG = "eliteDeepWork_timerActive"; // pentru extensia Chrome
 const EXTENSION_BLOCK_MODE = "eliteDeepWork_timerMode";   // "work" = blochează social, "rest" = permite
 
@@ -17,7 +18,7 @@ const DATA_ENDPOINT = APP_CONFIG.dataEndpoint || "/api/data";
 const WIP_ENDPOINT = APP_CONFIG.wipEndpoint || "/api/wip-post";
 
 let useFileStorage = false;
-let memory = { days: {}, settings: {}, activeTimer: null };
+let memory = { days: {}, settings: {}, activeTimer: null, pausedTimer: null };
 
 // --- State
 let mode = "work";
@@ -271,6 +272,50 @@ function clearActiveTimer() {
   } catch (_) {}
 }
 
+function savePausedTimer() {
+  const payload = { remainingSeconds, mode };
+  if (useFileStorage) {
+    memory.pausedTimer = payload;
+    postData();
+    return;
+  }
+  try {
+    localStorage.setItem(STORAGE_PAUSED_TIMER, JSON.stringify(payload));
+  } catch (_) {}
+}
+
+function clearPausedTimer() {
+  if (useFileStorage) {
+    memory.pausedTimer = null;
+    postData();
+    return;
+  }
+  try {
+    localStorage.removeItem(STORAGE_PAUSED_TIMER);
+  } catch (_) {}
+}
+
+function loadPausedTimer() {
+  let data = null;
+  if (useFileStorage) {
+    data = memory.pausedTimer || null;
+  } else {
+    try {
+      const raw = localStorage.getItem(STORAGE_PAUSED_TIMER);
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {}
+  }
+  if (!data || !data.remainingSeconds || !data.mode) return false;
+  remainingSeconds = data.remainingSeconds;
+  mode = data.mode;
+  tabs.forEach((t) => t.classList.remove("active"));
+  const activeTab = document.querySelector(`.tab[data-mode="${mode}"]`);
+  if (activeTab) activeTab.classList.add("active");
+  timerDisplay.textContent = formatTime(remainingSeconds);
+  updateTabTitle();
+  return true;
+}
+
 function loadActiveTimer() {
   let data = null;
   if (useFileStorage) {
@@ -340,6 +385,7 @@ function tick() {
 
 function startTimer() {
   if (intervalId) return;
+  clearPausedTimer();
   btnStart.textContent = "stop";
   intervalId = setInterval(tick, 1000);
   saveActiveTimer();
@@ -353,6 +399,7 @@ function stopTimer() {
   }
   setExtensionBlockFlag(false);
   clearActiveTimer();
+  savePausedTimer();
   btnStart.textContent = "start";
 }
 
@@ -463,6 +510,7 @@ if (btnReset) {
   btnReset.addEventListener("click", () => {
     stopTimer();
     clearActiveTimer();
+    clearPausedTimer();
     mode = "work";
     tabs.forEach((t) => t.classList.remove("active"));
     const workTab = document.querySelector('.tab[data-mode="work"]');
@@ -537,9 +585,12 @@ async function init() {
     // fallback-ul rămâne localStorage dacă endpoint-ul serverului nu este disponibil
   }
   loadSettings();
-  resetDisplay();
   renderLegend();
   renderCalendar();
-  loadActiveTimer();
+  if (!loadActiveTimer()) {
+    if (!loadPausedTimer()) {
+      resetDisplay();
+    }
+  }
 }
 init();
