@@ -1,13 +1,13 @@
 :root {
-  --bg: #101412;
-  --panel: #171d1a;
-  --border: #283029;
+  --bg: #0d1320;
+  --panel: #151c2c;
+  --border: #263149;
   --text: #f3efe6;
   --text-muted: #a7ab9f;
-  --tab-active: #222a25;
-  --tab-inactive: #171d1a;
-  --btn-border: #384238;
-  --btn-start-bg: #222a25;
+  --tab-active: #1d2638;
+  --tab-inactive: #151c2c;
+  --btn-border: #34415f;
+  --btn-start-bg: #1d2638;
 }
 
 * {
@@ -71,7 +71,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #6f7a70;
+  background: #7783a3;
 }
 
 .main {
@@ -119,7 +119,7 @@ body {
 }
 
 .tab:hover:not(.active) {
-  background: #202721;
+  background: #24304a;
 }
 
 .timer-display {
@@ -147,7 +147,7 @@ body {
 }
 
 .btn-start:hover {
-  background: #2a332d;
+  background: #283551;
 }
 
 /* Deep work section */
