@@ -2,10 +2,25 @@
 declare(strict_types=1);
 
 $dbPath = __DIR__ . '/data/blog.sqlite';
-require_once __DIR__ . '/lib/article_images.php';
 
 function h(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+function render_post_content(string $html): array {
+    $hasTwitterEmbeds = false;
+
+    $html = preg_replace_callback(
+        '~<!--\s*wp:embed\s+\{"url":"(https?://(?:www\.)?(?:twitter\.com|x\.com)/[^"]+)".*?\}\s*-->\s*<figure[^>]*class="wp-block-embed[^"]*"[^>]*>.*?<p>\s*<a href="[^"]+">[^<]+</a>\s*</p>.*?</figure>\s*<!--\s*/wp:embed\s*-->~si',
+        static function (array $matches) use (&$hasTwitterEmbeds): string {
+            $hasTwitterEmbeds = true;
+            $url = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
+            return '<blockquote class="twitter-tweet"><a href="' . $url . '">' . $url . '</a></blockquote>';
+        },
+        $html
+    ) ?? $html;
+
+    return [$html, $hasTwitterEmbeds];
 }
 
 $isLoggedIn = false;
@@ -28,14 +43,10 @@ function fetch_post(string $slug, string $dbPath): ?array {
         excerpt TEXT,
         published_at TEXT NOT NULL
     );');
-    ensure_article_image_table($db);
     $stmt = $db->prepare('SELECT id, slug, title, content_html, excerpt, published_at FROM posts WHERE slug = :slug LIMIT 1');
     $stmt->bindValue(':slug', $slug, SQLITE3_TEXT);
     $result = $stmt->execute();
     $row = $result->fetchArray(SQLITE3_ASSOC);
-    if ($row) {
-        $row['content_html'] = replace_article_image_urls($row['content_html'], article_image_replacement_map($db));
-    }
     return $row ?: null;
 }
 
@@ -132,6 +143,7 @@ $posts = [];
 $images = [];
 $toolsPage = null;
 $heroAvatarUrl = hero_avatar_url();
+$postHasTwitterEmbeds = false;
 
 if ($uri === '/blog') {
     $posts = fetch_posts($dbPath);
@@ -162,13 +174,13 @@ if ($uri === '/blog') {
   <div class="admin-bar">
     <div class="admin-bar-inner">
       <a href="/admin/">dashboard</a>
+      <a href="/">website</a>
       <a href="/admin/inspo.php">inspo</a>
-      <a href="/deep-work/">deep work</a>
-      <a href="/elite-deux/">elite deux</a>
     </div>
   </div>
 <?php endif; ?>
 <?php if ($post): ?>
+  <?php [$postContentHtml, $postHasTwitterEmbeds] = render_post_content($post['content_html']); ?>
   <main class="page">
     <article class="post">
       <a class="post-back" href="/">← homepage</a>
@@ -178,7 +190,7 @@ if ($uri === '/blog') {
       <h1 class="post-title"><?php echo h($post['title']); ?></h1>
       <p class="post-meta"><?php echo h(date('j F Y', strtotime($post['published_at']))); ?></p>
       <div class="post-content">
-        <?php echo $post['content_html']; ?>
+        <?php echo $postContentHtml; ?>
       </div>
     </article>
   </main>
@@ -382,6 +394,9 @@ if ($uri === '/blog') {
       });
     </script>
   <?php endif; ?>
+<?php endif; ?>
+<?php if ($postHasTwitterEmbeds): ?>
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 <?php endif; ?>
 </body>
 </html>

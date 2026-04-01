@@ -79,7 +79,7 @@ function markdown_to_html(string $text): string {
         $out[] = '</ul>';
     }
 
-    return implode(\"\\n\", $out);
+    return implode("\n", $out);
 }
 
 function slugify(string $text): string {

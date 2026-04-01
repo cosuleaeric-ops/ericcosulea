@@ -5,7 +5,6 @@ require_login();
 
 $dbPath = __DIR__ . '/../data/blog.sqlite';
 $db = new SQLite3($dbPath);
-require_once __DIR__ . '/../lib/article_images.php';
 $db->exec('CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     slug TEXT UNIQUE NOT NULL,
@@ -43,8 +42,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 $postCount = count($posts);
 $latestPost = $posts[0] ?? null;
-$articleImages = collect_article_image_rows($db);
-$missingArticleImages = count(array_filter($articleImages, fn(array $row): bool => empty($row['replacement_url'])));
 ?>
 <!doctype html>
 <html lang="ro">
@@ -142,13 +139,10 @@ $missingArticleImages = count(array_filter($articleImages, fn(array $row): bool 
 <body class="admin">
   <div class="admin-bar">
     <div class="admin-bar-inner">
-      <a class="btn" href="/deep-work/">Deep work</a>
-      <a class="btn" href="/elite-deux/">EliteDeux</a>
+      <a class="btn" href="/">Website</a>
       <a class="btn" href="/admin/inspo.php">Inspo</a>
-      <a class="btn" href="/admin/article-images.php">Imagini articole</a>
       <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
       <a class="btn" href="/admin/edit.php">Articol nou</a>
-      <a class="btn" href="/">Website</a>
     </div>
   </div>
   <div class="wrap">
@@ -163,25 +157,15 @@ $missingArticleImages = count(array_filter($articleImages, fn(array $row): bool 
         <h2>articol nou</h2>
         <p>deschide editorul si porneste direct un draft nou.</p>
       </a>
-      <a class="quick-card" href="/elite-deux/">
-        <span class="quick-card-kicker">organizare</span>
-        <h2>elite deux</h2>
-        <p>intri in sistemul tau de todo-uri private, sincronizat pe server.</p>
-      </a>
-      <a class="quick-card" href="/deep-work/">
-        <span class="quick-card-kicker">focus</span>
-        <h2>deep work</h2>
-        <p>pornesti rapid o sesiune si iti blochezi distragerile.</p>
-      </a>
       <a class="quick-card" href="/admin/inspo.php">
         <span class="quick-card-kicker">material</span>
         <h2>inspo</h2>
         <p>adaugi sau cureti imaginile salvate pentru inspiratie.</p>
       </a>
-      <a class="quick-card" href="/admin/article-images.php">
-        <span class="quick-card-kicker">reparatii</span>
-        <h2>imagini articole</h2>
-        <p><?php echo $missingArticleImages > 0 ? h((string)$missingArticleImages) . ' imagini lipsa de reparat in articole.' : 'toate imaginile detectate au replacement.'; ?></p>
+      <a class="quick-card" href="/">
+        <span class="quick-card-kicker">public</span>
+        <h2>website</h2>
+        <p>vezi homepage-ul live si editarile tale direct pe site.</p>
       </a>
     </section>
 
