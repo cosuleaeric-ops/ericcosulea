@@ -71,8 +71,12 @@ body:has(.admin-bar) {
   color: #3f2d1b;
   background: rgba(108, 82, 51, 0.08);
   border: 1px solid rgba(108, 82, 51, 0.12);
+  font-family: "Crimson Pro", serif;
   font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   line-height: 1;
+  text-transform: lowercase;
   transition:
     background 160ms ease,
     transform 160ms ease,

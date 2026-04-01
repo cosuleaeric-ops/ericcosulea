@@ -182,7 +182,7 @@ $defaultContent = $post['content_md'] ?? $post['content_html'] ?? '';
     .toolbar button { border: 1px solid #d9d0c2; background: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
     .row { display: flex; gap: 16px; }
     .row > div { flex: 1; }
-    .btn { margin-top: 16px; background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 10px 16px; font-size: 16px; }
+    .btn { margin-top: 16px; background: #d7c2a5; color: #3f2d1b; border: 1px solid rgba(143, 111, 74, 0.18); border-radius: 999px; padding: 10px 16px; font-size: 16px; font-family: "Crimson Pro", serif; font-weight: 600; letter-spacing: 0.01em; text-transform: lowercase; }
     .link { text-decoration: none; color: #111; }
     .err { background: #fdecec; border: 1px solid #f3caca; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
   </style>

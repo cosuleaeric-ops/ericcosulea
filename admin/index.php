@@ -135,9 +135,13 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       color: #3f2d1b;
       border: 1px solid rgba(108, 82, 51, 0.12);
       border-radius: 999px;
+      font-family: "Crimson Pro", serif;
       font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
       text-decoration: none;
       line-height: 1;
+      text-transform: lowercase;
       transition:
         background 160ms ease,
         transform 160ms ease,
