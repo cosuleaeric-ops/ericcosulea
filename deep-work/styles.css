@@ -188,10 +188,10 @@ body {
 .calendar-cell,
 .legend-cell {
   --calendar-0: #8e969e;
-  --calendar-1: #355c41;
-  --calendar-2: #3f7a4c;
-  --calendar-3: #54a35f;
-  --calendar-4: #79cf7d;
+  --calendar-1: #3d6146;
+  --calendar-2: #4b7f55;
+  --calendar-3: #63ad6a;
+  --calendar-4: #8fd48c;
 }
 
 .legend {
