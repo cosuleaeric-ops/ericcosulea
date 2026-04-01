@@ -64,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $slug = trim($_POST['slug'] ?? '');
     $contentHtml = trim($_POST['content_html'] ?? '');
-    $excerpt = trim($_POST['excerpt'] ?? '');
 
     if ($title === '' || $contentHtml === '') {
         $error = 'Titlu si continut sunt obligatorii.';
@@ -86,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':title', $title, SQLITE3_TEXT);
         $stmt->bindValue(':content_html', $contentHtml, SQLITE3_TEXT);
         $stmt->bindValue(':content_md', null, SQLITE3_NULL);
-        $stmt->bindValue(':excerpt', $excerpt, SQLITE3_TEXT);
+        $stmt->bindValue(':excerpt', null, SQLITE3_NULL);
         $publishedAt = $post ? $post['published_at'] : date('Y-m-d H:i:s');
         $stmt->bindValue(':published_at', $publishedAt, SQLITE3_TEXT);
         $stmt->execute();
@@ -185,6 +184,69 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
     }
     .editor-toolbar-note { margin: 10px 0 0; font-size: 14px; color: #8a7b68; }
     .editor-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+
+    /* Link popover */
+    .link-popover {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid #d9d0c2;
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(90,67,39,0.18);
+      padding: 10px 12px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      min-width: 300px;
+    }
+    .link-popover.visible { display: flex; }
+    .link-popover input {
+      flex: 1;
+      border: 1px solid #d9d0c2;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 15px;
+      font-family: "Crimson Pro", serif;
+      background: #fffefb;
+      outline: none;
+    }
+    .link-popover button {
+      border: 1px solid #d7c8b1;
+      background: rgba(255,255,255,0.86);
+      border-radius: 999px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-family: "Crimson Pro", serif;
+      font-size: 14px;
+      color: #3f2d1b;
+    }
+    .link-popover .btn-remove {
+      color: #c0392b;
+      border-color: #f3caca;
+    }
+
+    /* Inline link toolbar (shows when cursor is in a link) */
+    .link-inline-bar {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid #d9d0c2;
+      border-radius: 10px;
+      box-shadow: 0 4px 18px rgba(90,67,39,0.14);
+      padding: 6px 10px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-family: "Crimson Pro", serif;
+      color: #1c1c1c;
+    }
+    .link-inline-bar.visible { display: flex; }
+    .link-inline-bar a { color: #0e4ea3; text-decoration: none; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .link-inline-bar button { border: none; background: none; cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 6px; color: #3f2d1b; }
+    .link-inline-bar button:hover { background: #f0e8d8; }
+    .link-inline-bar .btn-remove { color: #c0392b; }
+
     @media (max-width: 720px) {
       body:has(.admin-bar) { padding-top: 116px; }
       .admin-bar { top: 12px; width: calc(100% - 20px); }
@@ -222,12 +284,8 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
             <label for="slug">Slug (URL)</label>
             <input type="text" id="slug" name="slug" value="<?php echo h($post['slug'] ?? ($_POST['slug'] ?? '')); ?>" placeholder="titlu-articol">
           </div>
-          <div>
-          </div>
+          <div></div>
         </div>
-
-        <label for="excerpt">Excerpt (optional)</label>
-        <input type="text" id="excerpt" name="excerpt" value="<?php echo h($post['excerpt'] ?? ($_POST['excerpt'] ?? '')); ?>">
 
         <label for="editor">Continut</label>
         <div class="toolbar">
@@ -242,7 +300,6 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
           <button type="button" data-command="insertOrderedList">1. 2. 3.</button>
           <button type="button" data-command="formatBlock" data-value="blockquote">quote</button>
           <button type="button" data-action="link">link</button>
-          <button type="button" data-action="unlink">scoate link</button>
         </div>
         <div class="editor-shell">
           <div
@@ -260,18 +317,103 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
       </form>
     </div>
   </div>
+
+  <!-- Link popover (add/edit link) -->
+  <div class="link-popover" id="linkPopover">
+    <input type="text" id="linkInput" placeholder="https://..." />
+    <button id="linkApply">aplica</button>
+    <button class="btn-remove" id="linkRemove">scoate</button>
+    <button id="linkCancel">anuleaza</button>
+  </div>
+
+  <!-- Inline link bar (shows when cursor is inside a link) -->
+  <div class="link-inline-bar" id="linkInlineBar">
+    <a id="linkInlineHref" href="#" target="_blank"></a>
+    <button id="linkInlineEdit">editeaza</button>
+    <button class="btn-remove" id="linkInlineRemove">scoate</button>
+  </div>
+
 <script>
   const form = document.querySelector('form');
   const editor = document.getElementById('editor');
   const contentInput = document.getElementById('content_html');
   const toolbar = document.querySelector('.toolbar');
   const formatBlock = document.getElementById('formatBlock');
+  const linkPopover = document.getElementById('linkPopover');
+  const linkInput = document.getElementById('linkInput');
+  const linkInlineBar = document.getElementById('linkInlineBar');
+
+  let savedRange = null;
 
   const syncEditor = () => {
     if (!editor || !contentInput) return;
     contentInput.value = editor.innerHTML.trim();
   };
 
+  function saveSelection() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+  }
+
+  function restoreSelection() {
+    if (!savedRange) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+
+  function getAnchorLink() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node = sel.anchorNode;
+    while (node && node !== editor) {
+      if (node.nodeName === 'A') return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function positionPopover(el, rect) {
+    const top = rect.bottom + window.scrollY + 8;
+    const left = Math.min(rect.left + window.scrollX, window.innerWidth - el.offsetWidth - 16);
+    el.style.top = top + 'px';
+    el.style.left = Math.max(8, left) + 'px';
+  }
+
+  function openLinkPopover(existingUrl) {
+    saveSelection();
+    const sel = window.getSelection();
+    const rect = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).getBoundingClientRect() : { bottom: 100, left: 100 };
+    linkInput.value = existingUrl || '';
+    linkInlineBar.classList.remove('visible');
+    linkPopover.classList.add('visible');
+    positionPopover(linkPopover, rect);
+    setTimeout(() => linkInput.focus(), 10);
+  }
+
+  function closeLinkPopover() {
+    linkPopover.classList.remove('visible');
+    savedRange = null;
+  }
+
+  function updateInlineBar() {
+    const anchor = getAnchorLink();
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const href = anchor.getAttribute('href') || '';
+      document.getElementById('linkInlineHref').href = href;
+      document.getElementById('linkInlineHref').textContent = href;
+      linkInlineBar.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+      linkInlineBar.style.left = Math.max(8, rect.left + window.scrollX) + 'px';
+      linkInlineBar.classList.add('visible');
+    } else {
+      linkInlineBar.classList.remove('visible');
+    }
+  }
+
+  // Toolbar click
   if (toolbar && editor && contentInput) {
     toolbar.addEventListener('click', (event) => {
       const button = event.target.closest('button');
@@ -284,12 +426,8 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
       const value = button.getAttribute('data-value');
 
       if (action === 'link') {
-        const url = window.prompt('link-ul pe care vrei sa-l adaugi');
-        if (url) {
-          document.execCommand('createLink', false, url);
-        }
-      } else if (action === 'unlink') {
-        document.execCommand('unlink');
+        const anchor = getAnchorLink();
+        openLinkPopover(anchor ? anchor.getAttribute('href') : '');
       } else if (command === 'formatBlock') {
         document.execCommand('formatBlock', false, value);
       } else if (command) {
@@ -306,8 +444,81 @@ $defaultContent = $_POST['content_html'] ?? ($post['content_html'] ?? '');
     });
 
     editor.addEventListener('input', syncEditor);
+    editor.addEventListener('keyup', updateInlineBar);
+    editor.addEventListener('mouseup', updateInlineBar);
     form.addEventListener('submit', syncEditor);
   }
+
+  // Link popover: apply
+  document.getElementById('linkApply').addEventListener('click', () => {
+    const url = linkInput.value.trim();
+    restoreSelection();
+    if (url) {
+      document.execCommand('createLink', false, url);
+    }
+    closeLinkPopover();
+    syncEditor();
+    editor.focus();
+  });
+
+  // Link popover: remove
+  document.getElementById('linkRemove').addEventListener('click', () => {
+    restoreSelection();
+    document.execCommand('unlink');
+    closeLinkPopover();
+    syncEditor();
+    editor.focus();
+  });
+
+  // Link popover: cancel
+  document.getElementById('linkCancel').addEventListener('click', () => {
+    closeLinkPopover();
+    editor.focus();
+  });
+
+  // Apply on Enter in link input
+  linkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('linkApply').click();
+    }
+    if (e.key === 'Escape') {
+      closeLinkPopover();
+      editor.focus();
+    }
+  });
+
+  // Inline bar: edit
+  document.getElementById('linkInlineEdit').addEventListener('click', () => {
+    const anchor = getAnchorLink();
+    openLinkPopover(anchor ? anchor.getAttribute('href') : '');
+  });
+
+  // Inline bar: remove
+  document.getElementById('linkInlineRemove').addEventListener('click', () => {
+    const anchor = getAnchorLink();
+    if (anchor) {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNode(anchor);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('unlink');
+    }
+    linkInlineBar.classList.remove('visible');
+    syncEditor();
+    editor.focus();
+  });
+
+  // Hide popovers when clicking outside
+  document.addEventListener('mousedown', (e) => {
+    if (!linkPopover.contains(e.target) && !toolbar.contains(e.target)) {
+      closeLinkPopover();
+    }
+    if (!linkInlineBar.contains(e.target) && !editor.contains(e.target)) {
+      linkInlineBar.classList.remove('visible');
+    }
+  });
 </script>
 </body>
 </html>
