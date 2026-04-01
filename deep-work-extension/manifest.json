@@ -45,7 +45,9 @@
         "*://x.com/*",
         "*://*.x.com/*",
         "*://twitter.com/*",
-        "*://*.twitter.com/*"
+        "*://*.twitter.com/*",
+        "*://linkedin.com/*",
+        "*://*.linkedin.com/*"
       ],
       "js": [
         "site-blocker.js"

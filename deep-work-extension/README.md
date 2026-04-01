@@ -1,6 +1,6 @@
 # Elite Deep Work Blocker
 
-Extensie Chrome pentru a bloca Facebook, Instagram, X/Twitter, Reddit si TikTok cat timp timerul `work` ruleaza in `/deep-work/`.
+Extensie Chrome pentru a bloca Facebook, Instagram, LinkedIn, X/Twitter, Reddit si TikTok cat timp timerul `work` ruleaza in `/deep-work/`.
 
 ## Instalare
 
@@ -18,6 +18,7 @@ Extensie Chrome pentru a bloca Facebook, Instagram, X/Twitter, Reddit si TikTok 
 
 - Facebook
 - Instagram
+- LinkedIn
 - X
 - Twitter
 - Reddit
