@@ -430,6 +430,15 @@ body:has(.admin-bar) {
   margin: 0 0 18px;
 }
 
+.post-content .twitter-tweet {
+  margin: 28px auto !important;
+}
+
+.post-content .twitter-tweet-rendered {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 .page-section {
   margin-top: 12px;
 }
