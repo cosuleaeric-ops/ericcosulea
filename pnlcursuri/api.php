@@ -53,7 +53,7 @@ foreach (['Curs', 'Depunere capital social'] as $cat) {
     $s = $db->prepare("INSERT OR IGNORE INTO venit_categorii (nume) VALUES (:n)");
     $s->bindValue(':n', $cat); $s->execute();
 }
-foreach (['Onorariu curs','Service fee','Impozit','Avans','Decont personal','Echipament','Contabilitate','Google Workspace','Hosting','Altele'] as $cat) {
+foreach (['Onorariu curs','Service fee','Impozit curs','Avans','Decont personal','Echipament','Contabilitate','Google Workspace','Hosting','Altele'] as $cat) {
     $s = $db->prepare("INSERT OR IGNORE INTO cheltuiala_categorii (nume) VALUES (:n)");
     $s->bindValue(':n', $cat); $s->execute();
 }
