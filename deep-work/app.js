@@ -470,7 +470,7 @@ function renderCalendar() {
     const cell = document.createElement("div");
     cell.className = "calendar-cell";
     cell.setAttribute("data-level", level);
-    cell.setAttribute("title", key + (sesiuni ? ` – ${sesiuni} sesiuni` : " – 0 sesiuni"));
+    cell.setAttribute("data-tip", key + (sesiuni ? ` – ${sesiuni} sesiuni` : " – 0 sesiuni"));
     calendarGrid.appendChild(cell);
   });
 }

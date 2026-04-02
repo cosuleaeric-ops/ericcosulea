@@ -177,6 +177,23 @@ body {
   min-height: 0;
   border-radius: 2px;
   background: var(--calendar-0);
+  position: relative;
+}
+
+.calendar-cell:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e2738;
+  color: #f3efe6;
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .calendar-cell[data-level="0"] { background: var(--calendar-0); }
