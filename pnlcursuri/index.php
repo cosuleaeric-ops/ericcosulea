@@ -227,8 +227,9 @@ let allVenituri = [];
 let allCheltuieli = [];
 let chartMonthly, chartDonut, chartCumulative;
 const rowStore = new Map(); // 'venit-id' / 'cheltuiala-id' → row object
-let lastVenitDate      = '';
-let lastCheltuialaDate = '';
+const lastDateKey = 'pnl_last_date';
+const getLastDate = () => localStorage.getItem(lastDateKey) || todayStr();
+const setLastDate = d => localStorage.setItem(lastDateKey, d);
 
 // ── Categories ───────────────────────────────────────────────────────────────
 async function loadCategories() {
@@ -549,7 +550,7 @@ document.getElementById('btnAddVenit').addEventListener('click', () => {
   document.getElementById('venitSubmit').textContent = 'Adaugă';
   document.getElementById('formVenit').reset();
   document.getElementById('venitId').value = '';
-  document.getElementById('venitData').value = lastVenitDate || todayStr();
+  document.getElementById('venitData').value = getLastDate();
   document.getElementById('venitCategorieSelect').value = '';
   document.getElementById('venitCategorieNoua').style.display = 'none';
   document.getElementById('errorVenit').style.display = 'none';
@@ -561,7 +562,7 @@ document.getElementById('btnAddCheltuiala').addEventListener('click', () => {
   document.getElementById('cheltuialaSubmit').textContent = 'Adaugă';
   document.getElementById('formCheltuiala').reset();
   document.getElementById('cheltuialaId').value = '';
-  document.getElementById('cheltuialaData').value = lastCheltuialaDate || todayStr();
+  document.getElementById('cheltuialaData').value = getLastDate();
   document.getElementById('cheltuialaCategorieSelect').value = '';
   document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
   document.getElementById('cheltuialaServiceFee').value = '';
@@ -643,7 +644,7 @@ document.getElementById('formVenit').addEventListener('submit', async e => {
   const res = await post(id ? 'edit_venit' : 'add_venit', body);
 
   if (res.success || res.id) {
-    if (!id) lastVenitDate = body.data;
+    if (!id) setLastDate(body.data);
     closeModal('modalVenit');
     refresh();
   } else {
@@ -677,7 +678,7 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
 
   if (res.success || res.id) {
     if (!id) {
-      lastCheltuialaDate = body.data;
+      setLastDate(body.data);
       const fee = parseFloat(document.getElementById('cheltuialaServiceFee').value);
       if (fee > 0) {
         await post('add_cheltuiala', { data: body.data, categorie: 'Service fee', suma: fee });
