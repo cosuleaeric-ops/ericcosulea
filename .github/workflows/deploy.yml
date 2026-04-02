@@ -31,4 +31,5 @@ jobs:
             **/.DS_Store
             Archive.zip
             data/blog.sqlite
+            pnlcursuri/data/*.sqlite
             uploads/inspo/**

@@ -1,0 +1,633 @@
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/../admin/auth.php';
+
+if (!is_logged_in()) {
+    header('Location: /admin/login.php?redirect=/pnlcursuri/');
+    exit;
+}
+
+$csrf = csrf_token();
+?>
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P&amp;L — Cursuri la Pahar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/pnlcursuri/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    window.PNL = {
+      csrf: <?php echo json_encode($csrf); ?>,
+      api:  '/pnlcursuri/api.php'
+    };
+  </script>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>P&amp;L — Cursuri la Pahar</h1>
+  <div class="header-controls">
+    <select class="year-select" id="yearSelect"></select>
+    <a href="/admin/logout.php" class="logout-link">Ieși</a>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card accent-green">
+      <div class="label">Venituri totale</div>
+      <div class="value green" id="statVenituri">—</div>
+      <div class="sub" id="statVenituriSub"></div>
+    </div>
+    <div class="stat-card accent-red">
+      <div class="label">Cheltuieli totale</div>
+      <div class="value red" id="statCheltuieli">—</div>
+      <div class="sub" id="statCheltuieliSub"></div>
+    </div>
+    <div class="stat-card accent-gold">
+      <div class="label">Profit net</div>
+      <div class="value" id="statProfit">—</div>
+      <div class="sub" id="statProfitSub"></div>
+    </div>
+    <div class="stat-card accent-blue">
+      <div class="label">Marjă profit</div>
+      <div class="value" id="statMarja">—</div>
+      <div class="sub">din venituri</div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Venituri vs Cheltuieli</h3>
+      <div class="chart-wrap">
+        <canvas id="chartMonthly"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Structura cheltuielilor</h3>
+      <div class="chart-wrap-donut">
+        <canvas id="chartDonut"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cumulative chart -->
+  <div class="chart-card cumulative-card">
+    <h3>Profit cumulativ</h3>
+    <div class="cumulative-wrap">
+      <canvas id="chartCumulative"></canvas>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="section-header">
+    <h2>Tranzacții</h2>
+    <div class="tab-group">
+      <button class="tab-btn active" data-tab="toate">Toate</button>
+      <button class="tab-btn" data-tab="venituri">Venituri</button>
+      <button class="tab-btn" data-tab="cheltuieli">Cheltuieli</button>
+    </div>
+    <div class="add-btns">
+      <button class="btn btn-green" id="btnAddVenit">+ Venit</button>
+      <button class="btn btn-red"   id="btnAddCheltuiala">+ Cheltuiala</button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:110px">Data</th>
+            <th>Descriere</th>
+            <th id="thCategorie">Categorie</th>
+            <th class="right">Sumă (lei)</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="txBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal: Adaugă / Editează Venit -->
+<div class="modal-overlay" id="modalVenit">
+  <div class="modal">
+    <button class="modal-close" data-close="modalVenit">&times;</button>
+    <h2 id="modalVenitTitle">Adaugă venit</h2>
+    <div class="error-msg" id="errorVenit"></div>
+    <form id="formVenit">
+      <input type="hidden" name="id" id="venitId" />
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" name="data" id="venitData" required />
+      </div>
+      <div class="form-group">
+        <label>Descriere</label>
+        <input type="text" name="descriere" id="venitDescriere" placeholder="ex: Curs 26 ian" required />
+      </div>
+      <div class="form-group">
+        <label>Sumă (lei)</label>
+        <input type="number" name="suma" id="venitSuma" step="0.01" min="0.01" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close="modalVenit">Anulează</button>
+        <button type="submit" class="btn btn-green" id="venitSubmit">Salvează</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Adaugă / Editează Cheltuiala -->
+<div class="modal-overlay" id="modalCheltuiala">
+  <div class="modal">
+    <button class="modal-close" data-close="modalCheltuiala">&times;</button>
+    <h2 id="modalCheltuialaTitle">Adaugă cheltuiala</h2>
+    <div class="error-msg" id="errorCheltuiala"></div>
+    <form id="formCheltuiala">
+      <input type="hidden" name="id" id="cheltuialaId" />
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" name="data" id="cheltuialaData" required />
+      </div>
+      <div class="form-group">
+        <label>Descriere</label>
+        <input type="text" name="descriere" id="cheltuialaDescriere" placeholder="ex: Onorariu curs 4 feb" required />
+      </div>
+      <div class="form-group">
+        <label>Categorie</label>
+        <select name="categorie" id="cheltuialaCategorie" required>
+          <option value="">— Selectează —</option>
+          <option>Onorariu curs</option>
+          <option>Service fee</option>
+          <option>Impozit</option>
+          <option>Avans</option>
+          <option>Decont personal</option>
+          <option>Echipament</option>
+          <option>Contabilitate</option>
+          <option>Google Workspace</option>
+          <option>Hosting</option>
+          <option>Altele</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sumă (lei)</label>
+        <input type="number" name="suma" id="cheltuialaSuma" step="0.01" min="0.01" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close="modalCheltuiala">Anulează</button>
+        <button type="submit" class="btn btn-red" id="cheltuialaSubmit">Salvează</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ── Helpers ─────────────────────────────────────────────────────────────────
+const api = (action, params = '') =>
+  fetch(`${window.PNL.api}?action=${action}${params ? '&' + params : ''}`).then(r => r.json());
+
+const post = (action, body) => {
+  body.csrf_token = window.PNL.csrf;
+  return fetch(`${window.PNL.api}?action=${action}`, {
+    method: 'POST',
+    body: new URLSearchParams(body),
+  }).then(r => r.json());
+};
+
+const fmt = n => new Intl.NumberFormat('ro-RO', {
+  minimumFractionDigits: 2, maximumFractionDigits: 2
+}).format(n);
+
+const fmtDate = s => {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${d}.${m}.${y}`;
+};
+
+const monthLabel = s => {
+  if (!s) return '';
+  const months = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
+  const [, m] = s.split('-');
+  return months[parseInt(m) - 1];
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+let currentYear = new Date().getFullYear();
+let currentTab  = 'toate';
+let allVenituri = [];
+let allCheltuieli = [];
+let chartMonthly, chartDonut, chartCumulative;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const years = await api('years');
+  const sel = document.getElementById('yearSelect');
+  years.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    sel.appendChild(opt);
+  });
+  sel.value = currentYear;
+  if (sel.value != currentYear && years.length) {
+    currentYear = years[0];
+    sel.value = currentYear;
+  }
+  sel.addEventListener('change', () => {
+    currentYear = parseInt(sel.value);
+    refresh();
+  });
+
+  await refresh();
+}
+
+async function refresh() {
+  const [stats, venituri, cheltuieli] = await Promise.all([
+    api('stats', `year=${currentYear}`),
+    api('venituri', `year=${currentYear}`),
+    api('cheltuieli', `year=${currentYear}`),
+  ]);
+
+  allVenituri   = venituri;
+  allCheltuieli = cheltuieli;
+
+  renderStats(stats);
+  renderCharts(stats);
+  renderTable();
+}
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+function renderStats(s) {
+  const profitColor = s.profit_net >= 0 ? 'green' : 'red';
+  const marjaColor  = s.marja >= 0 ? 'green' : 'red';
+
+  document.getElementById('statVenituri').textContent   = fmt(s.total_venituri) + ' lei';
+  document.getElementById('statCheltuieli').textContent = fmt(s.total_cheltuieli) + ' lei';
+
+  const profitEl = document.getElementById('statProfit');
+  profitEl.textContent = (s.profit_net >= 0 ? '+' : '') + fmt(s.profit_net) + ' lei';
+  profitEl.className = 'value ' + profitColor;
+
+  const marjaEl = document.getElementById('statMarja');
+  marjaEl.textContent = (s.marja >= 0 ? '+' : '') + s.marja + '%';
+  marjaEl.className = 'value ' + marjaColor;
+
+  document.getElementById('statVenituriSub').textContent =
+    `${allVenituri.length} tranzacție${allVenituri.length !== 1 ? 'i' : ''}`;
+  document.getElementById('statCheltuieliSub').textContent =
+    `${allCheltuieli.length} tranzacție${allCheltuieli.length !== 1 ? 'i' : ''}`;
+  document.getElementById('statProfitSub').textContent =
+    s.total_venituri > 0 ? `din ${fmt(s.total_venituri)} lei venituri` : '';
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+const CAT_COLORS = [
+  '#4A90D9','#E8704A','#2A7D4F','#C1444A','#7B5EA7',
+  '#D4A017','#E8A87C','#85C1E9','#A9DFBF','#F1948A',
+];
+
+function renderCharts(s) {
+  const labels = s.monthly.map(m => monthLabel(m.luna));
+
+  // Monthly bar chart
+  if (chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(document.getElementById('chartMonthly'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Venituri',
+          data: s.monthly.map(m => m.venituri),
+          backgroundColor: 'rgba(42,125,79,0.8)',
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+        {
+          label: 'Cheltuieli',
+          data: s.monthly.map(m => m.cheltuieli),
+          backgroundColor: 'rgba(193,68,74,0.75)',
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#F0EDE6' },
+          ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+      },
+    },
+  });
+
+  // Donut chart
+  if (chartDonut) chartDonut.destroy();
+  if (s.categorii_cheltuieli.length) {
+    chartDonut = new Chart(document.getElementById('chartDonut'), {
+      type: 'doughnut',
+      data: {
+        labels: s.categorii_cheltuieli.map(c => c.categorie),
+        datasets: [{
+          data: s.categorii_cheltuieli.map(c => c.suma),
+          backgroundColor: CAT_COLORS.slice(0, s.categorii_cheltuieli.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 10, font: { size: 11 }, padding: 8 },
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${fmt(ctx.parsed)} lei`,
+            },
+          },
+        },
+      },
+    });
+  } else {
+    const canvas = document.getElementById('chartDonut');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ccc';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Fără date', canvas.width / 2, canvas.height / 2);
+  }
+
+  // Cumulative line chart
+  if (chartCumulative) chartCumulative.destroy();
+  chartCumulative = new Chart(document.getElementById('chartCumulative'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Profit cumulativ',
+        data: s.monthly.map(m => m.cumulative),
+        borderColor: '#4A90D9',
+        backgroundColor: 'rgba(74,144,217,0.1)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.35,
+        pointBackgroundColor: s.monthly.map(m => m.cumulative >= 0 ? '#2A7D4F' : '#C1444A'),
+        pointRadius: 5,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          grid: { color: '#F0EDE6' },
+          ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+      },
+    },
+  });
+}
+
+// ── Table ────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const body = document.getElementById('txBody');
+  const thCat = document.getElementById('thCategorie');
+  body.innerHTML = '';
+
+  let rows = [];
+  if (currentTab === 'toate') {
+    const v = allVenituri.map(r  => ({ ...r, _type: 'venit' }));
+    const c = allCheltuieli.map(r => ({ ...r, _type: 'cheltuiala' }));
+    rows = [...v, ...c].sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id);
+    thCat.textContent = 'Categorie';
+    thCat.style.display = '';
+  } else if (currentTab === 'venituri') {
+    rows = allVenituri.map(r => ({ ...r, _type: 'venit' }));
+    thCat.style.display = 'none';
+  } else {
+    rows = allCheltuieli.map(r => ({ ...r, _type: 'cheltuiala' }));
+    thCat.textContent = 'Categorie';
+    thCat.style.display = '';
+  }
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">Nicio tranzacție în ${currentYear}</div></td></tr>`;
+    return;
+  }
+
+  rows.forEach(r => {
+    const isVenit = r._type === 'venit';
+    const catCell = (currentTab === 'toate' || currentTab === 'cheltuieli')
+      ? `<td>${isVenit
+          ? '<span class="badge badge-default" style="background:#EAF5EF;color:#2A7D4F">Venit</span>'
+          : `<span class="badge badge-default">${esc(r.categorie)}</span>`
+        }</td>`
+      : '';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDate(r.data)}</td>
+      <td>${esc(r.descriere)}</td>
+      ${catCell}
+      <td class="right ${isVenit ? 'suma-green' : 'suma-red'}">
+        ${isVenit ? '+' : '−'} ${fmt(r.suma)}
+      </td>
+      <td>
+        <div class="actions-cell">
+          <button class="icon-btn" title="Editează"
+            onclick="openEdit('${r._type}', ${JSON.stringify(r)})">✎</button>
+          <button class="icon-btn danger" title="Șterge"
+            onclick="deleteRow('${r._type}', ${r.id})">✕</button>
+        </div>
+      </td>`;
+    body.appendChild(tr);
+  });
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    renderTable();
+  });
+});
+
+// ── Modals ────────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('[data-close]').forEach(el => {
+  el.addEventListener('click', () => closeModal(el.dataset.close));
+});
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+// ── Add buttons ───────────────────────────────────────────────────────────────
+document.getElementById('btnAddVenit').addEventListener('click', () => {
+  document.getElementById('modalVenitTitle').textContent = 'Adaugă venit';
+  document.getElementById('venitSubmit').textContent = 'Adaugă';
+  document.getElementById('formVenit').reset();
+  document.getElementById('venitId').value = '';
+  document.getElementById('venitData').value = todayStr();
+  document.getElementById('errorVenit').style.display = 'none';
+  openModal('modalVenit');
+});
+
+document.getElementById('btnAddCheltuiala').addEventListener('click', () => {
+  document.getElementById('modalCheltuialaTitle').textContent = 'Adaugă cheltuiala';
+  document.getElementById('cheltuialaSubmit').textContent = 'Adaugă';
+  document.getElementById('formCheltuiala').reset();
+  document.getElementById('cheltuialaId').value = '';
+  document.getElementById('cheltuialaData').value = todayStr();
+  document.getElementById('errorCheltuiala').style.display = 'none';
+  openModal('modalCheltuiala');
+});
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ── Edit ──────────────────────────────────────────────────────────────────────
+window.openEdit = function(type, row) {
+  if (type === 'venit') {
+    document.getElementById('modalVenitTitle').textContent = 'Editează venit';
+    document.getElementById('venitSubmit').textContent = 'Salvează';
+    document.getElementById('venitId').value       = row.id;
+    document.getElementById('venitData').value     = row.data;
+    document.getElementById('venitDescriere').value = row.descriere;
+    document.getElementById('venitSuma').value     = row.suma;
+    document.getElementById('errorVenit').style.display = 'none';
+    openModal('modalVenit');
+  } else {
+    document.getElementById('modalCheltuialaTitle').textContent = 'Editează cheltuiala';
+    document.getElementById('cheltuialaSubmit').textContent = 'Salvează';
+    document.getElementById('cheltuialaId').value         = row.id;
+    document.getElementById('cheltuialaData').value       = row.data;
+    document.getElementById('cheltuialaDescriere').value   = row.descriere;
+    document.getElementById('cheltuialaCategorie').value   = row.categorie;
+    document.getElementById('cheltuialaSuma').value       = row.suma;
+    document.getElementById('errorCheltuiala').style.display = 'none';
+    openModal('modalCheltuiala');
+  }
+};
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+window.deleteRow = async function(type, id) {
+  if (!confirm('Ștergi această tranzacție?')) return;
+  const action = type === 'venit' ? 'delete_venit' : 'delete_cheltuiala';
+  const res = await post(action, { id });
+  if (res.success) refresh();
+  else alert(res.error || 'Eroare la ștergere');
+};
+
+// ── Form submit: Venit ────────────────────────────────────────────────────────
+document.getElementById('formVenit').addEventListener('submit', async e => {
+  e.preventDefault();
+  const errEl = document.getElementById('errorVenit');
+  errEl.style.display = 'none';
+
+  const id = document.getElementById('venitId').value;
+  const body = {
+    data:      document.getElementById('venitData').value,
+    descriere: document.getElementById('venitDescriere').value,
+    suma:      document.getElementById('venitSuma').value,
+  };
+  if (id) body.id = id;
+
+  const action = id ? 'edit_venit' : 'add_venit';
+  const res = await post(action, body);
+
+  if (res.success || res.id) {
+    closeModal('modalVenit');
+    refresh();
+  } else {
+    errEl.textContent = res.error || 'Eroare';
+    errEl.style.display = 'block';
+  }
+});
+
+// ── Form submit: Cheltuiala ───────────────────────────────────────────────────
+document.getElementById('formCheltuiala').addEventListener('submit', async e => {
+  e.preventDefault();
+  const errEl = document.getElementById('errorCheltuiala');
+  errEl.style.display = 'none';
+
+  const id = document.getElementById('cheltuialaId').value;
+  const body = {
+    data:      document.getElementById('cheltuialaData').value,
+    descriere: document.getElementById('cheltuialaDescriere').value,
+    categorie: document.getElementById('cheltuialaCategorie').value,
+    suma:      document.getElementById('cheltuialaSuma').value,
+  };
+  if (id) body.id = id;
+
+  const action = id ? 'edit_cheltuiala' : 'add_cheltuiala';
+  const res = await post(action, body);
+
+  if (res.success || res.id) {
+    closeModal('modalCheltuiala');
+    refresh();
+  } else {
+    errEl.textContent = res.error || 'Eroare';
+    errEl.style.display = 'block';
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
