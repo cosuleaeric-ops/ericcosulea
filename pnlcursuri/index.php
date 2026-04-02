@@ -178,6 +178,13 @@ $csrf = csrf_token();
         <label>Sumă (lei)</label>
         <input type="number" name="suma" id="cheltuialaSuma" step="0.01" min="0.01" required />
       </div>
+      <div class="form-group" id="serviceFeeGroup">
+        <label style="display:flex;align-items:center;gap:6px">
+          Service fee ING
+          <span style="font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(opțional — adaugă tranzacție separată)</span>
+        </label>
+        <input type="number" id="cheltuialaServiceFee" step="0.01" min="0.01" placeholder="ex: 0,45" />
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close="modalCheltuiala">Anulează</button>
         <button type="submit" class="btn btn-red" id="cheltuialaSubmit">Salvează</button>
@@ -560,6 +567,8 @@ document.getElementById('btnAddCheltuiala').addEventListener('click', () => {
   document.getElementById('cheltuialaData').value = lastCheltuialaDate || todayStr();
   document.getElementById('cheltuialaCategorieSelect').value = '';
   document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
+  document.getElementById('cheltuialaServiceFee').value = '';
+  document.getElementById('serviceFeeGroup').style.display = '';
   document.getElementById('errorCheltuiala').style.display = 'none';
   openModal('modalCheltuiala');
 });
@@ -587,6 +596,8 @@ function openEdit(row) {
     document.getElementById('cheltuialaData').value = row.data;
     document.getElementById('cheltuialaSuma').value = row.suma;
     document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
+    document.getElementById('cheltuialaServiceFee').value = '';
+    document.getElementById('serviceFeeGroup').style.display = 'none';
     document.getElementById('errorCheltuiala').style.display = 'none';
     document.getElementById('cheltuialaCategorieSelect').value = row.categorie;
     openModal('modalCheltuiala');
@@ -668,7 +679,13 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
   const res = await post(id ? 'edit_cheltuiala' : 'add_cheltuiala', body);
 
   if (res.success || res.id) {
-    if (!id) lastCheltuialaDate = body.data;
+    if (!id) {
+      lastCheltuialaDate = body.data;
+      const fee = parseFloat(document.getElementById('cheltuialaServiceFee').value);
+      if (fee > 0) {
+        await post('add_cheltuiala', { data: body.data, categorie: 'Service fee', suma: fee });
+      }
+    }
     closeModal('modalCheltuiala');
     refresh();
   } else {
