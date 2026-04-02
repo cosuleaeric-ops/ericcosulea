@@ -345,17 +345,7 @@ function renderStats(s) {
     `${allVenituri.length} tranzacții`;
   document.getElementById('statCheltuieliSub').textContent =
     `${allCheltuieli.length} tranzacții`;
-  const profitSub = document.getElementById('statProfitSub');
-  if (s.profit_prev !== 0 && s.profit_prev != null) {
-    const diff = s.profit_net - s.profit_prev;
-    const pct  = Math.round(Math.abs(diff) / Math.abs(s.profit_prev) * 100);
-    const arrow = diff >= 0 ? '↑' : '↓';
-    profitSub.textContent = `${arrow} ${pct}% față de ${s.prev_label}`;
-    profitSub.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
-  } else {
-    profitSub.textContent = '';
-    profitSub.style.color = '';
-  }
+  document.getElementById('statProfitSub').textContent = '';
 }
 
 // ── Charts ───────────────────────────────────────────────────────────────────
