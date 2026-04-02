@@ -91,12 +91,15 @@ function saveDays(days) {
 }
 
 function postData() {
-  if (!useFileStorage) return Promise.resolve();
+  if (!useFileStorage) { console.log("[DW] postData skip: useFileStorage=false"); return Promise.resolve(); }
+  const body = { days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer };
+  console.log("[DW] postData sending:", JSON.stringify(body));
   return fetch(DATA_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer }),
-  }).catch(() => {});
+    body: JSON.stringify(body),
+  }).then(r => { console.log("[DW] postData response:", r.status); return r.json().then(d => console.log("[DW] postData result:", JSON.stringify(d))); })
+    .catch(e => console.error("[DW] postData error:", e));
 }
 
 const LUNI_RO = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
@@ -584,6 +587,7 @@ async function init() {
       memory.activeTimer = data.activeTimer ?? null;
       memory.pausedTimer = data.pausedTimer ?? null;
       useFileStorage = true;
+      console.log("[DW] init loaded from server:", JSON.stringify({ days: memory.days, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer }));
       // Backup: dacă serverul nu are zile, încarcă din localStorage și sincronizează
       try {
         const raw = localStorage.getItem(STORAGE_DAYS);
