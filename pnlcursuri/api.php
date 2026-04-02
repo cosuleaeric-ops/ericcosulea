@@ -288,6 +288,24 @@ function handleStats(SQLite3 $db): void
         ];
     }
 
+    // Previous period profit for comparison
+    $month_names_short = ['','ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
+    if ($month) {
+        $pm = (int)$month - 1;
+        $py = (int)$year;
+        if ($pm === 0) { $pm = 12; $py--; }
+        $pm_pad = str_pad((string)$pm, 2, '0', STR_PAD_LEFT);
+        $prev_filter = "strftime('%Y', data) = '$py' AND strftime('%m', data) = '$pm_pad'";
+        $prev_label  = $month_names_short[$pm] . ' ' . $py;
+    } else {
+        $py = (int)$year - 1;
+        $prev_filter = "strftime('%Y', data) = '$py'";
+        $prev_label  = (string)$py;
+    }
+    $prev_v = (float)$db->querySingle("SELECT COALESCE(SUM(suma),0) FROM venituri WHERE $prev_filter");
+    $prev_c = (float)$db->querySingle("SELECT COALESCE(SUM(suma),0) FROM cheltuieli WHERE $prev_filter");
+    $profit_prev = $prev_v - $prev_c;
+
     echo json_encode([
         'total_venituri' => $total_v,
         'total_cheltuieli' => $total_c,
@@ -296,6 +314,8 @@ function handleStats(SQLite3 $db): void
         'monthly' => $monthly,
         'categorii_cheltuieli' => $categorii,
         'year' => (int)$year,
+        'profit_prev' => $profit_prev,
+        'prev_label' => $prev_label,
     ]);
 }
 
