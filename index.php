@@ -474,7 +474,7 @@ if ($uri === '/blog') {
           <img class="project-icon-img" src="/assets/tools.webp" alt="">
           <div class="topic-text">
             <span class="topic-title">tools</span>
-            <span class="topic-sub">(colecție de aplicații pe care le folosesc în proiectele mele)</span>
+            <span class="topic-sub">(colecție de aplicații pe care le folosesc în proiecte)</span>
           </div>
         </a>
         <a class="topic-item" href="/blog">
