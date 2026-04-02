@@ -7,6 +7,9 @@ function config(): array {
 
 function ensure_session(): void {
     if (session_status() === PHP_SESSION_NONE) {
+        $lifetime = 60 * 60 * 24 * 30; // 30 zile
+        ini_set('session.gc_maxlifetime', (string)$lifetime);
+        session_set_cookie_params($lifetime);
         session_start();
     }
 }
