@@ -261,11 +261,14 @@ if ($uri === '/blog') {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-<?php if (!$isLoggedIn): ?>
+<?php if (!$isLoggedIn && file_exists($dbPath)): ?>
 <?php
-  $trackingStmt = $db->prepare('SELECT text_value FROM site_texts WHERE text_key = :key LIMIT 1');
+  $trackingDb = new SQLite3($dbPath);
+  $trackingDb->exec('CREATE TABLE IF NOT EXISTS site_texts (id INTEGER PRIMARY KEY AUTOINCREMENT, text_key TEXT UNIQUE NOT NULL, text_value TEXT NOT NULL, updated_at TEXT NOT NULL);');
+  $trackingStmt = $trackingDb->prepare('SELECT text_value FROM site_texts WHERE text_key = :key LIMIT 1');
   $trackingStmt->bindValue(':key', 'tracking_head', SQLITE3_TEXT);
   $trackingRow = $trackingStmt->execute()->fetchArray(SQLITE3_ASSOC);
+  $trackingDb->close();
   if ($trackingRow && $trackingRow['text_value']) echo $trackingRow['text_value'] . "\n";
 ?>
 <?php endif; ?>
