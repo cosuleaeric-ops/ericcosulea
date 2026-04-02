@@ -261,6 +261,14 @@ if ($uri === '/blog') {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+<?php if (!$isLoggedIn): ?>
+<?php
+  $trackingStmt = $db->prepare('SELECT text_value FROM site_texts WHERE text_key = :key LIMIT 1');
+  $trackingStmt->bindValue(':key', 'tracking_head', SQLITE3_TEXT);
+  $trackingRow = $trackingStmt->execute()->fetchArray(SQLITE3_ASSOC);
+  if ($trackingRow && $trackingRow['text_value']) echo $trackingRow['text_value'] . "\n";
+?>
+<?php endif; ?>
 </head>
 <body>
 <?php if ($isLoggedIn): ?>
