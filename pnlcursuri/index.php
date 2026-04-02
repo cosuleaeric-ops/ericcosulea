@@ -220,6 +220,7 @@ let currentTab  = 'toate';
 let allVenituri = [];
 let allCheltuieli = [];
 let chartMonthly, chartDonut, chartCumulative;
+const rowStore = new Map(); // 'venit-id' / 'cheltuiala-id' → row object
 
 // ── Categories ───────────────────────────────────────────────────────────────
 async function loadCategories() {
@@ -468,7 +469,9 @@ function renderTable() {
 
   rows.forEach(r => {
     const isVenit = r._type === 'venit';
-    // Category: for venituri stored in 'descriere', for cheltuieli stored in 'categorie'
+    const key = `${r._type}-${r.id}`;
+    rowStore.set(key, r);
+
     const cat = isVenit ? r.descriere : r.categorie;
 
     let catHtml;
@@ -491,9 +494,9 @@ function renderTable() {
       <td>
         <div class="actions-cell">
           <button class="icon-btn" title="Editează"
-            onclick="openEdit('${r._type}', ${JSON.stringify(r)})">✎</button>
+            data-key="${key}">✎</button>
           <button class="icon-btn danger" title="Șterge"
-            onclick="deleteRow('${r._type}', ${r.id})">✕</button>
+            data-type="${r._type}" data-id="${r.id}">✕</button>
         </div>
       </td>`;
     body.appendChild(tr);
@@ -562,8 +565,8 @@ function todayStr() {
 }
 
 // ── Edit ──────────────────────────────────────────────────────────────────────
-window.openEdit = function(type, row) {
-  if (type === 'venit') {
+function openEdit(row) {
+  if (row._type === 'venit') {
     document.getElementById('modalVenitTitle').textContent = 'Editează venit';
     document.getElementById('venitSubmit').textContent = 'Salvează';
     document.getElementById('venitId').value   = row.id;
@@ -571,7 +574,6 @@ window.openEdit = function(type, row) {
     document.getElementById('venitSuma').value = row.suma;
     document.getElementById('venitCategorieNoua').style.display = 'none';
     document.getElementById('errorVenit').style.display = 'none';
-    // row.descriere holds the category for venituri
     document.getElementById('venitCategorieSelect').value = row.descriere;
     openModal('modalVenit');
   } else {
@@ -585,16 +587,25 @@ window.openEdit = function(type, row) {
     document.getElementById('cheltuialaCategorieSelect').value = row.categorie;
     openModal('modalCheltuiala');
   }
-};
+}
 
-// ── Delete ────────────────────────────────────────────────────────────────────
-window.deleteRow = async function(type, id) {
-  if (!confirm('Ștergi această tranzacție?')) return;
-  const action = type === 'venit' ? 'delete_venit' : 'delete_cheltuiala';
-  const res = await post(action, { id });
-  if (res.success) refresh();
-  else alert(res.error || 'Eroare la ștergere');
-};
+// ── Table click delegation ────────────────────────────────────────────────────
+document.getElementById('txBody').addEventListener('click', async e => {
+  const editBtn  = e.target.closest('[data-key]');
+  const deleteBtn = e.target.closest('[data-type][data-id]');
+
+  if (editBtn) {
+    const row = rowStore.get(editBtn.dataset.key);
+    if (row) openEdit(row);
+  } else if (deleteBtn) {
+    const { type, id } = deleteBtn.dataset;
+    if (!confirm('Ștergi această tranzacție?')) return;
+    const action = type === 'venit' ? 'delete_venit' : 'delete_cheltuiala';
+    const res = await post(action, { id });
+    if (res.success) refresh();
+    else alert(res.error || 'Eroare la ștergere');
+  }
+});
 
 // ── Form submit: Venit ────────────────────────────────────────────────────────
 document.getElementById('formVenit').addEventListener('submit', async e => {

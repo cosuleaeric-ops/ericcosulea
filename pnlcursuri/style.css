@@ -264,6 +264,10 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  display: inline-block;
+  width: auto;
+  min-width: 480px;
+  max-width: 100%;
 }
 
 .table-scroll {
@@ -271,7 +275,7 @@ body {
 }
 
 table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
 }
 
