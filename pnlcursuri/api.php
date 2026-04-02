@@ -120,6 +120,9 @@ try {
         case 'years':
             handleYears($db);
             break;
+        case 'periods':
+            handlePeriods($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Acțiune necunoscută']);
@@ -187,42 +190,79 @@ function handleYears(SQLite3 $db): void
     echo json_encode($years);
 }
 
+function handlePeriods(SQLite3 $db): void
+{
+    $month_names = ['','Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+
+    $res = $db->query("
+        SELECT DISTINCT strftime('%Y', data) as an, strftime('%m', data) as luna
+        FROM venituri
+        UNION
+        SELECT DISTINCT strftime('%Y', data) as an, strftime('%m', data) as luna
+        FROM cheltuieli
+        ORDER BY an DESC, luna DESC
+    ");
+
+    $by_year = [];
+    while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
+        $by_year[(int)$row['an']][] = (int)$row['luna'];
+    }
+
+    if (empty($by_year)) {
+        $by_year[(int)date('Y')] = [];
+    }
+
+    $periods = [];
+    foreach ($by_year as $year => $months) {
+        $periods[] = ['value' => (string)$year, 'label' => (string)$year, 'year' => $year, 'month' => null];
+        foreach ($months as $m) {
+            $periods[] = ['value' => "$year-$m", 'label' => $month_names[$m] . ' ' . $year, 'year' => $year, 'month' => $m];
+        }
+    }
+
+    echo json_encode($periods);
+}
+
 function handleStats(SQLite3 $db): void
 {
-    $year = (string)(int)($_GET['year'] ?? date('Y'));
+    $year  = (string)(int)($_GET['year'] ?? date('Y'));
+    $month = isset($_GET['month']) ? str_pad((string)(int)$_GET['month'], 2, '0', STR_PAD_LEFT) : null;
 
-    $stmt = $db->prepare("SELECT COALESCE(SUM(suma), 0) as total FROM venituri WHERE strftime('%Y', data) = :year");
-    $stmt->bindValue(':year', $year);
+    $date_filter = "strftime('%Y', data) = :year";
+    if ($month) $date_filter .= " AND strftime('%m', data) = :month";
+
+    $bind = function($stmt) use ($year, $month) {
+        $stmt->bindValue(':year', $year);
+        if ($month) $stmt->bindValue(':month', $month);
+        return $stmt;
+    };
+
+    $stmt = $bind($db->prepare("SELECT COALESCE(SUM(suma), 0) as total FROM venituri WHERE $date_filter"));
     $total_v = (float)$stmt->execute()->fetchArray(SQLITE3_ASSOC)['total'];
 
-    $stmt = $db->prepare("SELECT COALESCE(SUM(suma), 0) as total FROM cheltuieli WHERE strftime('%Y', data) = :year");
-    $stmt->bindValue(':year', $year);
+    $stmt = $bind($db->prepare("SELECT COALESCE(SUM(suma), 0) as total FROM cheltuieli WHERE $date_filter"));
     $total_c = (float)$stmt->execute()->fetchArray(SQLITE3_ASSOC)['total'];
 
-    $stmt = $db->prepare("SELECT strftime('%Y-%m', data) as luna, COALESCE(SUM(suma), 0) as suma
-        FROM venituri WHERE strftime('%Y', data) = :year
-        GROUP BY luna ORDER BY luna");
-    $stmt->bindValue(':year', $year);
+    $group_by = $month ? "strftime('%Y-%m-%d', data)" : "strftime('%Y-%m', data)";
+    $stmt = $bind($db->prepare("SELECT $group_by as luna, COALESCE(SUM(suma), 0) as suma
+        FROM venituri WHERE $date_filter GROUP BY luna ORDER BY luna"));
     $res = $stmt->execute();
     $monthly_v = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
         $monthly_v[$row['luna']] = (float)$row['suma'];
     }
 
-    $stmt = $db->prepare("SELECT strftime('%Y-%m', data) as luna, COALESCE(SUM(suma), 0) as suma
-        FROM cheltuieli WHERE strftime('%Y', data) = :year
-        GROUP BY luna ORDER BY luna");
-    $stmt->bindValue(':year', $year);
+    $stmt = $bind($db->prepare("SELECT $group_by as luna, COALESCE(SUM(suma), 0) as suma
+        FROM cheltuieli WHERE $date_filter GROUP BY luna ORDER BY luna"));
     $res = $stmt->execute();
     $monthly_c = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
         $monthly_c[$row['luna']] = (float)$row['suma'];
     }
 
-    $stmt = $db->prepare("SELECT categorie, COALESCE(SUM(suma), 0) as suma
-        FROM cheltuieli WHERE strftime('%Y', data) = :year
-        GROUP BY categorie ORDER BY suma DESC");
-    $stmt->bindValue(':year', $year);
+    $stmt = $bind($db->prepare("SELECT categorie, COALESCE(SUM(suma), 0) as suma
+        FROM cheltuieli WHERE $date_filter
+        GROUP BY categorie ORDER BY suma DESC"));
     $res = $stmt->execute();
     $categorii = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {

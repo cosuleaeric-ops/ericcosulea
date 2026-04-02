@@ -217,8 +217,9 @@ const monthLabel = s => {
 };
 
 // ── State ────────────────────────────────────────────────────────────────────
-let currentYear = new Date().getFullYear();
-let currentTab  = 'toate';
+let currentYear  = new Date().getFullYear();
+let currentMonth = null; // null = tot anul
+let currentTab   = 'toate';
 let allVenituri = [];
 let allCheltuieli = [];
 let chartMonthly, chartDonut, chartCumulative;
@@ -281,20 +282,25 @@ async function resolveCategorie(selectId, inputId, addAction) {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const years = await api('years');
+  const periods = await api('periods');
   const sel = document.getElementById('yearSelect');
-  years.forEach(y => {
+
+  periods.forEach(p => {
     const opt = document.createElement('option');
-    opt.value = y; opt.textContent = y;
+    opt.value = p.value;
+    opt.textContent = p.month ? '\u00A0\u00A0' + p.label : p.label;
+    if (p.month) opt.style.color = 'var(--muted)';
     sel.appendChild(opt);
   });
-  sel.value = currentYear;
-  if (sel.value != currentYear && years.length) {
-    currentYear = years[0];
-    sel.value = currentYear;
-  }
+
+  // Default to current year
+  sel.value = String(currentYear);
+  if (!sel.value && periods.length) sel.value = periods[0].value;
+
   sel.addEventListener('change', () => {
-    currentYear = parseInt(sel.value);
+    const parts = sel.value.split('-');
+    currentYear  = parseInt(parts[0]);
+    currentMonth = parts[1] ? parseInt(parts[1]) : null;
     refresh();
   });
 
@@ -303,10 +309,11 @@ async function init() {
 }
 
 async function refresh() {
+  const mParam = currentMonth ? `&month=${currentMonth}` : '';
   const [stats, venituri, cheltuieli] = await Promise.all([
-    api('stats', `year=${currentYear}`),
-    api('venituri', `year=${currentYear}`),
-    api('cheltuieli', `year=${currentYear}`),
+    api('stats',      `year=${currentYear}${mParam}`),
+    api('venituri',   `year=${currentYear}${mParam}`),
+    api('cheltuieli', `year=${currentYear}${mParam}`),
   ]);
 
   allVenituri   = venituri;
@@ -348,7 +355,7 @@ const CAT_COLORS = [
 ];
 
 function renderCharts(s) {
-  const labels = s.monthly.map(m => monthLabel(m.luna));
+  const labels = s.monthly.map(m => currentMonth ? m.luna.slice(8) + '.' : monthLabel(m.luna));
 
   if (chartMonthly) chartMonthly.destroy();
   chartMonthly = new Chart(document.getElementById('chartMonthly'), {
@@ -467,7 +474,8 @@ function renderTable() {
   }
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">Nicio tranzacție în ${currentYear}</div></td></tr>`;
+    const periodLabel = document.getElementById('yearSelect').options[document.getElementById('yearSelect').selectedIndex]?.textContent.trim() || currentYear;
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">Nicio tranzacție în ${periodLabel}</div></td></tr>`;
     return;
   }
 
