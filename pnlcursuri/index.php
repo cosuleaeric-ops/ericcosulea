@@ -342,11 +342,10 @@ function renderStats(s) {
   marjaEl.className = 'value ' + marjaColor;
 
   document.getElementById('statVenituriSub').textContent =
-    `${allVenituri.length} tranzacție${allVenituri.length !== 1 ? 'i' : ''}`;
+    `${allVenituri.length} tranzacții`;
   document.getElementById('statCheltuieliSub').textContent =
-    `${allCheltuieli.length} tranzacție${allCheltuieli.length !== 1 ? 'i' : ''}`;
-  document.getElementById('statProfitSub').textContent =
-    s.total_venituri > 0 ? `din ${fmt(s.total_venituri)} lei venituri` : '';
+    `${allCheltuieli.length} tranzacții`;
+  document.getElementById('statProfitSub').textContent = '';
 }
 
 // ── Charts ───────────────────────────────────────────────────────────────────
