@@ -89,6 +89,7 @@ $csrf = csrf_token();
   </div>
 
   <!-- Transactions -->
+  <div class="tx-section">
   <div class="section-header">
     <h2>Tranzacții</h2>
     <div class="tab-group">
@@ -117,6 +118,7 @@ $csrf = csrf_token();
       </table>
     </div>
   </div>
+  </div><!-- /tx-section -->
 
 </main>
 

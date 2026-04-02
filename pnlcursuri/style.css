@@ -258,16 +258,23 @@ body {
 .btn-ghost:hover { background: var(--bg); color: var(--text); }
 
 /* ── Table ── */
+.tx-section {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.tx-section .section-header {
+  width: 100%;
+}
+
 .table-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  display: inline-block;
   width: auto;
   min-width: 480px;
-  max-width: 100%;
 }
 
 .table-scroll {
