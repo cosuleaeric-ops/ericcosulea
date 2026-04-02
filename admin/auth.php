@@ -28,13 +28,12 @@ function require_login(): void {
 
 function verify_password(string $password): bool {
     $cfg = config();
-    $hash = hash('sha256', $password);
-    return hash_equals($cfg['password_sha256'], $hash);
+    return password_verify($password, $cfg['password_bcrypt']);
 }
 
 function force_login_with_token(string $token): bool {
     $cfg = config();
-    if (!hash_equals($cfg['password_sha256'], $token)) {
+    if (!password_verify($token, $cfg['password_bcrypt'])) {
         return false;
     }
     ensure_session();
