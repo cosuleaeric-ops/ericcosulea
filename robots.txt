@@ -1,5 +1,0 @@
-User-agent: *
-Disallow: /admin/
-Disallow: /deep-work/
-Disallow: /elite-deux/
-Disallow: /pnlcursuri/

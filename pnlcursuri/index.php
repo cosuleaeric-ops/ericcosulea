@@ -9,6 +9,7 @@ if (!is_logged_in()) {
 }
 
 $csrf = csrf_token();
+header('X-Robots-Tag: noindex, nofollow');
 ?>
 <!doctype html>
 <html lang="ro">

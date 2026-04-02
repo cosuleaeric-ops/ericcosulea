@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../admin/auth.php';
 require_login();
+header('X-Robots-Tag: noindex, nofollow');
 ?>
 <!doctype html>
 <html lang="ro">

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/../admin/auth.php';
+header('X-Robots-Tag: noindex, nofollow');
 
 if (!is_logged_in()) {
     header('Location: /admin/login.php?redirect=' . urlencode('/deep-work/'));
