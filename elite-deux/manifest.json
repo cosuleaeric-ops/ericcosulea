@@ -1,0 +1,16 @@
+{
+  "name": "EliteDeux",
+  "short_name": "EliteDeux",
+  "start_url": "/elite-deux/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
