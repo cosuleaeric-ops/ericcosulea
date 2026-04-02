@@ -32,7 +32,7 @@ function read_state(SQLite3 $db): array {
     $settings = json_decode($row['settings_json'] ?? '{}', true);
     $activeTimer = json_decode($row['active_timer_json'] ?? 'null', true);
     return [
-        'days'        => is_array($days) ? $days : [],
+        'days'        => (!empty($days) && is_array($days)) ? $days : new stdClass(),
         'settings'    => is_array($settings) ? $settings : [],
         'activeTimer' => is_array($activeTimer) ? $activeTimer : null,
     ];

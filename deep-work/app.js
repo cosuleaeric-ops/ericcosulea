@@ -562,7 +562,7 @@ async function init() {
     const r = await fetch(DATA_ENDPOINT);
     if (r.ok) {
       const data = await r.json();
-      memory.days = data.days || {};
+      memory.days = (Array.isArray(data.days) || !data.days) ? {} : data.days;
       memory.settings = data.settings || {};
       memory.activeTimer = data.activeTimer ?? null;
       useFileStorage = true;
