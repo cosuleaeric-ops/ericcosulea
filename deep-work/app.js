@@ -18,7 +18,7 @@ const DATA_ENDPOINT = APP_CONFIG.dataEndpoint || "/api/data";
 const WIP_ENDPOINT = APP_CONFIG.wipEndpoint || "/api/wip-post";
 
 let useFileStorage = false;
-let memory = { days: {}, settings: {}, activeTimer: null, pausedTimer: null };
+let memory = { days: {}, settings: {}, activeTimer: null };
 
 // --- State
 let mode = "work";
@@ -92,7 +92,7 @@ function saveDays(days) {
 
 function postData() {
   if (!useFileStorage) { console.log("[DW] postData skip: useFileStorage=false"); return Promise.resolve(); }
-  const body = { days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer };
+  const body = { days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer };
   console.log("[DW] postData sending:", JSON.stringify(body));
   return fetch(DATA_ENDPOINT, {
     method: "POST",
@@ -276,23 +276,12 @@ function clearActiveTimer() {
 }
 
 function savePausedTimer() {
-  const payload = { remainingSeconds, mode };
-  if (useFileStorage) {
-    memory.pausedTimer = payload;
-    postData();
-    return;
-  }
   try {
-    localStorage.setItem(STORAGE_PAUSED_TIMER, JSON.stringify(payload));
+    localStorage.setItem(STORAGE_PAUSED_TIMER, JSON.stringify({ remainingSeconds, mode }));
   } catch (_) {}
 }
 
 function clearPausedTimer() {
-  if (useFileStorage) {
-    memory.pausedTimer = null;
-    postData();
-    return;
-  }
   try {
     localStorage.removeItem(STORAGE_PAUSED_TIMER);
   } catch (_) {}
@@ -300,14 +289,10 @@ function clearPausedTimer() {
 
 function loadPausedTimer() {
   let data = null;
-  if (useFileStorage) {
-    data = memory.pausedTimer || null;
-  } else {
-    try {
-      const raw = localStorage.getItem(STORAGE_PAUSED_TIMER);
-      data = raw ? JSON.parse(raw) : null;
-    } catch (_) {}
-  }
+  try {
+    const raw = localStorage.getItem(STORAGE_PAUSED_TIMER);
+    data = raw ? JSON.parse(raw) : null;
+  } catch (_) {}
   if (!data || !data.remainingSeconds || !data.mode) return false;
   remainingSeconds = data.remainingSeconds;
   mode = data.mode;
@@ -376,15 +361,14 @@ function tick() {
       sesiuni = (days[key] || 0) + 1;
       days[key] = sesiuni;
       // Single atomic save: sessions + clear timer state
+      clearPausedTimer();
       if (useFileStorage) {
         memory.days = days;
         memory.activeTimer = null;
-        memory.pausedTimer = null;
         postData();
       } else {
         try { localStorage.setItem(STORAGE_DAYS, JSON.stringify(days)); } catch (_) {}
         try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
-        try { localStorage.removeItem(STORAGE_PAUSED_TIMER); } catch (_) {}
       }
       renderCalendar();
       const today = new Date();
@@ -392,13 +376,12 @@ function tick() {
       const dateStr = " - " + pad(today.getDate()) + " " + shortMonth[today.getMonth()] + " '" + String(today.getFullYear()).slice(-2);
       postToWip(workDurationMin + " mins deep work sesh " + sesiuni + dateStr + " #life");
     } else {
+      clearPausedTimer();
       if (useFileStorage) {
         memory.activeTimer = null;
-        memory.pausedTimer = null;
         postData();
       } else {
         try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
-        try { localStorage.removeItem(STORAGE_PAUSED_TIMER); } catch (_) {}
       }
     }
 
@@ -424,14 +407,12 @@ function stopTimer() {
     intervalId = null;
   }
   setExtensionBlockFlag(false);
-  // Update activeTimer and pausedTimer atomically in a single request
+  savePausedTimer();
   if (useFileStorage) {
     memory.activeTimer = null;
-    memory.pausedTimer = { remainingSeconds, mode };
     postData();
   } else {
     try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
-    try { localStorage.setItem(STORAGE_PAUSED_TIMER, JSON.stringify({ remainingSeconds, mode })); } catch (_) {}
   }
   btnStart.textContent = "start";
 }
@@ -585,9 +566,8 @@ async function init() {
       memory.days = data.days || {};
       memory.settings = data.settings || {};
       memory.activeTimer = data.activeTimer ?? null;
-      memory.pausedTimer = data.pausedTimer ?? null;
       useFileStorage = true;
-      console.log("[DW] init loaded from server:", JSON.stringify({ days: memory.days, activeTimer: memory.activeTimer, pausedTimer: memory.pausedTimer }));
+      console.log("[DW] init loaded from server:", JSON.stringify({ days: memory.days, activeTimer: memory.activeTimer }));
       // Backup: dacă serverul nu are zile, încarcă din localStorage și sincronizează
       try {
         const raw = localStorage.getItem(STORAGE_DAYS);
