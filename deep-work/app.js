@@ -488,7 +488,7 @@ function renderIstoric() {
 
 function renderLegend() {
   legendSquares.innerHTML = "";
-  const legendLevels = [0, 4, 3, 2, 1];
+  const legendLevels = [0, 1, 2, 3, 4];
   for (const level of legendLevels) {
     const cell = document.createElement("div");
     cell.className = "legend-cell";
@@ -572,7 +572,8 @@ async function init() {
             const b = Number(localDays[key]) || 0;
             merged[key] = Math.max(a, b);
           }
-          if (Object.keys(merged).length > Object.keys(memory.days).length) {
+          const hasHigherCount = Object.keys(merged).some(k => (merged[k] || 0) > (memory.days[k] || 0));
+          if (hasHigherCount) {
             memory.days = merged;
             postData();
           }
