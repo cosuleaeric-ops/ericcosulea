@@ -362,13 +362,12 @@ function tick() {
       days[key] = sesiuni;
       // Single atomic save: sessions + clear timer state
       clearPausedTimer();
+      try { localStorage.setItem(STORAGE_DAYS, JSON.stringify(days)); } catch (_) {}
+      try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
       if (useFileStorage) {
         memory.days = days;
         memory.activeTimer = null;
         postData();
-      } else {
-        try { localStorage.setItem(STORAGE_DAYS, JSON.stringify(days)); } catch (_) {}
-        try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
       }
       renderCalendar();
       const today = new Date();
