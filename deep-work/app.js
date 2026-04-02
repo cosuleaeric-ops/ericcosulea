@@ -361,21 +361,44 @@ function tick() {
   timerDisplay.textContent = formatTime(remainingSeconds);
   updateTabTitle();
   if (remainingSeconds <= 0) {
-    stopTimer();
-    clearActiveTimer();
+    clearInterval(intervalId);
+    intervalId = null;
+    setExtensionBlockFlag(false);
+    btnStart.textContent = "start";
+
+    let sesiuni = 0;
     if (mode === "work") {
       const days = loadDays();
       const key = todayKey();
-      const sesiuni = (days[key] || 0) + 1;
+      sesiuni = (days[key] || 0) + 1;
       days[key] = sesiuni;
-      saveDays(days);
+      // Single atomic save: sessions + clear timer state
+      if (useFileStorage) {
+        memory.days = days;
+        memory.activeTimer = null;
+        memory.pausedTimer = null;
+        postData();
+      } else {
+        try { localStorage.setItem(STORAGE_DAYS, JSON.stringify(days)); } catch (_) {}
+        try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
+        try { localStorage.removeItem(STORAGE_PAUSED_TIMER); } catch (_) {}
+      }
       renderCalendar();
       const today = new Date();
       const shortMonth = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
       const dateStr = " - " + pad(today.getDate()) + " " + shortMonth[today.getMonth()] + " '" + String(today.getFullYear()).slice(-2);
-      const body = workDurationMin + " mins deep work sesh " + sesiuni + dateStr + " #life";
-      postToWip(body);
+      postToWip(workDurationMin + " mins deep work sesh " + sesiuni + dateStr + " #life");
+    } else {
+      if (useFileStorage) {
+        memory.activeTimer = null;
+        memory.pausedTimer = null;
+        postData();
+      } else {
+        try { localStorage.removeItem(STORAGE_ACTIVE_TIMER); } catch (_) {}
+        try { localStorage.removeItem(STORAGE_PAUSED_TIMER); } catch (_) {}
+      }
     }
+
     mode = mode === "work" ? "rest" : "work";
     document.querySelector(".tab.active").classList.remove("active");
     document.querySelector(`.tab[data-mode="${mode}"]`).classList.add("active");
