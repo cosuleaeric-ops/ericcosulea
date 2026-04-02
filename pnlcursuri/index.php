@@ -136,9 +136,7 @@ $csrf = csrf_token();
       </div>
       <div class="form-group">
         <label>Categorie</label>
-        <select id="venitCategorieSelect">
-          <option value="">— Selectează —</option>
-        </select>
+        <select id="venitCategorieSelect"></select>
         <input type="text" id="venitCategorieNoua" placeholder="Nume categorie nouă"
                style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
@@ -168,9 +166,7 @@ $csrf = csrf_token();
       </div>
       <div class="form-group">
         <label>Categorie</label>
-        <select id="cheltuialaCategorieSelect">
-          <option value="">— Selectează —</option>
-        </select>
+        <select id="cheltuialaCategorieSelect"></select>
         <input type="text" id="cheltuialaCategorieNoua" placeholder="Nume categorie nouă"
                style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
@@ -244,8 +240,7 @@ async function loadCategories() {
 function populateSelect(selectId, cats, addAction) {
   const sel = document.getElementById(selectId);
   const current = sel.value;
-  // Keep first placeholder option, remove the rest
-  while (sel.options.length > 1) sel.remove(1);
+  sel.innerHTML = '';
 
   cats.forEach(c => {
     const opt = document.createElement('option');
@@ -258,7 +253,7 @@ function populateSelect(selectId, cats, addAction) {
   newOpt.textContent = '+ Categorie nouă...';
   sel.appendChild(newOpt);
 
-  if (current) sel.value = current;
+  if (current && current !== '__new__') sel.value = current;
 
   // Wire up the "new category" input toggle
   const inputId = selectId.replace('Select', 'Noua');
@@ -551,7 +546,6 @@ document.getElementById('btnAddVenit').addEventListener('click', () => {
   document.getElementById('formVenit').reset();
   document.getElementById('venitId').value = '';
   document.getElementById('venitData').value = getLastDate();
-  document.getElementById('venitCategorieSelect').value = '';
   document.getElementById('venitCategorieNoua').style.display = 'none';
   document.getElementById('errorVenit').style.display = 'none';
   openModal('modalVenit');
@@ -563,7 +557,6 @@ document.getElementById('btnAddCheltuiala').addEventListener('click', () => {
   document.getElementById('formCheltuiala').reset();
   document.getElementById('cheltuialaId').value = '';
   document.getElementById('cheltuialaData').value = getLastDate();
-  document.getElementById('cheltuialaCategorieSelect').value = '';
   document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
   document.getElementById('cheltuialaServiceFee').value = '';
   document.getElementById('serviceFeeGroup').style.display = '';
