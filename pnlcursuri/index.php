@@ -179,10 +179,7 @@ $csrf = csrf_token();
         <input type="number" name="suma" id="cheltuialaSuma" step="0.01" min="0.01" required />
       </div>
       <div class="form-group" id="serviceFeeGroup">
-        <label style="display:flex;align-items:center;gap:6px">
-          Service fee ING
-          <span style="font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(opțional — adaugă tranzacție separată)</span>
-        </label>
+        <label>Service fee</label>
         <input type="number" id="cheltuialaServiceFee" step="0.01" min="0.01" placeholder="ex: 0,45" />
       </div>
       <div class="modal-actions">
