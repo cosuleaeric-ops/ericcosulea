@@ -108,8 +108,7 @@ $csrf = csrf_token();
         <thead>
           <tr>
             <th style="width:110px">Data</th>
-            <th>Descriere</th>
-            <th id="thCategorie">Categorie</th>
+            <th>Categorie</th>
             <th class="right">Sumă (lei)</th>
             <th style="width:80px"></th>
           </tr>
@@ -134,8 +133,12 @@ $csrf = csrf_token();
         <input type="date" name="data" id="venitData" required />
       </div>
       <div class="form-group">
-        <label>Descriere</label>
-        <input type="text" name="descriere" id="venitDescriere" placeholder="ex: Curs 26 ian" required />
+        <label>Categorie</label>
+        <select id="venitCategorieSelect">
+          <option value="">— Selectează —</option>
+        </select>
+        <input type="text" id="venitCategorieNoua" placeholder="Nume categorie nouă"
+               style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
       <div class="form-group">
         <label>Sumă (lei)</label>
@@ -162,24 +165,12 @@ $csrf = csrf_token();
         <input type="date" name="data" id="cheltuialaData" required />
       </div>
       <div class="form-group">
-        <label>Descriere</label>
-        <input type="text" name="descriere" id="cheltuialaDescriere" placeholder="ex: Onorariu curs 4 feb" required />
-      </div>
-      <div class="form-group">
         <label>Categorie</label>
-        <select name="categorie" id="cheltuialaCategorie" required>
+        <select id="cheltuialaCategorieSelect">
           <option value="">— Selectează —</option>
-          <option>Onorariu curs</option>
-          <option>Service fee</option>
-          <option>Impozit</option>
-          <option>Avans</option>
-          <option>Decont personal</option>
-          <option>Echipament</option>
-          <option>Contabilitate</option>
-          <option>Google Workspace</option>
-          <option>Hosting</option>
-          <option>Altele</option>
         </select>
+        <input type="text" id="cheltuialaCategorieNoua" placeholder="Nume categorie nouă"
+               style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
       <div class="form-group">
         <label>Sumă (lei)</label>
@@ -230,14 +221,66 @@ let allVenituri = [];
 let allCheltuieli = [];
 let chartMonthly, chartDonut, chartCumulative;
 
+// ── Categories ───────────────────────────────────────────────────────────────
+async function loadCategories() {
+  const [vc, cc] = await Promise.all([
+    api('categorii_venituri'),
+    api('categorii_cheltuieli'),
+  ]);
+  populateSelect('venitCategorieSelect',      vc, 'add_categorie_venit');
+  populateSelect('cheltuialaCategorieSelect', cc, 'add_categorie_cheltuiala');
+}
+
+function populateSelect(selectId, cats, addAction) {
+  const sel = document.getElementById(selectId);
+  const current = sel.value;
+  // Keep first placeholder option, remove the rest
+  while (sel.options.length > 1) sel.remove(1);
+
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ Categorie nouă...';
+  sel.appendChild(newOpt);
+
+  if (current) sel.value = current;
+
+  // Wire up the "new category" input toggle
+  const inputId = selectId.replace('Select', 'Noua');
+  const inp = document.getElementById(inputId);
+  sel.onchange = () => {
+    inp.style.display = sel.value === '__new__' ? 'block' : 'none';
+    if (sel.value === '__new__') inp.focus();
+  };
+}
+
+async function resolveCategorie(selectId, inputId, addAction) {
+  const sel = document.getElementById(selectId);
+  const inp = document.getElementById(inputId);
+
+  if (sel.value === '__new__') {
+    const nome = inp.value.trim();
+    if (!nome) return null;
+    await post(addAction, { nume: nome });
+    await loadCategories();
+    document.getElementById(selectId).value = nome;
+    return nome;
+  }
+  return sel.value || null;
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   const years = await api('years');
   const sel = document.getElementById('yearSelect');
   years.forEach(y => {
     const opt = document.createElement('option');
-    opt.value = y;
-    opt.textContent = y;
+    opt.value = y; opt.textContent = y;
     sel.appendChild(opt);
   });
   sel.value = currentYear;
@@ -250,6 +293,7 @@ async function init() {
     refresh();
   });
 
+  await loadCategories();
   await refresh();
 }
 
@@ -301,7 +345,6 @@ const CAT_COLORS = [
 function renderCharts(s) {
   const labels = s.monthly.map(m => monthLabel(m.luna));
 
-  // Monthly bar chart
   if (chartMonthly) chartMonthly.destroy();
   chartMonthly = new Chart(document.getElementById('chartMonthly'), {
     type: 'bar',
@@ -329,11 +372,7 @@ function renderCharts(s) {
       maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
-          },
-        },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y)} lei` } },
       },
       scales: {
         y: {
@@ -346,7 +385,6 @@ function renderCharts(s) {
     },
   });
 
-  // Donut chart
   if (chartDonut) chartDonut.destroy();
   if (s.categorii_cheltuieli.length) {
     chartDonut = new Chart(document.getElementById('chartDonut'), {
@@ -365,29 +403,13 @@ function renderCharts(s) {
         maintainAspectRatio: false,
         cutout: '62%',
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { boxWidth: 10, font: { size: 11 }, padding: 8 },
-          },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${fmt(ctx.parsed)} lei`,
-            },
-          },
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed)} lei` } },
         },
       },
     });
-  } else {
-    const canvas = document.getElementById('chartDonut');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ccc';
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Fără date', canvas.width / 2, canvas.height / 2);
   }
 
-  // Cumulative line chart
   if (chartCumulative) chartCumulative.destroy();
   chartCumulative = new Chart(document.getElementById('chartCumulative'), {
     type: 'line',
@@ -410,11 +432,7 @@ function renderCharts(s) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
-          },
-        },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y)} lei` } },
       },
       scales: {
         y: {
@@ -430,44 +448,43 @@ function renderCharts(s) {
 // ── Table ────────────────────────────────────────────────────────────────────
 function renderTable() {
   const body = document.getElementById('txBody');
-  const thCat = document.getElementById('thCategorie');
   body.innerHTML = '';
 
   let rows = [];
   if (currentTab === 'toate') {
-    const v = allVenituri.map(r  => ({ ...r, _type: 'venit' }));
+    const v = allVenituri.map(r   => ({ ...r, _type: 'venit' }));
     const c = allCheltuieli.map(r => ({ ...r, _type: 'cheltuiala' }));
     rows = [...v, ...c].sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id);
-    thCat.textContent = 'Categorie';
-    thCat.style.display = '';
   } else if (currentTab === 'venituri') {
     rows = allVenituri.map(r => ({ ...r, _type: 'venit' }));
-    thCat.style.display = 'none';
   } else {
     rows = allCheltuieli.map(r => ({ ...r, _type: 'cheltuiala' }));
-    thCat.textContent = 'Categorie';
-    thCat.style.display = '';
   }
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">Nicio tranzacție în ${currentYear}</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">Nicio tranzacție în ${currentYear}</div></td></tr>`;
     return;
   }
 
   rows.forEach(r => {
     const isVenit = r._type === 'venit';
-    const catCell = (currentTab === 'toate' || currentTab === 'cheltuieli')
-      ? `<td>${isVenit
-          ? '<span class="badge badge-default" style="background:#EAF5EF;color:#2A7D4F">Venit</span>'
-          : `<span class="badge badge-default">${esc(r.categorie)}</span>`
-        }</td>`
-      : '';
+    // Category: for venituri stored in 'descriere', for cheltuieli stored in 'categorie'
+    const cat = isVenit ? r.descriere : r.categorie;
+
+    let catHtml;
+    if (currentTab === 'toate') {
+      const dot = isVenit
+        ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2A7D4F;margin-right:7px;vertical-align:middle"></span>'
+        : '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C1444A;margin-right:7px;vertical-align:middle"></span>';
+      catHtml = dot + esc(cat);
+    } else {
+      catHtml = esc(cat);
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${fmtDate(r.data)}</td>
-      <td>${esc(r.descriere)}</td>
-      ${catCell}
+      <td>${catHtml}</td>
       <td class="right ${isVenit ? 'suma-green' : 'suma-red'}">
         ${isVenit ? '+' : '−'} ${fmt(r.suma)}
       </td>
@@ -522,6 +539,8 @@ document.getElementById('btnAddVenit').addEventListener('click', () => {
   document.getElementById('formVenit').reset();
   document.getElementById('venitId').value = '';
   document.getElementById('venitData').value = todayStr();
+  document.getElementById('venitCategorieSelect').value = '';
+  document.getElementById('venitCategorieNoua').style.display = 'none';
   document.getElementById('errorVenit').style.display = 'none';
   openModal('modalVenit');
 });
@@ -532,6 +551,8 @@ document.getElementById('btnAddCheltuiala').addEventListener('click', () => {
   document.getElementById('formCheltuiala').reset();
   document.getElementById('cheltuialaId').value = '';
   document.getElementById('cheltuialaData').value = todayStr();
+  document.getElementById('cheltuialaCategorieSelect').value = '';
+  document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
   document.getElementById('errorCheltuiala').style.display = 'none';
   openModal('modalCheltuiala');
 });
@@ -545,21 +566,23 @@ window.openEdit = function(type, row) {
   if (type === 'venit') {
     document.getElementById('modalVenitTitle').textContent = 'Editează venit';
     document.getElementById('venitSubmit').textContent = 'Salvează';
-    document.getElementById('venitId').value       = row.id;
-    document.getElementById('venitData').value     = row.data;
-    document.getElementById('venitDescriere').value = row.descriere;
-    document.getElementById('venitSuma').value     = row.suma;
+    document.getElementById('venitId').value   = row.id;
+    document.getElementById('venitData').value = row.data;
+    document.getElementById('venitSuma').value = row.suma;
+    document.getElementById('venitCategorieNoua').style.display = 'none';
     document.getElementById('errorVenit').style.display = 'none';
+    // row.descriere holds the category for venituri
+    document.getElementById('venitCategorieSelect').value = row.descriere;
     openModal('modalVenit');
   } else {
     document.getElementById('modalCheltuialaTitle').textContent = 'Editează cheltuiala';
     document.getElementById('cheltuialaSubmit').textContent = 'Salvează';
-    document.getElementById('cheltuialaId').value         = row.id;
-    document.getElementById('cheltuialaData').value       = row.data;
-    document.getElementById('cheltuialaDescriere').value   = row.descriere;
-    document.getElementById('cheltuialaCategorie').value   = row.categorie;
-    document.getElementById('cheltuialaSuma').value       = row.suma;
+    document.getElementById('cheltuialaId').value   = row.id;
+    document.getElementById('cheltuialaData').value = row.data;
+    document.getElementById('cheltuialaSuma').value = row.suma;
+    document.getElementById('cheltuialaCategorieNoua').style.display = 'none';
     document.getElementById('errorCheltuiala').style.display = 'none';
+    document.getElementById('cheltuialaCategorieSelect').value = row.categorie;
     openModal('modalCheltuiala');
   }
 };
@@ -579,16 +602,22 @@ document.getElementById('formVenit').addEventListener('submit', async e => {
   const errEl = document.getElementById('errorVenit');
   errEl.style.display = 'none';
 
+  const categorie = await resolveCategorie('venitCategorieSelect', 'venitCategorieNoua', 'add_categorie_venit');
+  if (!categorie) {
+    errEl.textContent = 'Selectează sau creează o categorie.';
+    errEl.style.display = 'block';
+    return;
+  }
+
   const id = document.getElementById('venitId').value;
   const body = {
     data:      document.getElementById('venitData').value,
-    descriere: document.getElementById('venitDescriere').value,
+    categorie,
     suma:      document.getElementById('venitSuma').value,
   };
   if (id) body.id = id;
 
-  const action = id ? 'edit_venit' : 'add_venit';
-  const res = await post(action, body);
+  const res = await post(id ? 'edit_venit' : 'add_venit', body);
 
   if (res.success || res.id) {
     closeModal('modalVenit');
@@ -605,17 +634,22 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
   const errEl = document.getElementById('errorCheltuiala');
   errEl.style.display = 'none';
 
+  const categorie = await resolveCategorie('cheltuialaCategorieSelect', 'cheltuialaCategorieNoua', 'add_categorie_cheltuiala');
+  if (!categorie) {
+    errEl.textContent = 'Selectează sau creează o categorie.';
+    errEl.style.display = 'block';
+    return;
+  }
+
   const id = document.getElementById('cheltuialaId').value;
   const body = {
     data:      document.getElementById('cheltuialaData').value,
-    descriere: document.getElementById('cheltuialaDescriere').value,
-    categorie: document.getElementById('cheltuialaCategorie').value,
+    categorie,
     suma:      document.getElementById('cheltuialaSuma').value,
   };
   if (id) body.id = id;
 
-  const action = id ? 'edit_cheltuiala' : 'add_cheltuiala';
-  const res = await post(action, body);
+  const res = await post(id ? 'edit_cheltuiala' : 'add_cheltuiala', body);
 
   if (res.success || res.id) {
     closeModal('modalCheltuiala');

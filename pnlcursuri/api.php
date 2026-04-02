@@ -38,6 +38,26 @@ $db->exec("CREATE TABLE IF NOT EXISTS cheltuieli (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )");
 
+$db->exec("CREATE TABLE IF NOT EXISTS venit_categorii (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nume TEXT NOT NULL UNIQUE
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS cheltuiala_categorii (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nume TEXT NOT NULL UNIQUE
+)");
+
+// Seed default categories
+foreach (['Curs', 'Depunere capital social'] as $cat) {
+    $s = $db->prepare("INSERT OR IGNORE INTO venit_categorii (nume) VALUES (:n)");
+    $s->bindValue(':n', $cat); $s->execute();
+}
+foreach (['Onorariu curs','Service fee','Impozit','Avans','Decont personal','Echipament','Contabilitate','Google Workspace','Hosting','Altele'] as $cat) {
+    $s = $db->prepare("INSERT OR IGNORE INTO cheltuiala_categorii (nume) VALUES (:n)");
+    $s->bindValue(':n', $cat); $s->execute();
+}
+
 $action = $_GET['action'] ?? '';
 
 try {
@@ -50,6 +70,22 @@ try {
             break;
         case 'cheltuieli':
             handleList($db, 'cheltuieli');
+            break;
+        case 'categorii_venituri':
+            handleCategorii($db, 'venit_categorii');
+            break;
+        case 'categorii_cheltuieli':
+            handleCategorii($db, 'cheltuiala_categorii');
+            break;
+        case 'add_categorie_venit':
+            requirePost();
+            requireCsrf();
+            handleAddCategorie($db, 'venit_categorii');
+            break;
+        case 'add_categorie_cheltuiala':
+            requirePost();
+            requireCsrf();
+            handleAddCategorie($db, 'cheltuiala_categorii');
             break;
         case 'add_venit':
             requirePost();
@@ -110,6 +146,30 @@ function requireCsrf(): void
         echo json_encode(['error' => 'Token CSRF invalid']);
         exit;
     }
+}
+
+function handleCategorii(SQLite3 $db, string $table): void
+{
+    $res  = $db->query("SELECT nume FROM $table ORDER BY id ASC");
+    $cats = [];
+    while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
+        $cats[] = $row['nume'];
+    }
+    echo json_encode($cats);
+}
+
+function handleAddCategorie(SQLite3 $db, string $table): void
+{
+    $nume = trim($_POST['nume'] ?? '');
+    if (!$nume) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Nume invalid']);
+        return;
+    }
+    $stmt = $db->prepare("INSERT OR IGNORE INTO $table (nume) VALUES (:n)");
+    $stmt->bindValue(':n', $nume);
+    $stmt->execute();
+    echo json_encode(['success' => true, 'nume' => $nume]);
 }
 
 function handleYears(SQLite3 $db): void
@@ -236,19 +296,20 @@ function handleList(SQLite3 $db, string $table): void
 
 function handleAddVenit(SQLite3 $db): void
 {
-    $data     = trim($_POST['data']     ?? '');
-    $descriere = trim($_POST['descriere'] ?? '');
-    $suma     = (float)($_POST['suma']  ?? 0);
+    $data      = trim($_POST['data']      ?? '');
+    $categorie = trim($_POST['categorie'] ?? '');
+    $suma      = (float)($_POST['suma']   ?? 0);
 
-    if (!$data || !$descriere || $suma <= 0) {
+    if (!$data || !$categorie || $suma <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Date incomplete sau invalide']);
         return;
     }
 
+    // Store category in the 'descriere' column (backward-compatible)
     $stmt = $db->prepare("INSERT INTO venituri (data, descriere, suma) VALUES (:data, :descriere, :suma)");
     $stmt->bindValue(':data', $data);
-    $stmt->bindValue(':descriere', $descriere);
+    $stmt->bindValue(':descriere', $categorie);
     $stmt->bindValue(':suma', $suma);
     $stmt->execute();
 
@@ -258,11 +319,10 @@ function handleAddVenit(SQLite3 $db): void
 function handleAddCheltuiala(SQLite3 $db): void
 {
     $data      = trim($_POST['data']      ?? '');
-    $descriere = trim($_POST['descriere'] ?? '');
     $categorie = trim($_POST['categorie'] ?? '');
     $suma      = (float)($_POST['suma']   ?? 0);
 
-    if (!$data || !$descriere || !$categorie || $suma <= 0) {
+    if (!$data || !$categorie || $suma <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Date incomplete sau invalide']);
         return;
@@ -270,7 +330,7 @@ function handleAddCheltuiala(SQLite3 $db): void
 
     $stmt = $db->prepare("INSERT INTO cheltuieli (data, descriere, categorie, suma) VALUES (:data, :descriere, :categorie, :suma)");
     $stmt->bindValue(':data', $data);
-    $stmt->bindValue(':descriere', $descriere);
+    $stmt->bindValue(':descriere', $categorie);
     $stmt->bindValue(':categorie', $categorie);
     $stmt->bindValue(':suma', $suma);
     $stmt->execute();
@@ -282,10 +342,10 @@ function handleEditVenit(SQLite3 $db): void
 {
     $id        = (int)($_POST['id']       ?? 0);
     $data      = trim($_POST['data']      ?? '');
-    $descriere = trim($_POST['descriere'] ?? '');
+    $categorie = trim($_POST['categorie'] ?? '');
     $suma      = (float)($_POST['suma']   ?? 0);
 
-    if (!$id || !$data || !$descriere || $suma <= 0) {
+    if (!$id || !$data || !$categorie || $suma <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Date incomplete sau invalide']);
         return;
@@ -293,7 +353,7 @@ function handleEditVenit(SQLite3 $db): void
 
     $stmt = $db->prepare("UPDATE venituri SET data=:data, descriere=:descriere, suma=:suma WHERE id=:id");
     $stmt->bindValue(':data', $data);
-    $stmt->bindValue(':descriere', $descriere);
+    $stmt->bindValue(':descriere', $categorie);
     $stmt->bindValue(':suma', $suma);
     $stmt->bindValue(':id', $id);
     $stmt->execute();
@@ -305,11 +365,10 @@ function handleEditCheltuiala(SQLite3 $db): void
 {
     $id        = (int)($_POST['id']       ?? 0);
     $data      = trim($_POST['data']      ?? '');
-    $descriere = trim($_POST['descriere'] ?? '');
     $categorie = trim($_POST['categorie'] ?? '');
     $suma      = (float)($_POST['suma']   ?? 0);
 
-    if (!$id || !$data || !$descriere || !$categorie || $suma <= 0) {
+    if (!$id || !$data || !$categorie || $suma <= 0) {
         http_response_code(400);
         echo json_encode(['error' => 'Date incomplete sau invalide']);
         return;
@@ -317,7 +376,7 @@ function handleEditCheltuiala(SQLite3 $db): void
 
     $stmt = $db->prepare("UPDATE cheltuieli SET data=:data, descriere=:descriere, categorie=:categorie, suma=:suma WHERE id=:id");
     $stmt->bindValue(':data', $data);
-    $stmt->bindValue(':descriere', $descriere);
+    $stmt->bindValue(':descriere', $categorie);
     $stmt->bindValue(':categorie', $categorie);
     $stmt->bindValue(':suma', $suma);
     $stmt->bindValue(':id', $id);
