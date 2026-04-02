@@ -333,7 +333,7 @@ if ($uri === '/blog') {
     <section class="page-section">
       <a class="post-back" href="/">← homepage</a>
       <?php echo editable_text($isLoggedIn, 'inspo.title', site_text_value($siteTextMap, 'inspo.title', 'inspo'), 'h1', 'page-title'); ?>
-      <?php echo editable_text($isLoggedIn, 'inspo.lead', site_text_value($siteTextMap, 'inspo.lead', 'imagini salvate pentru zile negre'), 'p', 'page-lead'); ?>
+      <?php echo editable_text($isLoggedIn, 'home.inspo_lead', site_text_value($siteTextMap, 'home.inspo_lead', 'imagini salvate pentru zilele alea naspa'), 'p', 'page-lead'); ?>
       <?php if ($isLoggedIn): ?>
         <form class="inspo-upload" method="post" enctype="multipart/form-data" action="/inspo">
           <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
@@ -489,7 +489,7 @@ if ($uri === '/blog') {
 
     <section class="section">
       <?php echo editable_text($isLoggedIn, 'home.inspo_title', site_text_value($siteTextMap, 'home.inspo_title', 'inspo'), 'h2'); ?>
-      <?php echo editable_text($isLoggedIn, 'home.inspo_lead', site_text_value($siteTextMap, 'home.inspo_lead', 'imagini salvate pentru zile negre'), 'p', 'page-lead'); ?>
+      <?php echo editable_text($isLoggedIn, 'home.inspo_lead', site_text_value($siteTextMap, 'home.inspo_lead', 'imagini salvate pentru zilele alea naspa'), 'p', 'page-lead'); ?>
       <div class="inspo-strip">
         <?php foreach (fetch_images($dbPath, 8) as $img): ?>
           <a class="inspo-thumb" href="/inspo">
