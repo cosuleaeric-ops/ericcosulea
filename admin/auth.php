@@ -5,20 +5,56 @@ function config(): array {
     return require __DIR__ . '/config.php';
 }
 
-// ── DB pentru remember tokens ────────────────────────────────────────────────
-function auth_db(): SQLite3 {
-    static $db = null;
-    if ($db === null) {
-        $db = new SQLite3(__DIR__ . '/../data/blog.sqlite');
-        $db->busyTimeout(3000);
-        $db->exec("CREATE TABLE IF NOT EXISTS remember_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token_hash TEXT NOT NULL UNIQUE,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            expires_at TEXT NOT NULL
-        )");
-    }
-    return $db;
+// ── Cheie secretă derivată din parola bcrypt ─────────────────────────────────
+// Dacă parola se schimbă, toate tokenele existente devin automat invalide.
+function token_key(): string {
+    $cfg = config();
+    return hash_hmac('sha256', $cfg['password_bcrypt'], 'admin_rm_v1');
+}
+
+// ── Remember-me cookie (token HMAC semnat, fără DB) ──────────────────────────
+const REMEMBER_COOKIE = 'admin_rm';
+const REMEMBER_DAYS   = 30;
+
+function set_remember_cookie(): void {
+    $exp     = time() + REMEMBER_DAYS * 86400;
+    $payload = base64_encode((string)$exp);
+    $sig     = hash_hmac('sha256', $payload, token_key());
+    $value   = $payload . '.' . $sig;
+
+    setcookie(REMEMBER_COOKIE, $value, [
+        'expires'  => $exp,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function clear_remember_cookie(): void {
+    setcookie(REMEMBER_COOKIE, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function verify_remember_cookie(): bool {
+    $raw = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    if (!$raw) return false;
+
+    $parts = explode('.', $raw, 2);
+    if (count($parts) !== 2) return false;
+
+    [$payload, $sig] = $parts;
+
+    // Verifică semnătura
+    $expected = hash_hmac('sha256', $payload, token_key());
+    if (!hash_equals($expected, $sig)) return false;
+
+    // Verifică expiry
+    $exp = (int)base64_decode($payload);
+    return $exp > time();
 }
 
 // ── Sesiune ──────────────────────────────────────────────────────────────────
@@ -30,70 +66,16 @@ function ensure_session(): void {
     }
 }
 
-// ── Remember me ──────────────────────────────────────────────────────────────
-const REMEMBER_COOKIE   = 'admin_rm';
-const REMEMBER_DAYS     = 30;
-
-function set_remember_cookie(): void {
-    $token      = bin2hex(random_bytes(32));
-    $token_hash = hash('sha256', $token);
-    $expires_at = date('Y-m-d H:i:s', time() + REMEMBER_DAYS * 86400);
-
-    $db   = auth_db();
-    // Curăță tokeni expirați
-    $db->exec("DELETE FROM remember_tokens WHERE expires_at < datetime('now')");
-    $stmt = $db->prepare("INSERT INTO remember_tokens (token_hash, expires_at) VALUES (:h, :e)");
-    $stmt->bindValue(':h', $token_hash);
-    $stmt->bindValue(':e', $expires_at);
-    $stmt->execute();
-
-    setcookie(REMEMBER_COOKIE, $token, [
-        'expires'  => time() + REMEMBER_DAYS * 86400,
-        'path'     => '/',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-}
-
-function clear_remember_cookie(): void {
-    $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
-    if ($token) {
-        $hash = hash('sha256', $token);
-        $stmt = auth_db()->prepare("DELETE FROM remember_tokens WHERE token_hash = :h");
-        $stmt->bindValue(':h', $hash);
-        $stmt->execute();
-    }
-    setcookie(REMEMBER_COOKIE, '', time() - 3600, '/');
-}
-
 function try_remember_login(): bool {
-    $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
-    if (!$token) return false;
+    if (!verify_remember_cookie()) return false;
 
-    $hash = hash('sha256', $token);
-    $stmt = auth_db()->prepare(
-        "SELECT id FROM remember_tokens WHERE token_hash = :h AND expires_at > datetime('now')"
-    );
-    $stmt->bindValue(':h', $hash);
-    $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
-
-    if (!$row) {
-        setcookie(REMEMBER_COOKIE, '', time() - 3600, '/');
-        return false;
-    }
-
-    // Token valid — restaurează sesiunea și rotește tokenul
     ensure_session();
     session_regenerate_id(true);
     $_SESSION['admin_logged_in']    = true;
     $_SESSION['admin_logged_in_at'] = time();
 
-    // Rotire token (șterge vechiul, emite unul nou)
-    $del = auth_db()->prepare("DELETE FROM remember_tokens WHERE id = :id");
-    $del->bindValue(':id', $row['id']);
-    $del->execute();
+    // Reîmprospătează cookie-ul (extinde expiry)
     set_remember_cookie();
-
     return true;
 }
 
