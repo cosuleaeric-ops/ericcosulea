@@ -140,7 +140,12 @@ function logout_admin(): void {
 function csrf_token(): string {
     ensure_session();
     if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+        $rm = $_COOKIE[REMEMBER_COOKIE] ?? '';
+        // Dacă există remember cookie, derivăm CSRF din el — rămâne consistent
+        // chiar dacă sesiunea moare și e restaurată (token-ul JS continuă să fie valid)
+        $_SESSION['csrf_token'] = $rm
+            ? substr(hash_hmac('sha256', $rm, 'csrf_v1'), 0, 32)
+            : bin2hex(random_bytes(16));
     }
     return $_SESSION['csrf_token'];
 }
