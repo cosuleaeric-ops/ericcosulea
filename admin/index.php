@@ -86,6 +86,7 @@ $latestPost = $posts[0] ?? null;
       <a class="btn" href="/admin/page.php?slug=tools">Tools</a>
       <a class="btn" href="/admin/tracking.php">Tracking</a>
       <a class="btn" href="/admin/edit.php">Articol nou</a>
+      <a class="btn" href="/admin/logout.php" style="margin-left:auto">Logout</a>
     </div>
   </div>
   <div class="wrap">
@@ -142,9 +143,6 @@ $latestPost = $posts[0] ?? null;
       <?php endforeach; ?>
     </div>
 
-    <div class="logout-row">
-      <a class="link" href="/admin/logout.php">Logout</a>
-    </div>
   </div>
 </body>
 </html>
