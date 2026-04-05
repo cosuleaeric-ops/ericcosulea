@@ -46,10 +46,10 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
       <table>
         <thead>
           <tr>
-            <th>Curs</th>
-            <th>Data</th>
-            <th class="right">Bilete</th>
-            <th style="width:90px;text-align:center">Viză</th>
+            <th style="width:100%">Curs</th>
+            <th style="white-space:nowrap">Data</th>
+            <th class="right" style="white-space:nowrap">Bilete</th>
+            <th style="white-space:nowrap;text-align:center">Viză</th>
           </tr>
         </thead>
         <tbody>
