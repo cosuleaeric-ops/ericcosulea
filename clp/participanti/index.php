@@ -52,7 +52,7 @@ $totalTickets = array_sum(array_column($participants, 'total_tickets'));
   <h1>Participanți</h1>
   <div class="header-controls">
     <a href="/clp/" class="logout-link">← CLP</a>
-    <a href="/admin/logout.php" class="logout-link">Ieși</a>
+
   </div>
 </header>
 <main class="container">

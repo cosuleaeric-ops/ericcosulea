@@ -153,7 +153,7 @@ if (!is_logged_in()) {
     </a>
   </div>
 
-  <a class="logout" href="/admin/logout.php">Ieși</a>
+
 
 </body>
 </html>

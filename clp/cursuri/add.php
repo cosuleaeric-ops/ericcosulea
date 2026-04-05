@@ -8,17 +8,56 @@ $db  = get_clp_db();
 $csrf = csrf_token();
 $error = '';
 
+function parse_ro_date(string $input): ?string {
+    $input = trim(strtolower($input));
+    $year  = (int)date('Y');
+    $months = [
+        'ianuarie'=>1,'ian'=>1,
+        'februarie'=>2,'feb'=>2,
+        'martie'=>3,'mar'=>3,
+        'aprilie'=>4,'apr'=>4,
+        'mai'=>5,
+        'iunie'=>6,'iun'=>6,
+        'iulie'=>7,'iul'=>7,
+        'august'=>8,'aug'=>8,
+        'septembrie'=>9,'sep'=>9,'sept'=>9,
+        'octombrie'=>10,'oct'=>10,
+        'noiembrie'=>11,'noi'=>11,'nov'=>11,
+        'decembrie'=>12,'dec'=>12,
+    ];
+    // "6 martie" / "6 martie 2026"
+    foreach ($months as $name => $num) {
+        if (preg_match('/(\d{1,2})\s+' . preg_quote($name, '/') . '(?:\s+(\d{4}))?/', $input, $m)) {
+            $d = (int)$m[1];
+            $y = isset($m[2]) && $m[2] ? (int)$m[2] : $year;
+            if ($d >= 1 && $d <= 31) return sprintf('%04d-%02d-%02d', $y, $num, $d);
+        }
+    }
+    // "6.03" / "6.03.2026" / "6/03/2026"
+    if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{4}))?$/', $input, $m)) {
+        $d = (int)$m[1]; $mo = (int)$m[2];
+        $y = isset($m[3]) && $m[3] ? (int)$m[3] : $year;
+        if ($d >= 1 && $d <= 31 && $mo >= 1 && $mo <= 12) return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+    }
+    // already yyyy-mm-dd
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $input)) return $input;
+    return null;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? '')) {
         http_response_code(400); exit('CSRF invalid');
     }
     $name = trim($_POST['name'] ?? '');
-    $date = trim($_POST['date'] ?? '');
+    $dateRaw = trim($_POST['date_raw'] ?? '');
+    $date = parse_ro_date($dateRaw);
     $participantsJson = $_POST['participants_json'] ?? '[]';
     $participants = json_decode($participantsJson, true);
 
     if (!$name || !$date || !is_array($participants) || empty($participants)) {
-        $error = 'Completează toate câmpurile și încarcă fișierul XLSX.';
+        $error = !$date && $dateRaw
+            ? "Nu am înțeles data „{$dateRaw}". Încearcă: 6 martie, 6.03 sau 6.03.2026."
+            : 'Completează toate câmpurile și încarcă fișierul XLSX.';
     } else {
         $stmt = $db->prepare('INSERT INTO courses (name, date, created_at) VALUES (:name, :date, :now)');
         $stmt->bindValue(':name', $name, SQLITE3_TEXT);
@@ -80,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <h1>Curs nou</h1>
   <div class="header-controls">
     <a href="/clp/cursuri/" class="logout-link">← Cursuri</a>
-    <a href="/admin/logout.php" class="logout-link">Ieși</a>
+
   </div>
 </header>
 <main class="container">
@@ -100,7 +139,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Data cursului</label>
-          <input type="date" name="date" id="courseDate" required value="<?php echo h($_POST['date'] ?? ''); ?>">
+          <input type="text" name="date_raw" id="courseDate" autocomplete="off"
+                 value="<?php echo h($_POST['date_raw'] ?? ''); ?>"
+                 placeholder="6 martie, 6.03 sau 6.03.2026">
+          <div id="dateParsed" style="font-size:12px;margin-top:5px;color:var(--muted);min-height:16px"></div>
         </div>
       </div>
 
@@ -220,6 +262,48 @@ function applyCol(col) {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Date parser (mirrors PHP logic) ──────────────────────────────────────────
+const RO_MONTHS = {
+    'ianuarie':1,'ian':1,'februarie':2,'feb':2,'martie':3,'mar':3,
+    'aprilie':4,'apr':4,'mai':5,'iunie':6,'iun':6,'iulie':7,'iul':7,
+    'august':8,'aug':8,'septembrie':9,'sep':9,'sept':9,
+    'octombrie':10,'oct':10,'noiembrie':11,'noi':11,'nov':11,'decembrie':12,'dec':12
+};
+const RO_MONTH_NAMES = ['','ianuarie','februarie','martie','aprilie','mai','iunie',
+    'iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+
+function parseRoDate(input) {
+    const s = input.trim().toLowerCase();
+    const y = new Date().getFullYear();
+    for (const [name, num] of Object.entries(RO_MONTHS)) {
+        const re = new RegExp('(\\d{1,2})\\s+' + name + '(?:\\s+(\\d{4}))?');
+        const m = s.match(re);
+        if (m) {
+            const d = +m[1], yr = m[2] ? +m[2] : y;
+            if (d >= 1 && d <= 31) return { d, mo: num, y: yr };
+        }
+    }
+    const m2 = s.match(/^(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{4}))?$/);
+    if (m2) {
+        const d = +m2[1], mo = +m2[2], yr = m2[3] ? +m2[3] : y;
+        if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) return { d, mo, y: yr };
+    }
+    return null;
+}
+
+document.getElementById('courseDate').addEventListener('input', function() {
+    const el = document.getElementById('dateParsed');
+    const parsed = parseRoDate(this.value);
+    if (!this.value.trim()) { el.textContent = ''; return; }
+    if (parsed) {
+        el.style.color = 'var(--green)';
+        el.textContent = '→ ' + parsed.d + ' ' + RO_MONTH_NAMES[parsed.mo] + ' ' + parsed.y;
+    } else {
+        el.style.color = 'var(--red)';
+        el.textContent = '✕ dată nerecunoscută';
+    }
+});
 </script>
 </body>
 </html>

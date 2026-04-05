@@ -114,7 +114,7 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
   <h1><?php echo h($course['name']); ?></h1>
   <div class="header-controls">
     <a href="/clp/cursuri/" class="logout-link">← Cursuri</a>
-    <a href="/admin/logout.php" class="logout-link">Ieși</a>
+
   </div>
 </header>
 <main class="container">
