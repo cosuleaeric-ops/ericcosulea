@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="card">
         <div class="form-group">
           <label>Numele cursului</label>
-          <input type="text" name="name" id="courseName" required placeholder="ex: Vinuri Roșii — Martie 2026" value="<?php echo h($_POST['name'] ?? ''); ?>">
+          <input type="text" name="name" id="courseName" required placeholder="" value="<?php echo h($_POST['name'] ?? ''); ?>">
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Data cursului</label>
