@@ -223,7 +223,7 @@ if (!is_logged_in()) {
 <header class="app-header">
   <h1>Analizor bilete</h1>
   <div class="header-controls">
-    <a href="/pnlcursuri/" class="logout-link">← P&amp;L</a>
+    <a href="/clp/" class="logout-link">← CLP</a>
     <a href="/admin/logout.php" class="logout-link">Ieși</a>
   </div>
 </header>

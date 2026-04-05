@@ -35,7 +35,7 @@ header('X-Robots-Tag: noindex, nofollow');
   <h1>P&amp;L — Cursuri la Pahar</h1>
   <div class="header-controls">
     <select class="year-select" id="yearSelect"></select>
-    <a href="/pnlcursuri/bilete.php" class="btn btn-green" style="font-size:12px;padding:5px 12px">Analizor bilete</a>
+    <a href="/clp/" class="logout-link">← CLP</a>
     <a href="/admin/logout.php" class="logout-link">Ieși</a>
   </div>
 </header>
