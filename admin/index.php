@@ -124,6 +124,17 @@ $latestPost = $posts[0] ?? null;
       </div>
     </section>
 
+    <section style="margin-top:28px">
+      <h2 class="section-title">cursuri la pahar</h2>
+      <a class="quick-card" href="/clp/" style="display:inline-flex;align-items:center;gap:10px;padding:16px 22px;margin-top:0;text-decoration:none">
+        <span style="font-size:20px">🍷</span>
+        <span>
+          <strong style="font-size:16px;display:block;text-transform:lowercase">dashboard CLP</strong>
+          <span style="font-size:13px;color:#6d6a64">P&amp;L, analizor bilete și tooluri viitoare</span>
+        </span>
+      </a>
+    </section>
+
     <section>
       <h2 class="section-title">articole recente</h2>
     </section>
