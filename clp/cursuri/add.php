@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label>Data cursului</label>
           <input type="text" name="date_raw" id="courseDate" autocomplete="off"
                  value="<?php echo h($_POST['date_raw'] ?? ''); ?>"
-                 placeholder="6 martie, 6.03 sau 6.03.2026">
+                 placeholder="">
           <div id="dateParsed" style="font-size:12px;margin-top:5px;color:var(--muted);min-height:16px"></div>
         </div>
       </div>
