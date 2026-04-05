@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else { $error = 'Doar fișiere PDF sunt acceptate.'; }
         } else { $error = 'Eroare la upload.'; }
-        if (!$error) { header("Location: /clp/cursuri/{$id}"); exit; }
+        if (!$error) { header("Location: /clp/cursuri/view.php?id={$id}"); exit; }
     }
 
     if ($action === 'delete_viza') {
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @unlink($uploadDir . $row['filename']);
             $db->exec("DELETE FROM course_files WHERE id={$fid}");
         }
-        header("Location: /clp/cursuri/{$id}"); exit;
+        header("Location: /clp/cursuri/view.php?id={$id}"); exit;
     }
 
     if ($action === 'delete_course') {

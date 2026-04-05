@@ -53,7 +53,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
         </thead>
         <tbody>
         <?php foreach ($courses as $c): ?>
-          <tr style="cursor:pointer" onclick="location.href='/clp/cursuri/<?php echo $c['id']; ?>'">
+          <tr style="cursor:pointer" onclick="location.href='/clp/cursuri/view.php?id=<?php echo $c['id']; ?>'">
             <td><strong><?php echo h($c['name']); ?></strong></td>
             <td><?php echo h(ro_date($c['date'])); ?></td>
             <td class="right"><?php echo (int)$c['total_tickets']; ?></td>

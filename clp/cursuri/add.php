@@ -1,8 +1,5 @@
 <?php
 declare(strict_types=1);
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
 require __DIR__ . '/../../admin/auth.php';
 require __DIR__ . '/db.php';
 if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/add.php'); exit; }
@@ -78,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute();
             $ins->reset();
         }
-        header("Location: /clp/cursuri/{$courseId}");
+        header("Location: /clp/cursuri/view.php?id={$courseId}");
         exit;
     }
 }
