@@ -146,11 +146,6 @@ if (!is_logged_in()) {
       <div class="tool-name">P&amp;L Cursuri</div>
       <div class="tool-desc">venituri, cheltuieli și profit net pe luni și categorii</div>
     </a>
-    <a class="tool-card" href="/clp/bilete.php">
-      <div class="tool-icon">🎟</div>
-      <div class="tool-name">Analizor bilete</div>
-      <div class="tool-desc">upload XLSX rapid → distribuție comenzi</div>
-    </a>
   </div>
 
 
