@@ -429,14 +429,6 @@ if ($uri === '/blog') {
             <span class="project-meta">(evenimente)</span>
           </span>
         </a>
-        <?php if ($isLoggedIn): ?>
-        <a class="project" href="/pnlcursuri/bilete.php" style="opacity:.75">
-          <span class="project-text">
-            <span class="project-name" style="font-size:13px">🎟 analizor bilete</span>
-            <span class="project-meta">(upload xlsx → distribuție comenzi)</span>
-          </span>
-        </a>
-        <?php endif; ?>
         <a class="project" href="https://robotache.ro/" target="_blank" rel="noopener noreferrer">
           <img class="project-icon-img" src="/assets/logo-robotache.png" alt="">
           <span class="project-text">
