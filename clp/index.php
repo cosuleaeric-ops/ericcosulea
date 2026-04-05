@@ -40,8 +40,8 @@ if (!is_logged_in()) {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
+      justify-content: flex-start;
+      padding: 64px 24px 24px;
     }
 
     .header {

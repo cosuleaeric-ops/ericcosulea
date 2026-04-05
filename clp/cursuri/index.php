@@ -49,7 +49,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <th>Curs</th>
             <th>Data</th>
             <th class="right">Bilete</th>
-            <th style="width:80px;text-align:center">Viză</th>
+            <th style="width:90px;text-align:center">Viză</th>
           </tr>
         </thead>
         <tbody>
@@ -58,9 +58,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <td><strong><?php echo h($c['name']); ?></strong></td>
             <td><?php echo h(ro_date($c['date'])); ?></td>
             <td class="right"><?php echo (int)$c['total_tickets']; ?></td>
-            <td style="text-align:center">
+            <td style="text-align:center;white-space:nowrap">
               <?php if ($c['viza_filename']): ?>
-                <a href="/clp/uploads/<?php echo h($c['viza_filename']); ?>" target="_blank" rel="noopener" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📄 viză</a>
+                <a href="/clp/uploads/<?php echo h($c['viza_filename']); ?>" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;gap:3px;color:var(--green);font-size:13px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📄 viză</a>
               <?php else: ?>
                 <span style="color:var(--border);font-size:16px">—</span>
               <?php endif; ?>
