@@ -25,7 +25,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
 </head>
 <body>
 <header class="app-header">
-  <h1><a href="/clp/" style="text-decoration:none;color:inherit">Dashboard</a></h1>
+  <h1>Cursuri</h1>
   <div class="header-controls">
     <a href="/clp/cursuri/add.php" class="btn btn-green" style="font-size:12px;padding:5px 14px">+ Curs nou</a>
     <a href="/clp/" class="logout-link">← CLP</a>
@@ -33,6 +33,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   </div>
 </header>
 <main class="container" style="max-width:800px">
+<a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Dashboard</a>
 <?php if (empty($courses)): ?>
   <div style="text-align:center;padding:80px 24px;color:var(--muted)">
     <div style="font-size:40px;margin-bottom:16px">📋</div>

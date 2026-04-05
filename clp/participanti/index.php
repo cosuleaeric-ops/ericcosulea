@@ -49,13 +49,14 @@ $totalTickets = array_sum(array_column($participants, 'total_tickets'));
 </head>
 <body>
 <header class="app-header">
-  <h1><a href="/clp/" style="text-decoration:none;color:inherit">Dashboard</a></h1>
+  <h1>Participanți</h1>
   <div class="header-controls">
     <a href="/clp/" class="logout-link">← CLP</a>
 
   </div>
 </header>
 <main class="container">
+  <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Dashboard</a>
 
   <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
     <div class="stat-card accent-blue">
