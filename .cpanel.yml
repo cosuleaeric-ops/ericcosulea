@@ -6,6 +6,7 @@ deployment:
     - /bin/cp -R admin $DEPLOYPATH
     - /bin/cp -R data $DEPLOYPATH
     - /bin/cp -R deep-work $DEPLOYPATH
+    - /bin/cp -R pnlcursuri $DEPLOYPATH
     - /bin/cp -R uploads $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
