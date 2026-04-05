@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$name || !$date || !is_array($participants) || empty($participants)) {
         $error = !$date && $dateRaw
-            ? "Nu am înțeles data „{$dateRaw}". Încearcă: 6 martie, 6.03 sau 6.03.2026."
+            ? 'Nu am putut interpreta data "' . $dateRaw . '". Încearcă: 6 martie, 6.03 sau 6.03.2026.'
             : 'Completează toate câmpurile și încarcă fișierul XLSX.';
     } else {
         $stmt = $db->prepare('INSERT INTO courses (name, date, created_at) VALUES (:name, :date, :now)');
