@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 function get_clp_db(): SQLite3 {
     $path = __DIR__ . '/../data/clp.sqlite';
+    $dir  = dirname($path);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
     $db = new SQLite3($path);
     $db->exec('PRAGMA foreign_keys = ON;');
     $db->exec('PRAGMA journal_mode = WAL;');
@@ -28,8 +30,10 @@ function get_clp_db(): SQLite3 {
     return $db;
 }
 
-function h(string $v): string {
-    return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+if (!function_exists('h')) {
+    function h(string $v): string {
+        return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 function ro_date(string $date): string {
