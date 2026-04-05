@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <header class="app-header">
-  <h1>Curs nou</h1>
+  <h1><a href="/clp/" style="text-decoration:none;color:inherit">Dashboard</a></h1>
   <div class="header-controls">
     <a href="/clp/cursuri/" class="logout-link">← Cursuri</a>
 
