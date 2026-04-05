@@ -4,7 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/../admin/auth.php';
 
 if (!is_logged_in()) {
-    header('Location: /admin/login.php?redirect=/pnlcursuri/bilete');
+    header('Location: /admin/login.php?redirect=/pnlcursuri/bilete.php');
     exit;
 }
 ?>

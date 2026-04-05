@@ -430,7 +430,7 @@ if ($uri === '/blog') {
           </span>
         </a>
         <?php if ($isLoggedIn): ?>
-        <a class="project" href="/pnlcursuri/bilete" style="opacity:.75">
+        <a class="project" href="/pnlcursuri/bilete.php" style="opacity:.75">
           <span class="project-text">
             <span class="project-name" style="font-size:13px">🎟 analizor bilete</span>
             <span class="project-meta">(upload xlsx → distribuție comenzi)</span>
