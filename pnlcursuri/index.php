@@ -41,7 +41,7 @@ header('X-Robots-Tag: noindex, nofollow');
 </header>
 
 <main class="container">
-  <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Dashboard</a>
+  <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
 
   <!-- Stats -->
   <div class="stats-grid">

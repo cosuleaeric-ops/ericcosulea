@@ -56,7 +56,7 @@ $totalTickets = array_sum(array_column($participants, 'total_tickets'));
   </div>
 </header>
 <main class="container">
-  <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Dashboard</a>
+  <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
 
   <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
     <div class="stat-card accent-blue">

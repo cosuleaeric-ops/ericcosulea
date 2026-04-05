@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </header>
 <main class="container">
   <div class="add-wrap">
-    <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Dashboard</a>
+    <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
     <?php if ($error): ?>
       <div class="error-msg" style="display:block;margin-bottom:20px"><?php echo h($error); ?></div>
     <?php endif; ?>

@@ -125,7 +125,7 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
     <?php endif; ?>
 
     <div class="course-hero">
-      <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:10px">← Dashboard</a>
+      <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:10px">← Înapoi</a>
       <h2><?php echo h($course['name']); ?></h2>
       <div class="meta">📅 <?php echo h(ro_date($course['date'])); ?></div>
     </div>
