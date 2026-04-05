@@ -65,8 +65,8 @@ if (!is_logged_in()) {
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, 280px);
-      gap: 20px;
+      grid-template-columns: repeat(2, 260px);
+      gap: 16px;
     }
 
     .tool-card {
@@ -131,6 +131,16 @@ if (!is_logged_in()) {
   </div>
 
   <div class="grid">
+    <a class="tool-card" href="/clp/cursuri/">
+      <div class="tool-icon">📋</div>
+      <div class="tool-name">Cursuri</div>
+      <div class="tool-desc">toate cursurile, participanți, distribuție bilete și viză</div>
+    </a>
+    <a class="tool-card" href="/clp/participanti/">
+      <div class="tool-icon">👥</div>
+      <div class="tool-name">Participanți</div>
+      <div class="tool-desc">agregat complet — cine a venit și de câte ori revine</div>
+    </a>
     <a class="tool-card" href="/clp/pnlcursuri/">
       <div class="tool-icon">📈</div>
       <div class="tool-name">P&amp;L Cursuri</div>
@@ -139,7 +149,7 @@ if (!is_logged_in()) {
     <a class="tool-card" href="/clp/bilete.php">
       <div class="tool-icon">🎟</div>
       <div class="tool-name">Analizor bilete</div>
-      <div class="tool-desc">upload XLSX → distribuție comenzi per număr de bilete</div>
+      <div class="tool-desc">upload XLSX rapid → distribuție comenzi</div>
     </a>
   </div>
 

@@ -8,6 +8,8 @@ deployment:
     - /bin/cp -R deep-work $DEPLOYPATH
     - /bin/cp -R pnlcursuri $DEPLOYPATH
     - /bin/cp -R clp $DEPLOYPATH
+    - /bin/mkdir -p ${DEPLOYPATH}clp/data
+    - /bin/mkdir -p ${DEPLOYPATH}clp/uploads
     - /bin/cp -R uploads $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH

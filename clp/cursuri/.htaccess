@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteBase /clp/cursuri/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(\d+)/?$ view.php?id=$1 [L,QSA]
