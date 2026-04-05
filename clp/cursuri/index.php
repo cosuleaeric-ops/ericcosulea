@@ -7,7 +7,7 @@ if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/
 $db = get_clp_db();
 $result = $db->query('SELECT c.id, c.name, c.date,
     (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
-    (SELECT COUNT(*) FROM course_files f WHERE f.course_id = c.id AND f.file_type = \'viza\') as has_viza
+    (SELECT filename FROM course_files f WHERE f.course_id = c.id AND f.file_type = \'viza\' ORDER BY f.uploaded_at DESC LIMIT 1) as viza_filename
     FROM courses c ORDER BY c.date DESC');
 $courses = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
@@ -59,8 +59,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <td><?php echo h(ro_date($c['date'])); ?></td>
             <td class="right"><?php echo (int)$c['total_tickets']; ?></td>
             <td style="text-align:center">
-              <?php if ($c['has_viza']): ?>
-                <span style="color:var(--green);font-size:16px" title="Viză încărcată">✓</span>
+              <?php if ($c['viza_filename']): ?>
+                <a href="/clp/uploads/<?php echo h($c['viza_filename']); ?>" target="_blank" rel="noopener" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📄 viză</a>
               <?php else: ?>
                 <span style="color:var(--border);font-size:16px">—</span>
               <?php endif; ?>
