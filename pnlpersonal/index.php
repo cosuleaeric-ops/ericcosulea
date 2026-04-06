@@ -51,7 +51,19 @@ header('X-Robots-Tag: noindex, nofollow');
 
 <main class="container">
   <a href="#" onclick="history.back();return false;"
-     style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px">← Înapoi</a>
+     style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
+
+  <!-- ══ QUICK ADD ══════════════════════════════════════════════════════════ -->
+  <div class="quick-add-bar">
+    <button class="quick-add-btn quick-add-cheltuiala" id="topBtnCheltuiala">
+      <span class="qab-icon">−</span>
+      <span class="qab-text">Adaugă cheltuială</span>
+    </button>
+    <button class="quick-add-btn quick-add-venit" id="topBtnVenit">
+      <span class="qab-icon">+</span>
+      <span class="qab-text">Adaugă venit</span>
+    </button>
+  </div>
 
   <!-- ══ PORTOFEL ════════════════════════════════════════════════════════════ -->
   <div id="portofelSection">
@@ -620,7 +632,16 @@ async function init() {
     sel.appendChild(opt);
   });
 
-  sel.value = String(currentYear);
+  // Default la luna curentă
+  const now      = new Date();
+  const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  const hasMonth = [...sel.options].some(o => o.value === monthKey);
+  if (hasMonth) {
+    sel.value    = monthKey;
+    currentMonth = now.getMonth() + 1;
+  } else {
+    sel.value = String(currentYear);
+  }
   if (!sel.value && periods.length) sel.value = periods[0].value;
 
   sel.addEventListener('change', () => {
@@ -995,6 +1016,14 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
     errEl.textContent = res.error || 'Eroare';
     errEl.style.display = 'block';
   }
+});
+
+// ── Quick-add buttons (top bar) ───────────────────────────────────────────────
+document.getElementById('topBtnCheltuiala').addEventListener('click', () => {
+  document.getElementById('btnAddCheltuiala').click();
+});
+document.getElementById('topBtnVenit').addEventListener('click', () => {
+  document.getElementById('btnAddVenit').click();
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
