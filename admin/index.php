@@ -111,6 +111,11 @@ $latestPost = $posts[0] ?? null;
         <h2>cursuri la pahar</h2>
         <p>dashboard cu P&amp;L, analizor bilete și tooluri viitoare.</p>
       </a>
+      <a class="quick-card" href="/pnlpersonal/">
+        <span class="quick-card-kicker">tool intern</span>
+        <h2>p&amp;l personal</h2>
+        <p>cheltuieli, venituri și portofel — cash, ING, Revolut, Trading212.</p>
+      </a>
     </section>
 
     <section>
