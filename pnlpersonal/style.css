@@ -229,11 +229,26 @@ body {
 }
 
 /* ── Portofel Section ── */
+.portofel-summary {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
 .portofel-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 14px;
   margin-bottom: 16px;
+}
+
+/* When grid is inside the collapsible toggle body */
+.portofel-grid-inner {
+  padding: 18px 18px 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
 }
 
 .portofel-meta {
@@ -243,6 +258,13 @@ body {
   font-size: 12px;
   color: var(--muted);
   margin-bottom: 16px;
+}
+
+/* When meta is inside the collapsible toggle body */
+.portofel-meta-inner {
+  padding: 10px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
 }
 
 .portofel-meta .update-link {
@@ -426,6 +448,11 @@ body {
 .cumulative-wrap {
   position: relative;
   height: 180px;
+}
+
+.ranking-wrap {
+  position: relative;
+  height: 280px;
 }
 
 /* ── Transactions ── */

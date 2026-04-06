@@ -68,52 +68,54 @@ header('X-Robots-Tag: noindex, nofollow');
   <!-- ══ PORTOFEL ════════════════════════════════════════════════════════════ -->
   <div id="portofelSection">
     <div class="section-title-bar">
-      <h2>💼 Portofel</h2>
+      <h2>💼 Portofel <span class="portofel-summary" id="portofelSummary"></span></h2>
       <button class="btn btn-blue" id="btnActualizeaza">+ Actualizează</button>
     </div>
 
-    <!-- Portofel stat cards -->
-    <div class="portofel-grid">
-      <div class="stat-card accent-green">
-        <div class="label">Cash 💵</div>
-        <div class="value green" id="pCash">—</div>
-        <div class="sub">portofel fizic</div>
-      </div>
-      <div class="stat-card accent-orange">
-        <div class="label">ING 🏦</div>
-        <div class="value" style="color:#E8704A" id="pIng">—</div>
-        <div class="sub">cont curent</div>
-      </div>
-      <div class="stat-card accent-blue">
-        <div class="label">Revolut 💳</div>
-        <div class="value blue" id="pRevolut">—</div>
-        <div class="sub">cont digital</div>
-      </div>
-      <div class="stat-card accent-gold">
-        <div class="label">Total Lichid 💰</div>
-        <div class="value gold" id="pTotal">—</div>
-        <div class="sub">cash + ing + revolut</div>
-      </div>
-      <div class="stat-card accent-purple">
-        <div class="label">Trading212 📈</div>
-        <div class="value purple" id="pTrading">—</div>
-        <div class="sub">investiții</div>
-      </div>
-    </div>
-
-    <div class="portofel-meta">
-      <span id="portofelLastUpdate">—</span>
-      <span>·</span>
-      <a class="update-link" id="portofelEditLink">Editează ultima intrare</a>
-    </div>
-
-    <!-- Portofel history (collapsible) -->
+    <!-- Portofel details + history (all collapsible) -->
     <div class="portofel-history">
       <div class="portofel-history-header" id="historyToggle">
-        <span>Istoric portofel</span>
+        <span>Detalii &amp; Istoric</span>
         <span class="toggle-icon">▼</span>
       </div>
       <div class="portofel-history-body" id="historyBody">
+
+        <!-- Stat cards -->
+        <div class="portofel-grid portofel-grid-inner">
+          <div class="stat-card accent-green">
+            <div class="label">Cash 💵</div>
+            <div class="value green" id="pCash">—</div>
+            <div class="sub">portofel fizic</div>
+          </div>
+          <div class="stat-card accent-orange">
+            <div class="label">ING 🏦</div>
+            <div class="value" style="color:#E8704A" id="pIng">—</div>
+            <div class="sub">cont curent</div>
+          </div>
+          <div class="stat-card accent-blue">
+            <div class="label">Revolut 💳</div>
+            <div class="value blue" id="pRevolut">—</div>
+            <div class="sub">cont digital</div>
+          </div>
+          <div class="stat-card accent-gold">
+            <div class="label">Total Lichid 💰</div>
+            <div class="value gold" id="pTotal">—</div>
+            <div class="sub">cash + ing + revolut</div>
+          </div>
+          <div class="stat-card accent-purple">
+            <div class="label">Trading212 📈</div>
+            <div class="value purple" id="pTrading">—</div>
+            <div class="sub">investiții</div>
+          </div>
+        </div>
+
+        <div class="portofel-meta portofel-meta-inner">
+          <span id="portofelLastUpdate">—</span>
+          <span>·</span>
+          <a class="update-link" id="portofelEditLink">Editează ultima intrare</a>
+        </div>
+
+        <!-- History table -->
         <table>
           <thead>
             <tr>
@@ -128,6 +130,7 @@ header('X-Robots-Tag: noindex, nofollow');
           </thead>
           <tbody id="portofelHistoryRows"></tbody>
         </table>
+
       </div>
     </div>
   </div>
@@ -177,11 +180,11 @@ header('X-Robots-Tag: noindex, nofollow');
     </div>
   </div>
 
-  <!-- Cumulative chart -->
+  <!-- Ranking chart -->
   <div class="chart-card cumulative-card">
-    <h3>Cheltuieli cumulate</h3>
-    <div class="cumulative-wrap">
-      <canvas id="chartCumulative"></canvas>
+    <h3>Top categorii</h3>
+    <div class="ranking-wrap">
+      <canvas id="chartRanking"></canvas>
     </div>
   </div>
 
@@ -371,7 +374,7 @@ let currentMonth  = null;
 let currentTab    = 'toate';
 let allVenituri   = [];
 let allCheltuieli = [];
-let chartMonthly, chartDonut, chartCumulative;
+let chartMonthly, chartDonut, chartRanking;
 const rowStore    = new Map();
 const lastDateKey = 'pnlpersonal_last_date';
 const getLastDate = () => localStorage.getItem(lastDateKey) || todayStr();
@@ -473,6 +476,7 @@ function renderPortofelCards(p) {
     });
     document.getElementById('portofelLastUpdate').textContent = 'Nicio înregistrare';
     document.getElementById('portofelEditLink').style.display = 'none';
+    document.getElementById('portofelSummary').textContent = '';
     return;
   }
 
@@ -490,6 +494,7 @@ function renderPortofelCards(p) {
 
   document.getElementById('portofelLastUpdate').textContent = 'Actualizat: ' + fmtDate(p.data);
   document.getElementById('portofelEditLink').style.display = '';
+  document.getElementById('portofelSummary').textContent = '— lichid: ' + fmt(lichid) + ' lei';
 }
 
 function renderPortofelHistory(rows) {
@@ -775,43 +780,40 @@ function renderCharts(s) {
     });
   }
 
-  // ── Grafic 3: Cheltuieli cumulate (linie ascendentă) ─────────────────────────
-  if (chartCumulative) chartCumulative.destroy();
-  let cumSum = 0;
-  const cumData = s.monthly.map(m => { cumSum += m.cheltuieli; return cumSum; });
-  chartCumulative = new Chart(document.getElementById('chartCumulative'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Cheltuieli cumulate',
-        data: cumData,
-        borderColor: '#C1444A',
-        backgroundColor: 'rgba(193,68,74,0.08)',
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.35,
-        pointBackgroundColor: '#C1444A',
-        pointRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y)} lei` } },
+  // ── Grafic 3: Top categorii (bar orizontal, ranking) ─────────────────────────
+  if (chartRanking) chartRanking.destroy();
+  const catData = [...s.categorii_cheltuieli].sort((a, b) => b.suma - a.suma);
+  if (catData.length) {
+    chartRanking = new Chart(document.getElementById('chartRanking'), {
+      type: 'bar',
+      data: {
+        labels: catData.map(c => c.categorie),
+        datasets: [{
+          data: catData.map(c => c.suma),
+          backgroundColor: CAT_COLORS.slice(0, catData.length),
+          borderRadius: 4,
+          borderSkipped: false,
+        }],
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: '#F0EDE6' },
-          ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.x)} lei` } },
         },
-        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: { color: '#F0EDE6' },
+            ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
+          },
+          y: { grid: { display: false }, ticks: { font: { size: 12 } } },
+        },
       },
-    },
-  });
+    });
+  }
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
