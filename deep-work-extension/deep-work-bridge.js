@@ -12,24 +12,26 @@
     }
   }
 
-  function pushState() {
-    const state = readState();
+  function sendBlockState(active, mode) {
     chrome.runtime.sendMessage({
       type: "DEEP_WORK_BLOCK_STATE",
-      active: state.active,
-      mode: state.mode
+      active,
+      mode: mode || null
+    }).catch(() => {
+      // service worker-ul poate fi inactiv la momentul injectării — ignorăm eroarea
     });
+  }
+
+  function pushState() {
+    const state = readState();
+    sendBlockState(state.active, state.mode);
   }
 
   pushState();
 
   document.addEventListener("eliteDeepWorkTimerChange", (event) => {
     const detail = event.detail || {};
-    chrome.runtime.sendMessage({
-      type: "DEEP_WORK_BLOCK_STATE",
-      active: Boolean(detail.active),
-      mode: detail.mode || null
-    });
+    sendBlockState(Boolean(detail.active), detail.mode || null);
   });
 
   window.addEventListener("storage", (event) => {
