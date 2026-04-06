@@ -69,7 +69,6 @@ header('X-Robots-Tag: noindex, nofollow');
   <div id="portofelSection">
     <div class="section-title-bar">
       <h2>💼 Portofel</h2>
-      <button class="btn btn-blue" id="btnActualizeaza">+ Actualizează</button>
     </div>
 
     <!-- Portofel details + history (all collapsible) -->
@@ -113,6 +112,8 @@ header('X-Robots-Tag: noindex, nofollow');
           <span id="portofelLastUpdate">—</span>
           <span>·</span>
           <a class="update-link" id="portofelEditLink">Editează ultima intrare</a>
+          <span>·</span>
+          <button class="btn btn-blue btn-sm" id="btnActualizeaza">+ Actualizează</button>
         </div>
 
         <!-- History table -->
