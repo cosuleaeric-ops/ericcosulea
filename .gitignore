@@ -1,1 +1,14 @@
 .DS_Store
+
+# Sensitive config
+admin/config.php
+
+# Databases
+*.sqlite
+*.db
+
+# Uploaded files
+clp/uploads/*.pdf
+clp/uploads/*.jpg
+clp/uploads/*.png
+clp/uploads/*.jpeg
