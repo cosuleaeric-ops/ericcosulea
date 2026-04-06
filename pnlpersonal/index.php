@@ -164,7 +164,7 @@ header('X-Robots-Tag: noindex, nofollow');
   <!-- Charts row -->
   <div class="charts-row">
     <div class="chart-card">
-      <h3>Venituri vs Cheltuieli</h3>
+      <h3 id="chartDailyTitle">Cheltuieli zilnice</h3>
       <div class="chart-wrap">
         <canvas id="chartMonthly"></canvas>
       </div>
@@ -179,7 +179,7 @@ header('X-Robots-Tag: noindex, nofollow');
 
   <!-- Cumulative chart -->
   <div class="chart-card cumulative-card">
-    <h3>Profit cumulativ</h3>
+    <h3>Cheltuieli cumulate</h3>
     <div class="cumulative-wrap">
       <canvas id="chartCumulative"></canvas>
     </div>
@@ -699,34 +699,34 @@ const CAT_COLORS = [
 function renderCharts(s) {
   const labels = s.monthly.map(m => currentMonth ? m.luna.slice(8) + '.' : monthLabel(m.luna));
 
+  // Titlu dinamic: "zilnice" pt lună, "lunare" pt an
+  document.getElementById('chartDailyTitle').textContent =
+    currentMonth ? 'Cheltuieli zilnice' : 'Cheltuieli lunare';
+
+  // ── Grafic 1: Cheltuieli zilnice / lunare (bare simple, fără venituri) ────────
   if (chartMonthly) chartMonthly.destroy();
   chartMonthly = new Chart(document.getElementById('chartMonthly'), {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Venituri',
-          data: s.monthly.map(m => m.venituri),
-          backgroundColor: 'rgba(42,125,79,0.8)',
-          borderRadius: 5,
-          borderSkipped: false,
-        },
-        {
-          label: 'Cheltuieli',
-          data: s.monthly.map(m => m.cheltuieli),
-          backgroundColor: 'rgba(193,68,74,0.75)',
-          borderRadius: 5,
-          borderSkipped: false,
-        },
-      ],
+      datasets: [{
+        label: 'Cheltuieli',
+        data: s.monthly.map(m => m.cheltuieli),
+        backgroundColor: s.monthly.map(m => m.cheltuieli > 500 ? 'rgba(193,68,74,0.90)' : 'rgba(193,68,74,0.65)'),
+        borderRadius: 5,
+        borderSkipped: false,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } },
-        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y)} lei` } },
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
+          },
+        },
       },
       scales: {
         y: {
@@ -739,6 +739,7 @@ function renderCharts(s) {
     },
   });
 
+  // ── Grafic 2: Structura cheltuielilor (donut) ─────────────────────────────────
   if (chartDonut) chartDonut.destroy();
   if (s.categorii_cheltuieli.length) {
     chartDonut = new Chart(document.getElementById('chartDonut'), {
@@ -764,21 +765,24 @@ function renderCharts(s) {
     });
   }
 
+  // ── Grafic 3: Cheltuieli cumulate (linie ascendentă) ─────────────────────────
   if (chartCumulative) chartCumulative.destroy();
+  let cumSum = 0;
+  const cumData = s.monthly.map(m => { cumSum += m.cheltuieli; return cumSum; });
   chartCumulative = new Chart(document.getElementById('chartCumulative'), {
     type: 'line',
     data: {
       labels,
       datasets: [{
-        label: 'Profit cumulativ',
-        data: s.monthly.map(m => m.cumulative),
-        borderColor: '#4A90D9',
-        backgroundColor: 'rgba(74,144,217,0.1)',
+        label: 'Cheltuieli cumulate',
+        data: cumData,
+        borderColor: '#C1444A',
+        backgroundColor: 'rgba(193,68,74,0.08)',
         borderWidth: 2.5,
         fill: true,
         tension: 0.35,
-        pointBackgroundColor: s.monthly.map(m => m.cumulative >= 0 ? '#2A7D4F' : '#C1444A'),
-        pointRadius: 5,
+        pointBackgroundColor: '#C1444A',
+        pointRadius: 4,
       }],
     },
     options: {
@@ -790,6 +794,7 @@ function renderCharts(s) {
       },
       scales: {
         y: {
+          beginAtZero: true,
           grid: { color: '#F0EDE6' },
           ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
         },
