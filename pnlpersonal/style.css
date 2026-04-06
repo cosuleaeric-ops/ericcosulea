@@ -534,6 +534,41 @@ body {
 }
 .btn-ghost:hover { background: var(--bg); color: var(--text); }
 
+/* ── Category Filter Pills ── */
+.cat-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 12px;
+  min-height: 0;
+}
+
+.cat-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.cat-pill:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-light);
+}
+
+.cat-pill.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
 /* ── Table ── */
 .tx-section {
   width: fit-content;

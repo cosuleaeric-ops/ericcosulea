@@ -203,6 +203,8 @@ header('X-Robots-Tag: noindex, nofollow');
       </div>
     </div>
 
+    <div class="cat-filter-bar" id="catFilterBar"></div>
+
     <div class="table-card">
       <div class="table-scroll">
         <table>
@@ -372,6 +374,7 @@ function esc(s) {
 let currentYear   = new Date().getFullYear();
 let currentMonth  = null;
 let currentTab    = 'toate';
+let currentCatFilter = null;
 let allVenituri   = [];
 let allCheltuieli = [];
 let chartMonthly, chartDonut, chartRanking;
@@ -681,6 +684,7 @@ async function refresh() {
 
   renderStats(stats);
   renderCharts(stats);
+  renderCatFilter();
   renderTable();
 }
 
@@ -828,6 +832,7 @@ function renderTable() {
     rows = allVenituri.map(r => ({ ...r, _type: 'venit' }));
   } else {
     rows = allCheltuieli.map(r => ({ ...r, _type: 'cheltuiala' }));
+    if (currentCatFilter) rows = rows.filter(r => r.categorie === currentCatFilter);
   }
 
   if (!rows.length) {
@@ -875,12 +880,42 @@ function renderTable() {
   });
 }
 
+// ── Category filter pills ─────────────────────────────────────────────────────
+function renderCatFilter() {
+  const bar = document.getElementById('catFilterBar');
+  bar.innerHTML = '';
+
+  if (currentTab !== 'cheltuieli') return;
+
+  // Unique categories from current cheltuieli, sorted by total desc
+  const totals = {};
+  allCheltuieli.forEach(r => {
+    totals[r.categorie] = (totals[r.categorie] || 0) + parseFloat(r.suma);
+  });
+  const cats = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+  if (!cats.length) return;
+
+  cats.forEach(cat => {
+    const pill = document.createElement('button');
+    pill.className = 'cat-pill' + (currentCatFilter === cat ? ' active' : '');
+    pill.textContent = cat;
+    pill.addEventListener('click', () => {
+      currentCatFilter = currentCatFilter === cat ? null : cat;
+      renderCatFilter();
+      renderTable();
+    });
+    bar.appendChild(pill);
+  });
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentTab = btn.dataset.tab;
+    currentCatFilter = null;
+    renderCatFilter();
     renderTable();
   });
 });
