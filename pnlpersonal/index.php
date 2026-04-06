@@ -632,17 +632,27 @@ async function init() {
     sel.appendChild(opt);
   });
 
-  // Default la luna curentă
-  const now      = new Date();
-  const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-  const hasMonth = [...sel.options].some(o => o.value === monthKey);
-  if (hasMonth) {
-    sel.value    = monthKey;
-    currentMonth = now.getMonth() + 1;
-  } else {
-    sel.value = String(currentYear);
+  // Default: luna curentă → luna trecută → primul period disponibil
+  const now = new Date();
+  const candidates = [
+    { year: now.getFullYear(),                               month: now.getMonth() + 1 },
+    { year: now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear(),
+      month: now.getMonth() === 0 ? 12 : now.getMonth() },
+  ];
+  let chosen = null;
+  for (const c of candidates) {
+    const key = `${c.year}-${c.month}`;
+    if ([...sel.options].some(o => o.value === key)) { chosen = c; break; }
   }
-  if (!sel.value && periods.length) sel.value = periods[0].value;
+  if (chosen) {
+    sel.value    = `${chosen.year}-${chosen.month}`;
+    currentYear  = chosen.year;
+    currentMonth = chosen.month;
+  } else if (periods.length) {
+    sel.value   = periods[0].value;
+    currentYear = periods[0].year;
+    currentMonth = periods[0].month;
+  }
 
   sel.addEventListener('change', () => {
     const parts  = sel.value.split('-');
