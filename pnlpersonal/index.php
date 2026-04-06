@@ -68,7 +68,7 @@ header('X-Robots-Tag: noindex, nofollow');
   <!-- ══ PORTOFEL ════════════════════════════════════════════════════════════ -->
   <div id="portofelSection">
     <div class="section-title-bar">
-      <h2>💼 Portofel <span class="portofel-summary" id="portofelSummary"></span></h2>
+      <h2>💼 Portofel</h2>
       <button class="btn btn-blue" id="btnActualizeaza">+ Actualizează</button>
     </div>
 
@@ -476,7 +476,6 @@ function renderPortofelCards(p) {
     });
     document.getElementById('portofelLastUpdate').textContent = 'Nicio înregistrare';
     document.getElementById('portofelEditLink').style.display = 'none';
-    document.getElementById('portofelSummary').textContent = '';
     return;
   }
 
@@ -494,7 +493,6 @@ function renderPortofelCards(p) {
 
   document.getElementById('portofelLastUpdate').textContent = 'Actualizat: ' + fmtDate(p.data);
   document.getElementById('portofelEditLink').style.display = '';
-  document.getElementById('portofelSummary').textContent = '— lichid: ' + fmt(lichid) + ' lei';
 }
 
 function renderPortofelHistory(rows) {
