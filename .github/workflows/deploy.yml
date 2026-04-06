@@ -29,7 +29,10 @@ jobs:
             **/.git*/**
             **/.github/**
             **/.DS_Store
+            **/.claude/**
+            .claude/**
             Archive.zip
             data/blog.sqlite
             pnlcursuri/data/*.sqlite
+            pnlpersonal/data/*.sqlite
             uploads/inspo/**
