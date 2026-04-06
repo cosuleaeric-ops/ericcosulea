@@ -1,7 +1,12 @@
 const BLOCK_RULE_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007];
 const BLOCKED_SITES = [
-  // block only www/m/bare facebook.com — adsmanager.facebook.com & business.facebook.com rămân libere
-  { id: 1001, site: "facebook", regex: "^https?://(www\\.|m\\.)?facebook\\.com/.*" },
+  {
+    id: 1001,
+    site: "facebook",
+    regex: "^https?://([^.]+\\.)?facebook\\.com/.*",
+    // Ads Manager subdomains are excluded — declarativeNetRequest skips these
+    excludedRequestDomains: ["adsmanager.facebook.com", "business.facebook.com"]
+  },
   { id: 1002, site: "instagram", regex: "^https?://([^.]+\\.)?instagram\\.com/.*" },
   { id: 1003, site: "x", regex: "^https?://([^.]+\\.)?x\\.com/.*" },
   { id: 1004, site: "twitter", regex: "^https?://([^.]+\\.)?twitter\\.com/.*" },
@@ -19,7 +24,7 @@ async function applyBlockingState(state) {
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: BLOCK_RULE_IDS,
     addRules: shouldBlock
-      ? BLOCKED_SITES.map(({ id, site, regex }) => ({
+      ? BLOCKED_SITES.map(({ id, site, regex, excludedRequestDomains }) => ({
           id,
           priority: 1,
           action: {
@@ -28,7 +33,8 @@ async function applyBlockingState(state) {
           },
           condition: {
             regexFilter: regex,
-            resourceTypes: ["main_frame"]
+            resourceTypes: ["main_frame"],
+            ...(excludedRequestDomains ? { excludedRequestDomains } : {})
           }
         }))
       : []
