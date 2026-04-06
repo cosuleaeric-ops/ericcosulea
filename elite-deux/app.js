@@ -68,6 +68,7 @@ const exportDataBtn = document.getElementById("exportData");
 const importDataBtn = document.getElementById("importData");
 const importFileInput = document.getElementById("importFile");
 let remoteSaveTimer = null;
+let remoteInitSucceeded = false;
 
 prevWeekBtn.addEventListener("click", () => {
   state.dayOffset -= 1;
@@ -190,6 +191,7 @@ async function initializeState() {
     } else {
       await pushStateToRemote(buildStateSnapshot());
     }
+    remoteInitSucceeded = true;
     setStorageStatus("Storage: synced with server");
   } catch (error) {
     console.warn("EliteDeux remote sync unavailable", error);
@@ -292,7 +294,7 @@ function persistLocalSnapshot() {
 function saveState(options = {}) {
   persistLocalSnapshot();
 
-  if (!HAS_REMOTE_STORAGE || options.skipRemote) {
+  if (!HAS_REMOTE_STORAGE || options.skipRemote || !remoteInitSucceeded) {
     setStorageStatus(HAS_REMOTE_STORAGE ? "Storage: synced with server" : "Storage: local only");
     return;
   }
@@ -321,6 +323,7 @@ function scheduleRemoteSave() {
 async function fetchRemoteSnapshot() {
   const response = await fetch(SERVER_STATE_URL, {
     credentials: "same-origin",
+    cache: "no-store",
     headers: {
       Accept: "application/json",
     },
