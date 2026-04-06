@@ -14,6 +14,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Generate admin/config.php from secret
+        env:
+          BCRYPT_HASH: ${{ secrets.ADMIN_PASSWORD_BCRYPT }}
+        run: |
+          python3 << 'EOF'
+          import os
+          h = os.environ['BCRYPT_HASH']
+          content = "<?php\nreturn [\n    'password_bcrypt' => '" + h + "',\n];\n"
+          with open('admin/config.php', 'w') as f:
+              f.write(content)
+          print("admin/config.php generated OK")
+          EOF
+
       - name: Deploy files to Hostico over FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
