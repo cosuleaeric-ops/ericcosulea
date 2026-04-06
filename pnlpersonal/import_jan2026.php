@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
 declare(strict_types=1);
 
 require __DIR__ . '/../admin/auth.php';
@@ -9,7 +11,9 @@ if (!is_logged_in()) {
 }
 
 $db_dir = __DIR__ . '/data';
-if (!is_dir($db_dir)) mkdir($db_dir, 0750, true);
+if (!is_dir($db_dir)) {
+    mkdir($db_dir, 0750, true);
+}
 
 $db = new SQLite3($db_dir . '/pnlpersonal.sqlite');
 $db->enableExceptions(true);
@@ -35,98 +39,129 @@ $db->exec("CREATE TABLE IF NOT EXISTS venit_categorii (id INTEGER PRIMARY KEY AU
 $db->exec("CREATE TABLE IF NOT EXISTS cheltuiala_categorii (id INTEGER PRIMARY KEY AUTOINCREMENT, nume TEXT NOT NULL UNIQUE)");
 $db->exec("CREATE TABLE IF NOT EXISTS portofel (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL, cash REAL NOT NULL DEFAULT 0, ing REAL NOT NULL DEFAULT 0, revolut REAL NOT NULL DEFAULT 0, trading212 REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
 
-foreach (['Salariu','Mama','2Performant','Profitshare','Trading212','Vinted'] as $c) {
-    $s = $db->prepare("INSERT OR IGNORE INTO venit_categorii (nume) VALUES (:n)"); $s->bindValue(':n',$c); $s->execute();
-}
-foreach (['Groceries 🍎','Snacks 🍫','Fast-food 🍔','Băuturi ☕','Fun 🎳','Igiena 🧼','Transport 🚌','Abonamente 📺','Proiecte 💻','Chirie 🏠','Altele 📦'] as $c) {
-    $s = $db->prepare("INSERT OR IGNORE INTO cheltuiala_categorii (nume) VALUES (:n)"); $s->bindValue(':n',$c); $s->execute();
+$cats_v = array('Salariu', 'Mama', '2Performant', 'Profitshare', 'Trading212', 'Vinted');
+foreach ($cats_v as $c) {
+    $s = $db->prepare("INSERT OR IGNORE INTO venit_categorii (nume) VALUES (:n)");
+    $s->bindValue(':n', $c);
+    $s->execute();
 }
 
-// ── Date import Ianuarie 2026 ─────────────────────────────────────────────────
-$rows = [
-    ['2026-01-01', 'Fast-food 🍔',  '',       34.0  ],
-    ['2026-01-02', 'Fast-food 🍔',  '',       29.7  ],
-    ['2026-01-03', 'Groceries 🍎',  '',       36.8  ],
-    ['2026-01-03', 'Fast-food 🍔',  '',       29.7  ],
-    ['2026-01-04', 'Groceries 🍎',  '',       26.3  ],
-    ['2026-01-04', 'Snacks 🍫',     '',        4.5  ],
-    ['2026-01-04', 'Băuturi ☕',    '',       26.4  ],
-    ['2026-01-04', 'Altele 📦',     '',        4.1  ],
-    ['2026-01-05', 'Fast-food 🍔',  '',       11.5  ],
-    ['2026-01-06', 'Groceries 🍎',  '',       60.2  ],
-    ['2026-01-06', 'Snacks 🍫',     '',        7.0  ],
-    ['2026-01-06', 'Igiena 🧼',     '',       10.0  ],
-    ['2026-01-06', 'Abonamente 📺', '',       18.0  ],
-    ['2026-01-07', 'Groceries 🍎',  '',       29.0  ],
-    ['2026-01-07', 'Snacks 🍫',     '',        6.0  ],
-    ['2026-01-07', 'Abonamente 📺', '',       29.0  ],
-    ['2026-01-08', 'Fast-food 🍔',  '',       29.7  ],
-    ['2026-01-08', 'Altele 📦',     '',       88.0  ],
-    ['2026-01-09', 'Fast-food 🍔',  '',       23.0  ],
-    ['2026-01-09', 'Transport 🚌',  '',       22.0  ],
-    ['2026-01-10', 'Groceries 🍎',  '',       54.1  ],
-    ['2026-01-10', 'Fast-food 🍔',  '',       44.0  ],
-    ['2026-01-10', 'Băuturi ☕',    '',       20.0  ],
-    ['2026-01-10', 'Transport 🚌',  '',       13.0  ],
-    ['2026-01-10', 'Proiecte 💻',   '',       44.2  ],
-    ['2026-01-10', 'Altele 📦',     '',      566.7  ],
-    ['2026-01-11', 'Groceries 🍎',  '',       25.0  ],
-    ['2026-01-11', 'Fast-food 🍔',  '',       33.0  ],
-    ['2026-01-12', 'Groceries 🍎',  '',       30.0  ],
-    ['2026-01-12', 'Snacks 🍫',     '',        7.0  ],
-    ['2026-01-12', 'Băuturi ☕',    '',       13.0  ],
-    ['2026-01-12', 'Igiena 🧼',     '',       30.0  ],
-    ['2026-01-13', 'Snacks 🍫',     '',        6.4  ],
-    ['2026-01-13', 'Fast-food 🍔',  '',       29.7  ],
-    ['2026-01-13', 'Transport 🚌',  '',       80.0  ],
-    ['2026-01-13', 'Altele 📦',     '',      250.0  ],
-    ['2026-01-14', 'Fast-food 🍔',  '',       35.5  ],
-    ['2026-01-14', 'Proiecte 💻',   '',     1437.0  ],
-    ['2026-01-15', 'Fast-food 🍔',  '',       45.5  ],
-    ['2026-01-15', 'Proiecte 💻',   '',       37.5  ],
-    ['2026-01-16', 'Groceries 🍎',  '',       23.7  ],
-    ['2026-01-17', 'Fast-food 🍔',  '',       75.0  ],
-    ['2026-01-17', 'Băuturi ☕',    '',       22.9  ],
-    ['2026-01-17', 'Igiena 🧼',     '',       65.0  ],
-    ['2026-01-17', 'Transport 🚌',  '',       20.0  ],
-    ['2026-01-18', 'Snacks 🍫',     '',        5.5  ],
-    ['2026-01-18', 'Fast-food 🍔',  '',       56.2  ],
-    ['2026-01-18', 'Fun 🎳',        '',      100.0  ],
-    ['2026-01-19', 'Snacks 🍫',     '',        6.0  ],
-    ['2026-01-19', 'Fast-food 🍔',  '',       26.0  ],
-    ['2026-01-19', 'Altele 📦',     '',       21.5  ],
-    ['2026-01-20', 'Groceries 🍎',  '',       23.0  ],
-    ['2026-01-20', 'Snacks 🍫',     '',        6.0  ],
-    ['2026-01-20', 'Fast-food 🍔',  '',       16.5  ],
-    ['2026-01-20', 'Igiena 🧼',     '',       13.0  ],
-    ['2026-01-21', 'Fast-food 🍔',  '',       46.5  ],
-    ['2026-01-21', 'Abonamente 📺', '',       12.7  ],
-    ['2026-01-22', 'Snacks 🍫',     '',        8.0  ],
-    ['2026-01-22', 'Fun 🎳',        '',       95.0  ],
-    ['2026-01-23', 'Fast-food 🍔',  '',       36.7  ],
-    ['2026-01-23', 'Proiecte 💻',   '',        8.6  ],
-    ['2026-01-24', 'Snacks 🍫',     '',        6.0  ],
-    ['2026-01-24', 'Fast-food 🍔',  '',       53.0  ],
-    ['2026-01-24', 'Băuturi ☕',    '',       13.0  ],
-    ['2026-01-25', 'Fast-food 🍔',  '',       33.0  ],
-    ['2026-01-26', 'Groceries 🍎',  '',       26.5  ],
-    ['2026-01-26', 'Fast-food 🍔',  '',       29.5  ],
-    ['2026-01-26', 'Băuturi ☕',    '',       13.0  ],
-    ['2026-01-27', 'Fast-food 🍔',  '',       41.0  ],
-    ['2026-01-28', 'Fast-food 🍔',  '',       29.0  ],
-    ['2026-01-29', 'Fast-food 🍔',  '',       31.0  ],
-    ['2026-01-29', 'Chirie 🏠',     '',      491.0  ],
-    ['2026-01-30', 'Groceries 🍎',  '',       10.2  ],
-    ['2026-01-30', 'Fast-food 🍔',  '',       29.7  ],
-    ['2026-01-30', 'Băuturi ☕',    '',       13.0  ],
-    ['2026-01-30', 'Transport 🚌',  '',        5.0  ],
-    ['2026-01-31', 'Groceries 🍎',  '',       19.8  ],
-    ['2026-01-31', 'Fast-food 🍔',  '',       50.0  ],
-    ['2026-01-31', 'Băuturi ☕',    '',       13.0  ],
-    ['2026-01-31', 'Abonamente 📺', '',       99.0  ],
-    ['2026-01-31', 'Chirie 🏠',     '',     1274.0  ],
-    ['2026-01-31', 'Altele 📦',     '',      133.0  ],
-];
+$cats_c = array(
+    "Groceries \xf0\x9f\x8d\x8e",
+    "Snacks \xf0\x9f\x8d\xab",
+    "Fast-food \xf0\x9f\x8d\x94",
+    "B\xc4\x83uturi \xe2\x98\x95",
+    "Fun \xf0\x9f\x8e\xb3",
+    "Igiena \xf0\x9f\xa7\xbc",
+    "Transport \xf0\x9f\x9a\x8c",
+    "Abonamente \xf0\x9f\x93\xba",
+    "Proiecte \xf0\x9f\x92\xbb",
+    "Chirie \xf0\x9f\x8f\xa0",
+    "Altele \xf0\x9f\x93\xa6"
+);
+foreach ($cats_c as $c) {
+    $s = $db->prepare("INSERT OR IGNORE INTO cheltuiala_categorii (nume) VALUES (:n)");
+    $s->bindValue(':n', $c);
+    $s->execute();
+}
+
+// Categorii cu emoji ca bytes pentru siguranta
+$GR = "Groceries \xf0\x9f\x8d\x8e";
+$SN = "Snacks \xf0\x9f\x8d\xab";
+$FF = "Fast-food \xf0\x9f\x8d\x94";
+$BA = "B\xc4\x83uturi \xe2\x98\x95";
+$FN = "Fun \xf0\x9f\x8e\xb3";
+$IG = "Igiena \xf0\x9f\xa7\xbc";
+$TR = "Transport \xf0\x9f\x9a\x8c";
+$AB = "Abonamente \xf0\x9f\x93\xba";
+$PR = "Proiecte \xf0\x9f\x92\xbb";
+$CH = "Chirie \xf0\x9f\x8f\xa0";
+$AL = "Altele \xf0\x9f\x93\xa6";
+
+$rows = array(
+    array('2026-01-01', $FF, '', 34.0),
+    array('2026-01-02', $FF, '', 29.7),
+    array('2026-01-03', $GR, '', 36.8),
+    array('2026-01-03', $FF, '', 29.7),
+    array('2026-01-04', $GR, '', 26.3),
+    array('2026-01-04', $SN, '',  4.5),
+    array('2026-01-04', $BA, '', 26.4),
+    array('2026-01-04', $AL, '',  4.1),
+    array('2026-01-05', $FF, '', 11.5),
+    array('2026-01-06', $GR, '', 60.2),
+    array('2026-01-06', $SN, '',  7.0),
+    array('2026-01-06', $IG, '', 10.0),
+    array('2026-01-06', $AB, '', 18.0),
+    array('2026-01-07', $GR, '', 29.0),
+    array('2026-01-07', $SN, '',  6.0),
+    array('2026-01-07', $AB, '', 29.0),
+    array('2026-01-08', $FF, '', 29.7),
+    array('2026-01-08', $AL, '', 88.0),
+    array('2026-01-09', $FF, '', 23.0),
+    array('2026-01-09', $TR, '', 22.0),
+    array('2026-01-10', $GR, '', 54.1),
+    array('2026-01-10', $FF, '', 44.0),
+    array('2026-01-10', $BA, '', 20.0),
+    array('2026-01-10', $TR, '', 13.0),
+    array('2026-01-10', $PR, '', 44.2),
+    array('2026-01-10', $AL, '', 566.7),
+    array('2026-01-11', $GR, '', 25.0),
+    array('2026-01-11', $FF, '', 33.0),
+    array('2026-01-12', $GR, '', 30.0),
+    array('2026-01-12', $SN, '',  7.0),
+    array('2026-01-12', $BA, '', 13.0),
+    array('2026-01-12', $IG, '', 30.0),
+    array('2026-01-13', $SN, '',  6.4),
+    array('2026-01-13', $FF, '', 29.7),
+    array('2026-01-13', $TR, '', 80.0),
+    array('2026-01-13', $AL, '', 250.0),
+    array('2026-01-14', $FF, '', 35.5),
+    array('2026-01-14', $PR, '', 1437.0),
+    array('2026-01-15', $FF, '', 45.5),
+    array('2026-01-15', $PR, '', 37.5),
+    array('2026-01-16', $GR, '', 23.7),
+    array('2026-01-17', $FF, '', 75.0),
+    array('2026-01-17', $BA, '', 22.9),
+    array('2026-01-17', $IG, '', 65.0),
+    array('2026-01-17', $TR, '', 20.0),
+    array('2026-01-18', $SN, '',  5.5),
+    array('2026-01-18', $FF, '', 56.2),
+    array('2026-01-18', $FN, '', 100.0),
+    array('2026-01-19', $SN, '',  6.0),
+    array('2026-01-19', $FF, '', 26.0),
+    array('2026-01-19', $AL, '', 21.5),
+    array('2026-01-20', $GR, '', 23.0),
+    array('2026-01-20', $SN, '',  6.0),
+    array('2026-01-20', $FF, '', 16.5),
+    array('2026-01-20', $IG, '', 13.0),
+    array('2026-01-21', $FF, '', 46.5),
+    array('2026-01-21', $AB, '', 12.7),
+    array('2026-01-22', $SN, '',  8.0),
+    array('2026-01-22', $FN, '', 95.0),
+    array('2026-01-23', $FF, '', 36.7),
+    array('2026-01-23', $PR, '',  8.6),
+    array('2026-01-24', $SN, '',  6.0),
+    array('2026-01-24', $FF, '', 53.0),
+    array('2026-01-24', $BA, '', 13.0),
+    array('2026-01-25', $FF, '', 33.0),
+    array('2026-01-26', $GR, '', 26.5),
+    array('2026-01-26', $FF, '', 29.5),
+    array('2026-01-26', $BA, '', 13.0),
+    array('2026-01-27', $FF, '', 41.0),
+    array('2026-01-28', $FF, '', 29.0),
+    array('2026-01-29', $FF, '', 31.0),
+    array('2026-01-29', $CH, '', 491.0),
+    array('2026-01-30', $GR, '', 10.2),
+    array('2026-01-30', $FF, '', 29.7),
+    array('2026-01-30', $BA, '', 13.0),
+    array('2026-01-30', $TR, '',  5.0),
+    array('2026-01-31', $GR, '', 19.8),
+    array('2026-01-31', $FF, '', 50.0),
+    array('2026-01-31', $BA, '', 13.0),
+    array('2026-01-31', $AB, '', 99.0),
+    array('2026-01-31', $CH, '', 1274.0),
+    array('2026-01-31', $AL, '', 133.0),
+);
 
 $already = (int)$db->querySingle("SELECT COUNT(*) FROM cheltuieli WHERE strftime('%Y-%m', data) = '2026-01'");
 
@@ -137,30 +172,31 @@ if ($already > 0 && !isset($_GET['force'])) {
     $skipped = count($rows);
 } else {
     $stmt = $db->prepare("INSERT INTO cheltuieli (data, categorie, detalii, suma) VALUES (:data, :cat, :det, :suma)");
-    foreach ($rows as [$data, $cat, $det, $suma]) {
-        $stmt->bindValue(':data', $data);
-        $stmt->bindValue(':cat',  $cat);
-        $stmt->bindValue(':det',  $det);
-        $stmt->bindValue(':suma', $suma);
+    foreach ($rows as $row) {
+        $stmt->bindValue(':data', $row[0]);
+        $stmt->bindValue(':cat',  $row[1]);
+        $stmt->bindValue(':det',  $row[2]);
+        $stmt->bindValue(':suma', $row[3]);
         $stmt->execute();
         $inserted++;
     }
 }
 
-$total = array_sum(array_column($rows, 3));
+$total = 0.0;
+foreach ($rows as $row) {
+    $total += $row[3];
+}
 ?>
 <!doctype html>
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
   <title>Import Ianuarie 2026</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FFFDF7; color: #1C1C1A; padding: 40px 24px; }
     .box { max-width: 520px; margin: 0 auto; background: #fff; border: 1px solid #E8E3D8; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
-    h1 { font-family: 'Crimson Pro', Georgia, serif; font-size: 24px; margin-bottom: 20px; }
-    .ok  { color: #2A7D4F; font-weight: 700; font-size: 18px; }
+    h1 { font-size: 22px; margin-bottom: 20px; }
+    .ok   { color: #2A7D4F; font-weight: 700; font-size: 18px; }
     .warn { color: #B8860B; font-weight: 700; font-size: 18px; }
     p { margin: 10px 0; color: #555; }
     .btn { display: inline-block; margin-top: 20px; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
@@ -170,19 +206,17 @@ $total = array_sum(array_column($rows, 3));
 </head>
 <body>
 <div class="box">
-  <h1>Import Cheltuieli — Ianuarie 2026</h1>
+  <h1>Import Cheltuieli &mdash; Ianuarie 2026</h1>
 
   <?php if ($skipped > 0): ?>
-    <p class="warn">⚠️ Există deja <?php echo $already; ?> înregistrări pentru Ianuarie 2026.</p>
+    <p class="warn">&#9888; Exista deja <?php echo $already; ?> inregistrari pentru Ianuarie 2026.</p>
     <p>Pentru a evita duplicatele, importul a fost oprit.</p>
-    <p>Dacă vrei să forțezi re-importul (va adăuga din nou toate), apasă butonul de mai jos.</p>
-    <a class="btn btn-green" href="/pnlpersonal/">← Înapoi la P&L</a>
-    <a class="btn btn-gold" href="?force=1" onclick="return confirm('Ești sigur? Se vor adăuga din nou toate <?php echo count($rows); ?> intrări!')">Forțează import</a>
+    <a class="btn btn-green" href="/pnlpersonal/">&#8592; Inapoi la P&amp;L</a>
+    <a class="btn btn-gold" href="?force=1" onclick="return confirm('Esti sigur? Se vor adauga din nou toate <?php echo count($rows); ?> intrari!')">Forteaza import</a>
   <?php else: ?>
-    <p class="ok">✅ Import reușit! <?php echo $inserted; ?> cheltuieli adăugate.</p>
+    <p class="ok">&#10003; Import reusit! <?php echo $inserted; ?> cheltuieli adaugate.</p>
     <p><strong>Total cheltuieli Ianuarie 2026:</strong> <?php echo number_format($total, 2, ',', '.'); ?> lei</p>
-    <p style="margin-top:16px; font-size:13px; color:#888">Acest fișier va fi șters automat după ce închizi pagina. Poți șterge manual <code>import_jan2026.php</code> de pe server.</p>
-    <a class="btn btn-green" href="/pnlpersonal/">← Deschide P&L Personal</a>
+    <a class="btn btn-green" href="/pnlpersonal/">&#8592; Deschide P&amp;L Personal</a>
   <?php endif; ?>
 </div>
 </body>
