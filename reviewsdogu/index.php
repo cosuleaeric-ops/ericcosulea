@@ -217,7 +217,8 @@ function generate_glovo_report(array $rows): array {
         // Taxa timp așteptare
         $waitAmt = glovo_float($row['Taxa pentru timpul de așteptare'] ?? '0');
         if ($waitAmt > 0) {
-            $waitingTax[]  = ['date' => $date, 'restaurant' => $pRaw, 'amount' => $waitAmt];
+            $fullDatetime  = trim($row['Comandă primită la'] ?? '');
+            $waitingTax[]  = ['date' => $date, 'time' => strlen($fullDatetime) > 10 ? substr($fullDatetime, 11, 5) : '', 'restaurant' => $pRaw, 'amount' => $waitAmt];
             $waitingTotal += $waitAmt;
         }
 
@@ -549,11 +550,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <?php if (!empty($report['waiting_tax'])): ?>
     <table class="tax-table">
-      <thead><tr><th>Data</th><th>Restaurant</th><th>Taxă (RON)</th></tr></thead>
+      <thead><tr><th>Data</th><th>Ora</th><th>Restaurant</th><th>Taxă (RON)</th></tr></thead>
       <tbody>
       <?php foreach ($report['waiting_tax'] as $t): ?>
         <tr>
           <td><?php echo htmlspecialchars(fmt_date($t['date'])); ?></td>
+          <td class="tax-time"><?php echo htmlspecialchars($t['time']); ?></td>
           <td><?php echo htmlspecialchars($t['restaurant']); ?></td>
           <td class="tax-amount"><?php echo number_format($t['amount'], 2, ',', '.'); ?></td>
         </tr>

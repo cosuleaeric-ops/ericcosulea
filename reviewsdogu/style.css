@@ -574,6 +574,12 @@ body {
 }
 .tax-table tbody tr:last-child td { border-bottom: none; }
 .tax-table tbody tr:hover td { background: #faf9f6; }
+.tax-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
 .tax-amount {
   font-weight: 600;
   text-align: right;
