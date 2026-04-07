@@ -602,8 +602,7 @@ body {
 
 /* ── Table ── */
 .tx-section {
-  width: fit-content;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .tx-section .section-header {
