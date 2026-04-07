@@ -116,6 +116,9 @@ function generate_bolt_report(array $rows): array {
     $dates    = [];
 
     foreach ($rows as $row) {
+        // Exclude cancelled orders from all counts
+        if (strtolower(trim($row['Finished Order Status'] ?? '')) === 'cancelled') continue;
+
         $pRaw    = $row['Provider Name'] ?? '';
         $pLower  = strtolower($pRaw);
         $date    = $row['Order Create Date'] ?? '';
@@ -183,10 +186,23 @@ function generate_glovo_report(array $rows): array {
     $complaints   = [];
 
     foreach ($rows as $row) {
-        // Restaurant name: "dogu. (Str. Copilului...)" → "dogu."
         $pRaw   = trim(preg_replace('/\s*\(.*$/s', '', $row['Denumire restaurant'] ?? ''));
         $pLower = strtolower($pRaw);
         $date   = substr($row['Comandă primită la'] ?? '', 0, 10);
+        $status = trim($row['Status comandă'] ?? '');
+
+        // Track cancellations before skipping
+        if ($status === 'Anulată') {
+            if (!empty(trim($row['Anulată la'] ?? ''))) {
+                $cancels[] = [
+                    'date'        => $date,
+                    'restaurant'  => $pRaw,
+                    'reason'      => trim($row['Motiv anulare'] ?? '—'),
+                    'responsible' => trim($row['Responsabil anulare'] ?? '—'),
+                ];
+            }
+            continue; // exclude from counts
+        }
 
         if ($date) $dates[] = $date;
 
@@ -210,16 +226,6 @@ function generate_glovo_report(array $rows): array {
         if ($refundAmt > 0) {
             $refunds[]    = ['date' => $date, 'restaurant' => $pRaw, 'amount' => $refundAmt];
             $refundTotal += $refundAmt;
-        }
-
-        // Comenzi anulate
-        if (!empty(trim($row['Anulată la'] ?? ''))) {
-            $cancels[] = [
-                'date'        => $date,
-                'restaurant'  => $pRaw,
-                'reason'      => trim($row['Motiv anulare'] ?? '—'),
-                'responsible' => trim($row['Responsabil anulare'] ?? '—'),
-            ];
         }
 
         // Reclamații
