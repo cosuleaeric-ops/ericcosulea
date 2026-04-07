@@ -304,7 +304,6 @@ async function loadLastEntry() {
   else                  when = `acum ${diffZ} zile`;
 
   badge.textContent = `Ultima cheltuială: ${fmtDate(res.data)} (${when})`;
-  if (diffZ >= 3) badge.classList.add('stale');
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
