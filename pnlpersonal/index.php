@@ -658,8 +658,8 @@ function navigateMonth(dir) {
   refresh();
 }
 
-document.getElementById('btnPrevMonth').addEventListener('click', () => navigateMonth(-1));
-document.getElementById('btnNextMonth').addEventListener('click', () => navigateMonth(1));
+document.getElementById('btnPrevMonth').addEventListener('click', () => navigateMonth(1));
+document.getElementById('btnNextMonth').addEventListener('click', () => navigateMonth(-1));
 
 // ── Last entry date ───────────────────────────────────────────────────────────
 async function loadLastEntry() {
