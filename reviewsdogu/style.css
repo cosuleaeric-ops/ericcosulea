@@ -336,41 +336,86 @@ body {
 }
 .total-strip strong { color: var(--text); font-size: 15px; }
 
-/* Reviews */
-.reviews-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 480px) {
-  .reviews-grid { grid-template-columns: 1fr; }
-}
-.review-stat {
+/* ── Restaurant block ── */
+.restaurant-block {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--rb-accent);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+  margin-bottom: 14px;
+}
+
+.rb-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  border: 1.5px solid rgba(0,0,0,0.06);
+  gap: 10px;
+  margin-bottom: 14px;
 }
-.review-positive { background: var(--green-bg); }
-.review-negative { background: var(--red-bg); }
-
-.review-stat-icon { font-size: 28px; }
-.review-stat-label {
-  font-size: 12px;
+.rb-icon { font-size: 20px; }
+.rb-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rb-accent);
+  flex: 1;
+}
+.rb-total-badge {
+  font-size: 11px;
   font-weight: 600;
-  margin-bottom: 2px;
+  background: var(--rb-bg);
+  color: var(--rb-accent);
+  padding: 3px 9px;
+  border-radius: 999px;
 }
-.review-positive .review-stat-label { color: var(--green); }
-.review-negative .review-stat-label { color: var(--red); }
+.rb-no-reviews {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
 
-.review-stat-count {
-  font-size: 32px;
+.rb-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.rb-stat {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.rb-pos { background: var(--green-bg); }
+.rb-neg { background: var(--red-bg); }
+
+.rb-stat-emoji { font-size: 20px; }
+.rb-stat-num {
+  font-size: 26px;
   font-weight: 700;
   line-height: 1;
 }
-.review-stat-stars { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.rb-pos .rb-stat-num  { color: var(--green); }
+.rb-neg .rb-stat-num  { color: var(--red); }
+.rb-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.rb-comments-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+.rb-comments { display: flex; flex-direction: column; gap: 8px; }
 
 /* Comments */
 .comments-list { display: flex; flex-direction: column; gap: 10px; }

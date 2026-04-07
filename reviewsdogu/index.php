@@ -100,7 +100,7 @@ function parse_xlsx_file(string $path): array {
 // ─── Bolt Report Generator ────────────────────────────────────────────────────
 
 function generate_bolt_report(array $rows): array {
-    $counts = ['dogu' => 0, 'turmerizza' => 0, 'gustoria' => 0, 'hotdog' => 0, 'other' => 0];
+    $keys   = ['dogu', 'turmerizza', 'gustoria', 'hotdog', 'other'];
     $labels = [
         'dogu'       => 'DOGU',
         'turmerizza' => 'Turmerizza',
@@ -109,33 +109,36 @@ function generate_bolt_report(array $rows): array {
         'other'      => 'Altele',
     ];
 
+    $counts   = array_fill_keys($keys, 0);
+    $positive = array_fill_keys($keys, 0);
+    $negative = array_fill_keys($keys, 0);
+    $comments = array_fill_keys($keys, []);
     $dates    = [];
-    $positive = 0;
-    $negative = 0;
-    $comments = [];
 
     foreach ($rows as $row) {
-        $pRaw   = $row['Provider Name'] ?? '';
-        $pLower = strtolower($pRaw);
-        $date   = $row['Order Create Date'] ?? '';
-        $rating = trim($row['Rating'] ?? '');
+        $pRaw    = $row['Provider Name'] ?? '';
+        $pLower  = strtolower($pRaw);
+        $date    = $row['Order Create Date'] ?? '';
+        $rating  = trim($row['Rating'] ?? '');
         $comment = trim($row['Rating Comment'] ?? '');
 
         if ($date) $dates[] = $date;
 
-        if (strpos($pLower, 'dogu') !== false)            $counts['dogu']++;
-        elseif (strpos($pLower, 'turmerizza') !== false)  $counts['turmerizza']++;
-        elseif (strpos($pLower, 'gustoria') !== false)    $counts['gustoria']++;
-        elseif (strpos($pLower, 'hotdog') !== false || strpos($pLower, 'hot dog') !== false) $counts['hotdog']++;
-        else                                               $counts['other']++;
+        if (strpos($pLower, 'dogu') !== false)                                              $key = 'dogu';
+        elseif (strpos($pLower, 'turmerizza') !== false)                                    $key = 'turmerizza';
+        elseif (strpos($pLower, 'gustoria') !== false)                                      $key = 'gustoria';
+        elseif (strpos($pLower, 'hotdog') !== false || strpos($pLower, 'hot dog') !== false) $key = 'hotdog';
+        else                                                                                 $key = 'other';
+
+        $counts[$key]++;
 
         if ($rating !== '') {
             $n = (int)$rating;
-            if ($n >= 4)              $positive++;
-            elseif ($n >= 1 && $n <= 3) $negative++;
+            if ($n >= 4)               $positive[$key]++;
+            elseif ($n >= 1 && $n <= 3) $negative[$key]++;
 
             if ($comment !== '') {
-                $comments[] = ['provider' => $pRaw, 'date' => $date, 'rating' => $n, 'comment' => $comment];
+                $comments[$key][] = ['provider' => $pRaw, 'date' => $date, 'rating' => $n, 'comment' => $comment];
             }
         }
     }
@@ -337,50 +340,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       Total comenzi: <strong><?php echo $total; ?></strong>
     </div>
 
-    <!-- Reviews -->
-    <div class="section-title">Reviews</div>
-    <div class="reviews-grid">
-      <div class="review-stat review-positive">
-        <div class="review-stat-icon">😊</div>
-        <div class="review-stat-body">
-          <div class="review-stat-label">Reviews pozitive</div>
-          <div class="review-stat-count"><?php echo $report['positive']; ?></div>
-          <div class="review-stat-stars">★★★★★ (4–5 stele)</div>
-        </div>
-      </div>
-      <div class="review-stat review-negative">
-        <div class="review-stat-icon">😟</div>
-        <div class="review-stat-body">
-          <div class="review-stat-label">Reviews negative</div>
-          <div class="review-stat-count"><?php echo $report['negative']; ?></div>
-          <div class="review-stat-stars">★★★☆☆ (1–3 stele)</div>
-        </div>
-      </div>
-    </div>
+    <!-- Reviews per restaurant -->
+    <?php
+    $brandColors = isset($brandColors) ? $brandColors : [
+        'dogu'       => ['bg' => '#FFF3E0', 'accent' => '#E65100', 'icon' => '🍔'],
+        'turmerizza' => ['bg' => '#FFF8E1', 'accent' => '#F57F17', 'icon' => '🍕'],
+        'gustoria'   => ['bg' => '#E8F5E9', 'accent' => '#2E7D32', 'icon' => '🥗'],
+        'hotdog'     => ['bg' => '#FCE4EC', 'accent' => '#C62828', 'icon' => '🌭'],
+        'other'      => ['bg' => '#F3E5F5', 'accent' => '#6A1B9A', 'icon' => '📦'],
+    ];
+    $allComments = 0;
+    foreach ($report['comments'] as $c) $allComments += count($c);
+    ?>
+    <div class="section-title">Reviews per restaurant</div>
 
-    <?php if (!empty($report['comments'])): ?>
-    <!-- Comentarii -->
-    <div class="section-title">
-      Comentarii (<?php echo count($report['comments']); ?>)
-    </div>
-    <div class="comments-list">
-      <?php foreach ($report['comments'] as $c):
-          $isPos  = $c['rating'] >= 4;
-          $cls    = $isPos ? 'comment-positive' : 'comment-negative';
-      ?>
-      <div class="comment-card <?php echo $cls; ?>">
-        <div class="comment-meta">
-          <span class="comment-stars <?php echo $isPos ? 'stars-pos' : 'stars-neg'; ?>">
-            <?php echo stars($c['rating']); ?>
-          </span>
-          <span class="comment-provider"><?php echo htmlspecialchars($c['provider']); ?></span>
-          <span class="comment-date"><?php echo htmlspecialchars(fmt_date($c['date'])); ?></span>
-        </div>
-        <p class="comment-text"><?php echo htmlspecialchars($c['comment']); ?></p>
+    <?php foreach ($report['counts'] as $key => $cnt):
+        if ($key === 'other' && $cnt === 0) continue;
+        $c   = $brandColors[$key];
+        $pos = $report['positive'][$key];
+        $neg = $report['negative'][$key];
+        $coms = $report['comments'][$key];
+        $totalRev = $pos + $neg;
+    ?>
+    <div class="restaurant-block" style="--rb-accent:<?php echo $c['accent']; ?>; --rb-bg:<?php echo $c['bg']; ?>">
+      <div class="rb-header">
+        <span class="rb-icon"><?php echo $c['icon']; ?></span>
+        <span class="rb-name"><?php echo htmlspecialchars($report['labels'][$key]); ?></span>
+        <?php if ($totalRev > 0): ?>
+        <span class="rb-total-badge"><?php echo $totalRev; ?> review<?php echo $totalRev !== 1 ? 'uri' : ''; ?></span>
+        <?php else: ?>
+        <span class="rb-no-reviews">fără reviews</span>
+        <?php endif; ?>
       </div>
-      <?php endforeach; ?>
+
+      <?php if ($totalRev > 0): ?>
+      <div class="rb-stats">
+        <div class="rb-stat rb-pos">
+          <span class="rb-stat-emoji">😊</span>
+          <span class="rb-stat-num"><?php echo $pos; ?></span>
+          <span class="rb-stat-label">pozitive (4–5★)</span>
+        </div>
+        <div class="rb-stat rb-neg">
+          <span class="rb-stat-emoji">😟</span>
+          <span class="rb-stat-num"><?php echo $neg; ?></span>
+          <span class="rb-stat-label">negative (1–3★)</span>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($coms)): ?>
+      <div class="rb-comments-title">Comentarii (<?php echo count($coms); ?>)</div>
+      <div class="rb-comments">
+        <?php foreach ($coms as $com):
+            $isPos = $com['rating'] >= 4;
+        ?>
+        <div class="comment-card <?php echo $isPos ? 'comment-positive' : 'comment-negative'; ?>">
+          <div class="comment-meta">
+            <span class="comment-stars <?php echo $isPos ? 'stars-pos' : 'stars-neg'; ?>">
+              <?php echo stars($com['rating']); ?>
+            </span>
+            <span class="comment-date"><?php echo htmlspecialchars(fmt_date($com['date'])); ?></span>
+          </div>
+          <p class="comment-text"><?php echo htmlspecialchars($com['comment']); ?></p>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
-    <?php else: ?>
+    <?php endforeach; ?>
+
+    <?php if ($allComments === 0): ?>
     <div class="empty-comments">
       <span>💬</span> Niciun comentariu text în această perioadă.
     </div>
