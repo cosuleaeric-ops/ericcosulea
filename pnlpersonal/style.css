@@ -602,7 +602,7 @@ body {
 
 /* ── Table ── */
 .tx-section {
-  max-width: 720px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -625,7 +625,7 @@ body {
 }
 
 table {
-  width: auto;
+  width: 100%;
   border-collapse: collapse;
 }
 
