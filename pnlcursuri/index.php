@@ -41,10 +41,11 @@ header('X-Robots-Tag: noindex, nofollow');
 </header>
 
 <main class="container">
-  <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
-
-  <!-- Last expense date -->
-  <div id="lastExpenseInfo" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <a href="#" onclick="history.back();return false;"
+       style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px">← Înapoi</a>
+    <span class="last-entry-badge" id="lastEntryBadge"></span>
+  </div>
 
   <!-- Stats -->
   <div class="stats-grid">
@@ -286,6 +287,26 @@ async function resolveCategorie(selectId, inputId, addAction) {
   return sel.value || null;
 }
 
+// ── Last entry badge ─────────────────────────────────────────────────────────
+async function loadLastEntry() {
+  const res = await api('last_entry');
+  if (!res || !res.data) return;
+
+  const badge  = document.getElementById('lastEntryBadge');
+  const parts  = res.data.split('-');
+  const entryDt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const diffZ  = Math.round((today - entryDt) / 86400000);
+
+  let when;
+  if (diffZ === 0)      when = 'azi';
+  else if (diffZ === 1) when = 'ieri';
+  else                  when = `acum ${diffZ} zile`;
+
+  badge.textContent = `Ultima cheltuială: ${fmtDate(res.data)} (${when})`;
+  if (diffZ >= 3) badge.classList.add('stale');
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   const periods = await api('periods');
@@ -311,7 +332,7 @@ async function init() {
   });
 
   await loadCategories();
-  await refresh();
+  await Promise.all([refresh(), loadLastEntry()]);
 }
 
 async function refresh() {
@@ -350,15 +371,6 @@ function renderStats(s) {
     `${allVenituri.length} tranzacții`;
   document.getElementById('statCheltuieliSub').textContent =
     `${allCheltuieli.length} tranzacții`;
-
-  // Last expense date
-  const lastExpenseEl = document.getElementById('lastExpenseInfo');
-  if (allCheltuieli.length > 0) {
-    const lastDate = allCheltuieli.map(c => c.data).sort().at(-1);
-    lastExpenseEl.textContent = `Ultima cheltuiala înregistrată: ${fmtDate(lastDate)}`;
-  } else {
-    lastExpenseEl.textContent = '';
-  }
   document.getElementById('statProfitSub').textContent = '';
 }
 

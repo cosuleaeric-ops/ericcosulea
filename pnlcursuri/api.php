@@ -123,6 +123,9 @@ try {
         case 'periods':
             handlePeriods($db);
             break;
+        case 'last_entry':
+            handleLastEntry($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Acțiune necunoscută']);
@@ -443,6 +446,12 @@ function handleEditCheltuiala(SQLite3 $db): void
     $stmt->execute();
 
     echo json_encode(['success' => true]);
+}
+
+function handleLastEntry(SQLite3 $db): void
+{
+    $row = $db->querySingle("SELECT data FROM cheltuieli ORDER BY data DESC, id DESC LIMIT 1", true);
+    echo json_encode($row ? ['data' => $row['data']] : null);
 }
 
 function handleDelete(SQLite3 $db, string $table): void
