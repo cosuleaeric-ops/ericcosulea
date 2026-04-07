@@ -769,12 +769,15 @@ function renderStats(s) {
     document.getElementById('statCard3Value').className   = 'value gold';
     document.getElementById('statCard3Sub').textContent   = `din ${daysInMonth} zile`;
 
-    const maxTx = allCheltuieli.reduce((max, r) => parseFloat(r.suma) > parseFloat(max?.suma || 0) ? r : max, null);
+    const prevC = s.prev_cheltuieli || 0;
+    const diff  = prevC > 0 ? ((s.total_cheltuieli - prevC) / prevC * 100) : null;
+    const diffTxt = diff === null ? '—'
+      : (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%';
     card4.className = 'stat-card accent-purple';
-    document.getElementById('statCard4Label').textContent = 'Cea mai mare';
-    document.getElementById('statCard4Value').textContent = maxTx ? fmt(parseFloat(maxTx.suma)) + ' lei' : '—';
-    document.getElementById('statCard4Value').className   = 'value purple';
-    document.getElementById('statCard4Sub').textContent   = maxTx ? maxTx.categorie + (maxTx.detalii ? ' · ' + maxTx.detalii : '') : '';
+    document.getElementById('statCard4Label').textContent = 'Față de ' + (s.prev_label || 'luna trecută');
+    document.getElementById('statCard4Value').textContent = diffTxt;
+    document.getElementById('statCard4Value').className   = 'value ' + (diff === null ? '' : diff <= 0 ? 'green' : 'red');
+    document.getElementById('statCard4Sub').textContent   = prevC > 0 ? fmt(prevC) + ' lei atunci' : 'fără date';
   } else {
     // ── Vizualizare anuală: profit net + marjă ───────────────────────────────
     card3.className = 'stat-card accent-gold';

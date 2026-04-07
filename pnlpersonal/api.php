@@ -325,15 +325,16 @@ function handleStats(SQLite3 $db): void
     $profit_prev = $prev_v - $prev_c;
 
     echo json_encode([
-        'total_venituri'     => $total_v,
-        'total_cheltuieli'   => $total_c,
-        'profit_net'         => $total_v - $total_c,
-        'marja'              => $total_v > 0 ? round(($total_v - $total_c) / $total_v * 100, 1) : 0,
-        'monthly'            => $monthly,
+        'total_venituri'       => $total_v,
+        'total_cheltuieli'     => $total_c,
+        'profit_net'           => $total_v - $total_c,
+        'marja'                => $total_v > 0 ? round(($total_v - $total_c) / $total_v * 100, 1) : 0,
+        'monthly'              => $monthly,
         'categorii_cheltuieli' => $categorii,
-        'year'               => (int)$year,
-        'profit_prev'        => $profit_prev,
-        'prev_label'         => $prev_label,
+        'year'                 => (int)$year,
+        'profit_prev'          => $profit_prev,
+        'prev_label'           => $prev_label,
+        'prev_cheltuieli'      => $prev_c,
     ]);
 }
 
