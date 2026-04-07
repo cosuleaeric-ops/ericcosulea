@@ -320,12 +320,12 @@ header('X-Robots-Tag: noindex, nofollow');
                style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
       <div class="form-group">
-        <label>Detalii</label>
-        <input type="text" name="detalii" id="cheltuialaDetalii" />
-      </div>
-      <div class="form-group">
         <label>Sumă (lei)</label>
         <input type="number" name="suma" id="cheltuialaSuma" step="0.01" min="0.01" required />
+      </div>
+      <div class="form-group">
+        <label>Detalii</label>
+        <input type="text" name="detalii" id="cheltuialaDetalii" />
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close="modalCheltuiala">Anulează</button>
