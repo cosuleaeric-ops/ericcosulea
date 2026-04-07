@@ -769,12 +769,12 @@ function renderStats(s) {
     document.getElementById('statCard3Value').className   = 'value gold';
     document.getElementById('statCard3Sub').textContent   = `din ${daysInMonth} zile`;
 
-    const topCat = s.categorii_cheltuieli[0];
+    const maxTx = allCheltuieli.reduce((max, r) => parseFloat(r.suma) > parseFloat(max?.suma || 0) ? r : max, null);
     card4.className = 'stat-card accent-purple';
-    document.getElementById('statCard4Label').textContent = 'Top categorie';
-    document.getElementById('statCard4Value').textContent = topCat ? topCat.categorie : '—';
+    document.getElementById('statCard4Label').textContent = 'Cea mai mare';
+    document.getElementById('statCard4Value').textContent = maxTx ? fmt(parseFloat(maxTx.suma)) + ' lei' : '—';
     document.getElementById('statCard4Value').className   = 'value purple';
-    document.getElementById('statCard4Sub').textContent   = topCat ? fmt(topCat.suma) + ' lei' : '';
+    document.getElementById('statCard4Sub').textContent   = maxTx ? maxTx.categorie + (maxTx.detalii ? ' · ' + maxTx.detalii : '') : '';
   } else {
     // ── Vizualizare anuală: profit net + marjă ───────────────────────────────
     card3.className = 'stat-card accent-gold';
