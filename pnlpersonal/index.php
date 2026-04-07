@@ -35,9 +35,9 @@ header('X-Robots-Tag: noindex, nofollow');
 <header class="app-header">
   <h1>P&amp;L — Personal</h1>
   <div class="header-controls">
-    <select class="year-select" id="yearSelect"></select>
     <button class="month-nav-btn" id="btnPrevMonth" title="Luna anterioară">&#8249;</button>
     <button class="month-nav-btn" id="btnNextMonth" title="Luna următoare">&#8250;</button>
+    <select class="year-select" id="yearSelect"></select>
     <a href="/admin/logout.php" class="logout-link">Ieși</a>
   </div>
 </header>
@@ -640,8 +640,8 @@ function updateMonthNavBtns() {
   const opts  = getMonthOptions();
   const sel   = document.getElementById('yearSelect');
   const idx   = opts.findIndex(o => o.value === sel.value);
-  document.getElementById('btnPrevMonth').disabled = idx <= 0;
-  document.getElementById('btnNextMonth').disabled = idx < 0 || idx >= opts.length - 1;
+  document.getElementById('btnPrevMonth').disabled = idx < 0 || idx >= opts.length - 1;
+  document.getElementById('btnNextMonth').disabled = idx <= 0;
 }
 
 function navigateMonth(dir) {
