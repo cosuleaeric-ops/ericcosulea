@@ -245,7 +245,8 @@ body {
   text-transform: uppercase;
   margin-bottom: 8px;
 }
-.badge-bolt { background: #FFF3E0; color: #E65100; }
+.badge-bolt  { background: #FFF3E0; color: #E65100; }
+.badge-glovo { background: #FFFDE7; color: #F9A825; }
 
 .report-title {
   font-size: 20px;
@@ -456,6 +457,93 @@ body {
   font-size: 13px;
   color: #333;
   line-height: 1.55;
+}
+
+/* ── Glovo tax sections ── */
+.tax-summary-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.tax-stat {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(0,0,0,0.06);
+}
+.tax-stat-ok    { background: var(--green-bg); }
+.tax-stat-alert { background: var(--red-bg); }
+
+.tax-stat-icon { font-size: 24px; }
+.tax-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.tax-stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.tax-stat-ok    .tax-stat-num { color: var(--green); }
+.tax-stat-alert .tax-stat-num { color: var(--red); }
+
+.tax-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 6px;
+  box-shadow: var(--shadow);
+}
+.tax-table thead th {
+  background: #F5F4F0;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+.tax-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0ede6;
+  color: var(--text);
+}
+.tax-table tbody tr:last-child td { border-bottom: none; }
+.tax-table tbody tr:hover td { background: #faf9f6; }
+.tax-amount {
+  font-weight: 600;
+  text-align: right;
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+}
+.tax-total-row td {
+  padding: 10px 14px;
+  font-weight: 700;
+  background: #F5F4F0;
+  border-top: 2px solid var(--border);
+}
+.tax-total-row .tax-amount { color: var(--red); }
+
+.responsible-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  background: #E8E3D8;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .empty-comments {
