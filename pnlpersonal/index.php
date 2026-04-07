@@ -315,8 +315,8 @@ header('X-Robots-Tag: noindex, nofollow');
                style="display:none; margin-top:8px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg);" />
       </div>
       <div class="form-group">
-        <label>Detalii <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted)">(opțional — ex: Lidl, Tuns, Vodafone)</span></label>
-        <input type="text" name="detalii" id="cheltuialaDetalii" placeholder="ex: Tuns, Lidl, Vodafone..." />
+        <label>Detalii</label>
+        <input type="text" name="detalii" id="cheltuialaDetalii" />
       </div>
       <div class="form-group">
         <label>Sumă (lei)</label>
