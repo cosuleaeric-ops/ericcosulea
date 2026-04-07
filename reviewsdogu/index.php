@@ -268,46 +268,52 @@ $platform = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf($_POST['csrf'] ?? '');
     $platform = $_POST['platform'] ?? '';
-    $file     = $_FILES['report_file'] ?? null;
+    $files    = $_FILES['report_files'] ?? null;
 
     if (!in_array($platform, ['bolt', 'glovo', 'wolt'], true)) {
         $error = 'Selectează o platformă validă.';
-    } elseif (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-        $errs = [
-            UPLOAD_ERR_INI_SIZE  => 'Fișierul depășește limita serverului.',
-            UPLOAD_ERR_FORM_SIZE => 'Fișierul depășește limita formularului.',
-            UPLOAD_ERR_PARTIAL   => 'Fișierul a fost încărcat parțial.',
-            UPLOAD_ERR_NO_FILE   => 'Nu a fost selectat niciun fișier.',
-        ];
-        $error = $errs[$file['error'] ?? 0] ?? 'Eroare la încărcarea fișierului.';
-    } elseif (!in_array(strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)), ['csv', 'xlsx'], true)) {
-        $error = 'Format nesuportat. Acceptăm CSV sau XLSX.';
     } elseif ($platform === 'wolt') {
         $error = 'Exporturile Wolt vor fi adăugate în curând.';
+    } elseif (!$files || empty($files['name'][0])) {
+        $error = 'Nu a fost selectat niciun fișier.';
     } else {
         try {
-            $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $rows = ($ext === 'csv') ? parse_csv_file($file['tmp_name']) : parse_xlsx_file($file['tmp_name']);
+            $allRows   = [];
+            $filenames = [];
+            $fileCount = count($files['name']);
 
-            if (empty($rows)) {
-                $error = 'Fișierul este gol sau nu a putut fi citit.';
+            for ($i = 0; $i < $fileCount; $i++) {
+                if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+                    throw new Exception('Eroare la fișierul "' . $files['name'][$i] . '".');
+                }
+                $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+                if (!in_array($ext, ['csv', 'xlsx'], true)) {
+                    throw new Exception('Format nesuportat pentru "' . $files['name'][$i] . '". Acceptăm CSV sau XLSX.');
+                }
+                $rows    = ($ext === 'csv') ? parse_csv_file($files['tmp_name'][$i]) : parse_xlsx_file($files['tmp_name'][$i]);
+                $allRows = array_merge($allRows, $rows);
+                $filenames[] = $files['name'][$i];
+            }
+
+            if (empty($allRows)) {
+                $error = 'Fișierele sunt goale sau nu au putut fi citite.';
             } elseif ($platform === 'bolt') {
-                if (!isset($rows[0]['Provider Name'])) {
-                    $error = 'Format necunoscut. Asigură-te că încarci un export Bolt valid (coloana "Provider Name" lipsește).';
+                if (!isset($allRows[0]['Provider Name'])) {
+                    $error = 'Format necunoscut. Asigură-te că încarci exporturi Bolt valide (coloana "Provider Name" lipsește).';
                 } else {
-                    $report             = generate_bolt_report($rows);
-                    $report['type']     = 'bolt';
-                    $report['platform'] = 'Bolt';
-                    $report['filename'] = htmlspecialchars($file['name']);
+                    $report              = generate_bolt_report($allRows);
+                    $report['type']      = 'bolt';
+                    $report['platform']  = 'Bolt';
+                    $report['filenames'] = $filenames;
                 }
             } elseif ($platform === 'glovo') {
-                if (!isset($rows[0]['Denumire restaurant'])) {
-                    $error = 'Format necunoscut. Asigură-te că încarci un export Glovo valid (coloana "Denumire restaurant" lipsește).';
+                if (!isset($allRows[0]['Denumire restaurant'])) {
+                    $error = 'Format necunoscut. Asigură-te că încarci exporturi Glovo valide (coloana "Denumire restaurant" lipsește).';
                 } else {
-                    $report             = generate_glovo_report($rows);
-                    $report['type']     = 'glovo';
-                    $report['platform'] = 'Glovo';
-                    $report['filename'] = htmlspecialchars($file['name']);
+                    $report              = generate_glovo_report($allRows);
+                    $report['type']      = 'glovo';
+                    $report['platform']  = 'Glovo';
+                    $report['filenames'] = $filenames;
                 }
             }
         } catch (Exception $e) {
@@ -369,14 +375,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
 
       <div class="form-group">
-        <label class="form-label">Fișier <span class="muted">(CSV sau XLSX)</span></label>
+        <label class="form-label">Fișiere <span class="muted">(CSV sau XLSX — poți selecta mai multe)</span></label>
         <div class="file-drop" id="fileDrop">
-          <input type="file" name="report_file" id="fileInput" accept=".csv,.xlsx" class="file-input" />
+          <input type="file" name="report_files[]" id="fileInput" accept=".csv,.xlsx" class="file-input" multiple />
           <div class="file-drop-inner" id="fileDropInner">
             <span class="file-icon">📁</span>
-            <span class="file-text" id="fileText">Trage fișierul aici sau <strong>click pentru selectare</strong></span>
+            <span class="file-text" id="fileText">Trage fișierele aici sau <strong>click pentru selectare</strong></span>
           </div>
         </div>
+        <div id="fileList" class="file-list"></div>
       </div>
 
       <button type="submit" class="btn-submit">Generează raport →</button>
@@ -412,7 +419,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="report-title-block">
         <span class="report-badge <?php echo $badgeClass; ?>"><?php echo $badgeIcon; ?> <?php echo $report['platform']; ?></span>
         <h2 class="report-title"><?php echo $reportTitle; ?></h2>
-        <p class="report-filename">📄 <?php echo $report['filename']; ?></p>
+        <div class="report-filenames">
+          <?php foreach ($report['filenames'] as $fn): ?>
+          <span class="report-filename-tag">📄 <?php echo htmlspecialchars($fn); ?></span>
+          <?php endforeach; ?></div>
       </div>
       <div class="report-period">
         <span class="period-label">Perioada</span>
@@ -648,35 +658,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     });
   });
 
-  // File drop zone
-  var drop  = document.getElementById('fileDrop');
-  var input = document.getElementById('fileInput');
-  var text  = document.getElementById('fileText');
+  var drop     = document.getElementById('fileDrop');
+  var input    = document.getElementById('fileInput');
+  var text     = document.getElementById('fileText');
+  var fileList = document.getElementById('fileList');
 
-  input.addEventListener('change', function() {
-    if (this.files[0]) {
-      text.innerHTML = '📄 <strong>' + this.files[0].name + '</strong>';
-      drop.classList.add('file-drop-selected');
+  function renderFiles(files) {
+    if (!files || files.length === 0) {
+      text.innerHTML = 'Trage fișierele aici sau <strong>click pentru selectare</strong>';
+      drop.classList.remove('file-drop-selected');
+      fileList.innerHTML = '';
+      return;
     }
-  });
+    text.innerHTML = '<strong>' + files.length + ' fișier' + (files.length > 1 ? 'e selectate' : ' selectat') + '</strong>';
+    drop.classList.add('file-drop-selected');
+    var html = '';
+    for (var i = 0; i < files.length; i++) {
+      html += '<div class="file-chip">📄 <span>' + files[i].name + '</span>'
+            + '<button type="button" class="file-chip-remove" data-idx="' + i + '">×</button></div>';
+    }
+    fileList.innerHTML = html;
 
-  drop.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    drop.classList.add('file-drop-hover');
-  });
-  drop.addEventListener('dragleave', function() {
-    drop.classList.remove('file-drop-hover');
-  });
+    // Remove individual file
+    fileList.querySelectorAll('.file-chip-remove').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.getAttribute('data-idx'));
+        var dt  = new DataTransfer();
+        for (var j = 0; j < input.files.length; j++) {
+          if (j !== idx) dt.items.add(input.files[j]);
+        }
+        input.files = dt.files;
+        renderFiles(input.files);
+      });
+    });
+  }
+
+  input.addEventListener('change', function() { renderFiles(this.files); });
+
+  drop.addEventListener('dragover',  function(e) { e.preventDefault(); drop.classList.add('file-drop-hover'); });
+  drop.addEventListener('dragleave', function()  { drop.classList.remove('file-drop-hover'); });
   drop.addEventListener('drop', function(e) {
     e.preventDefault();
     drop.classList.remove('file-drop-hover');
-    var file = e.dataTransfer.files[0];
-    if (file) {
+    var dropped = e.dataTransfer.files;
+    if (dropped.length) {
       var dt = new DataTransfer();
-      dt.items.add(file);
+      // Merge with existing
+      for (var i = 0; i < input.files.length; i++) dt.items.add(input.files[i]);
+      for (var i = 0; i < dropped.length; i++)      dt.items.add(dropped[i]);
       input.files = dt.files;
-      text.innerHTML = '📄 <strong>' + file.name + '</strong>';
-      drop.classList.add('file-drop-selected');
+      renderFiles(input.files);
     }
   });
 })();
