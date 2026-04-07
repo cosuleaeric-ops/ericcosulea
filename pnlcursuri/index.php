@@ -43,6 +43,9 @@ header('X-Robots-Tag: noindex, nofollow');
 <main class="container">
   <a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
 
+  <!-- Last expense date -->
+  <div id="lastExpenseInfo" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+
   <!-- Stats -->
   <div class="stats-grid">
     <div class="stat-card accent-green">
@@ -347,6 +350,15 @@ function renderStats(s) {
     `${allVenituri.length} tranzacții`;
   document.getElementById('statCheltuieliSub').textContent =
     `${allCheltuieli.length} tranzacții`;
+
+  // Last expense date
+  const lastExpenseEl = document.getElementById('lastExpenseInfo');
+  if (allCheltuieli.length > 0) {
+    const lastDate = allCheltuieli.map(c => c.data).sort().at(-1);
+    lastExpenseEl.textContent = `Ultima cheltuiala înregistrată: ${fmtDate(lastDate)}`;
+  } else {
+    lastExpenseEl.textContent = '';
+  }
   document.getElementById('statProfitSub').textContent = '';
 }
 
