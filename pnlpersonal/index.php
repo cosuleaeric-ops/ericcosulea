@@ -35,8 +35,8 @@ header('X-Robots-Tag: noindex, nofollow');
 <header class="app-header">
   <h1>P&amp;L — Personal</h1>
   <div class="header-controls">
-    <button class="month-nav-btn" id="btnPrevMonth" title="Luna anterioară">&#8249;</button>
     <select class="year-select" id="yearSelect"></select>
+    <button class="month-nav-btn" id="btnPrevMonth" title="Luna anterioară">&#8249;</button>
     <button class="month-nav-btn" id="btnNextMonth" title="Luna următoare">&#8250;</button>
     <a href="/admin/logout.php" class="logout-link">Ieși</a>
   </div>
