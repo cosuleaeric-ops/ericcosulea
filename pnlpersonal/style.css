@@ -602,8 +602,7 @@ body {
 
 /* ── Table ── */
 .tx-section {
-  width: fit-content;
-  min-width: 520px;
+  max-width: 720px;
   margin: 0 auto;
 }
 
