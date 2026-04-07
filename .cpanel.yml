@@ -12,6 +12,7 @@ deployment:
     - /bin/mkdir -p ${DEPLOYPATH}clp/uploads
     - /bin/cp -R uploads $DEPLOYPATH
     - /bin/cp -R reviewsdogu $DEPLOYPATH
+    - /bin/mkdir -p ${DEPLOYPATH}reviewsdogu/data
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp styles.css $DEPLOYPATH
