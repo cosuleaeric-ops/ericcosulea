@@ -142,6 +142,9 @@ try {
         case 'latest_portofel':
             handleLatestPortofel($db);
             break;
+        case 'last_entry':
+            handleLastEntry($db);
+            break;
         case 'list_portofel':
             handleListPortofel($db);
             break;
@@ -541,4 +544,10 @@ function handleListPortofel(SQLite3 $db): void
     $rows = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) $rows[] = $row;
     echo json_encode($rows);
+}
+
+function handleLastEntry(SQLite3 $db): void
+{
+    $row = $db->querySingle("SELECT data FROM cheltuieli ORDER BY data DESC, id DESC LIMIT 1", true);
+    echo json_encode($row ? ['data' => $row['data']] : null);
 }

@@ -35,7 +35,9 @@ header('X-Robots-Tag: noindex, nofollow');
 <header class="app-header">
   <h1>P&amp;L — Personal</h1>
   <div class="header-controls">
+    <button class="month-nav-btn" id="btnPrevMonth" title="Luna anterioară">&#8249;</button>
     <select class="year-select" id="yearSelect"></select>
+    <button class="month-nav-btn" id="btnNextMonth" title="Luna următoare">&#8250;</button>
     <a href="/admin/logout.php" class="logout-link">Ieși</a>
   </div>
 </header>
@@ -49,8 +51,11 @@ header('X-Robots-Tag: noindex, nofollow');
 </div>
 
 <main class="container">
-  <a href="#" onclick="history.back();return false;"
-     style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <a href="#" onclick="history.back();return false;"
+       style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px">← Înapoi</a>
+    <span class="last-entry-badge" id="lastEntryBadge"></span>
+  </div>
 
   <!-- ══ QUICK ADD ══════════════════════════════════════════════════════════ -->
   <div class="quick-add-bar">
@@ -152,15 +157,15 @@ header('X-Robots-Tag: noindex, nofollow');
       <div class="value red" id="statCheltuieli">—</div>
       <div class="sub" id="statCheltuieliSub"></div>
     </div>
-    <div class="stat-card accent-gold">
-      <div class="label">Profit net</div>
-      <div class="value" id="statProfit">—</div>
-      <div class="sub" id="statProfitSub"></div>
+    <div class="stat-card" id="statCard3">
+      <div class="label" id="statCard3Label">—</div>
+      <div class="value" id="statCard3Value">—</div>
+      <div class="sub" id="statCard3Sub"></div>
     </div>
-    <div class="stat-card accent-blue">
-      <div class="label">Marjă profit</div>
-      <div class="value" id="statMarja">—</div>
-      <div class="sub">din venituri</div>
+    <div class="stat-card" id="statCard4">
+      <div class="label" id="statCard4Label">—</div>
+      <div class="value" id="statCard4Value">—</div>
+      <div class="sub" id="statCard4Sub"></div>
     </div>
   </div>
 
@@ -625,6 +630,58 @@ document.getElementById('formPortofel').addEventListener('submit', async e => {
   }
 });
 
+// ── Month navigation ─────────────────────────────────────────────────────────
+function getMonthOptions() {
+  return [...document.getElementById('yearSelect').options]
+    .filter(o => o.value.includes('-'));
+}
+
+function updateMonthNavBtns() {
+  const opts  = getMonthOptions();
+  const sel   = document.getElementById('yearSelect');
+  const idx   = opts.findIndex(o => o.value === sel.value);
+  document.getElementById('btnPrevMonth').disabled = idx <= 0;
+  document.getElementById('btnNextMonth').disabled = idx < 0 || idx >= opts.length - 1;
+}
+
+function navigateMonth(dir) {
+  const opts = getMonthOptions();
+  const sel  = document.getElementById('yearSelect');
+  const idx  = opts.findIndex(o => o.value === sel.value);
+  const next = opts[idx + dir];
+  if (!next) return;
+  sel.value    = next.value;
+  const parts  = next.value.split('-');
+  currentYear  = parseInt(parts[0]);
+  currentMonth = parseInt(parts[1]);
+  updateMonthNavBtns();
+  refresh();
+}
+
+document.getElementById('btnPrevMonth').addEventListener('click', () => navigateMonth(-1));
+document.getElementById('btnNextMonth').addEventListener('click', () => navigateMonth(1));
+
+// ── Last entry date ───────────────────────────────────────────────────────────
+async function loadLastEntry() {
+  const res = await api('last_entry');
+  if (!res || !res.data) return;
+
+  const badge   = document.getElementById('lastEntryBadge');
+  const parts   = res.data.split('-');
+  const entryDt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const diffMs  = today - entryDt;
+  const diffZ   = Math.round(diffMs / 86400000);
+
+  let when;
+  if (diffZ === 0)      when = 'azi';
+  else if (diffZ === 1) when = 'ieri';
+  else                  when = `acum ${diffZ} zile`;
+
+  badge.textContent = `Ultima cheltuială: ${fmtDate(res.data)} (${when})`;
+  if (diffZ >= 3) badge.classList.add('stale');
+}
+
 // ── PNL Init ──────────────────────────────────────────────────────────────────
 async function init() {
   const periods = await api('periods');
@@ -664,11 +721,13 @@ async function init() {
     const parts  = sel.value.split('-');
     currentYear  = parseInt(parts[0]);
     currentMonth = parts[1] ? parseInt(parts[1]) : null;
+    updateMonthNavBtns();
     refresh();
   });
 
+  updateMonthNavBtns();
   await loadCategories();
-  await Promise.all([refresh(), loadPortofel(), checkMondayBanner()]);
+  await Promise.all([refresh(), loadPortofel(), checkMondayBanner(), loadLastEntry()]);
 }
 
 async function refresh() {
@@ -692,18 +751,44 @@ async function refresh() {
 function renderStats(s) {
   document.getElementById('statVenituri').textContent   = fmt(s.total_venituri)   + ' lei';
   document.getElementById('statCheltuieli').textContent = fmt(s.total_cheltuieli) + ' lei';
-
-  const profitEl = document.getElementById('statProfit');
-  profitEl.textContent = (s.profit_net >= 0 ? '+' : '') + fmt(s.profit_net) + ' lei';
-  profitEl.className   = 'value ' + (s.profit_net >= 0 ? 'green' : 'red');
-
-  const marjaEl = document.getElementById('statMarja');
-  marjaEl.textContent = (s.marja >= 0 ? '+' : '') + s.marja + '%';
-  marjaEl.className   = 'value ' + (s.marja >= 0 ? 'green' : 'red');
-
   document.getElementById('statVenituriSub').textContent   = `${allVenituri.length} tranzacții`;
   document.getElementById('statCheltuieliSub').textContent = `${allCheltuieli.length} tranzacții`;
-  document.getElementById('statProfitSub').textContent     = '';
+
+  const card3 = document.getElementById('statCard3');
+  const card4 = document.getElementById('statCard4');
+
+  if (currentMonth) {
+    // ── Vizualizare lunară: medie zilnică + zile active ──────────────────────
+    const daysInMonth  = new Date(currentYear, currentMonth, 0).getDate();
+    const avgZilnic    = s.total_cheltuieli > 0 ? s.total_cheltuieli / daysInMonth : 0;
+    const zileActive   = s.monthly.filter(m => m.cheltuieli > 0).length;
+
+    card3.className = 'stat-card accent-gold';
+    document.getElementById('statCard3Label').textContent = 'Medie zilnică';
+    document.getElementById('statCard3Value').textContent = fmt(avgZilnic) + ' lei';
+    document.getElementById('statCard3Value').className   = 'value gold';
+    document.getElementById('statCard3Sub').textContent   = `din ${daysInMonth} zile`;
+
+    card4.className = 'stat-card accent-blue';
+    document.getElementById('statCard4Label').textContent = 'Zile active';
+    document.getElementById('statCard4Value').textContent = `${zileActive} / ${daysInMonth}`;
+    document.getElementById('statCard4Value').className   = 'value blue';
+    document.getElementById('statCard4Sub').textContent   = 'zile cu cheltuieli';
+  } else {
+    // ── Vizualizare anuală: profit net + marjă ───────────────────────────────
+    card3.className = 'stat-card accent-gold';
+    document.getElementById('statCard3Label').textContent = 'Profit net';
+    const profitVal = (s.profit_net >= 0 ? '+' : '') + fmt(s.profit_net) + ' lei';
+    document.getElementById('statCard3Value').textContent = profitVal;
+    document.getElementById('statCard3Value').className   = 'value ' + (s.profit_net >= 0 ? 'green' : 'red');
+    document.getElementById('statCard3Sub').textContent   = '';
+
+    card4.className = 'stat-card accent-blue';
+    document.getElementById('statCard4Label').textContent = 'Marjă profit';
+    document.getElementById('statCard4Value').textContent = (s.marja >= 0 ? '+' : '') + s.marja + '%';
+    document.getElementById('statCard4Value').className   = 'value ' + (s.marja >= 0 ? 'green' : 'red');
+    document.getElementById('statCard4Sub').textContent   = 'din venituri';
+  }
 }
 
 // ── Charts ────────────────────────────────────────────────────────────────────
