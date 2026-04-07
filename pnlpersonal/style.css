@@ -602,7 +602,9 @@ body {
 
 /* ── Table ── */
 .tx-section {
-  width: 100%;
+  width: fit-content;
+  min-width: 520px;
+  margin: 0 auto;
 }
 
 .tx-section .section-header {
@@ -616,7 +618,7 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
   width: auto;
-  min-width: 520px;
+  min-width: 0;
 }
 
 .table-scroll {
