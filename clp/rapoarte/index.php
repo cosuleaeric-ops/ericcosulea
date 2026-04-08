@@ -107,7 +107,7 @@ rsort($years);
 <main class="container">
   <div class="page-wrap">
 
-    <div style="text-align:center;margin-bottom:20px">
+    <div style="margin-bottom:20px">
       <a href="/clp/" style="font-size:13px;color:var(--muted);text-decoration:none">← Dashboard</a>
     </div>
 
