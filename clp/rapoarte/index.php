@@ -103,12 +103,13 @@ rsort($years);
 <body>
 <header class="app-header">
   <h1>Rapoarte DITL</h1>
-  <div class="header-controls">
-    <a href="/clp/" class="logout-link">← Dashboard</a>
-  </div>
 </header>
 <main class="container">
   <div class="page-wrap">
+
+    <div style="text-align:center;margin-bottom:20px">
+      <a href="/clp/" style="font-size:13px;color:var(--muted);text-decoration:none">← Dashboard</a>
+    </div>
 
     <!-- Filtru -->
     <form method="get" class="filter-bar">
