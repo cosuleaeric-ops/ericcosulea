@@ -244,6 +244,42 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
       <div class="meta">📅 <?php echo h(ro_date($course['date'])); ?></div>
     </div>
 
+    <?php if ($report): ?>
+    <!-- Raport eveniment (sus — doar dacă există) -->
+    <div class="section-card">
+      <h3>Raport eveniment</h3>
+      <div class="raport-grid">
+        <div class="raport-stat">
+          <div class="label">Total încasări</div>
+          <div class="value"><?php echo number_format((float)$report['total_incasari'], 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
+        </div>
+        <div class="raport-stat">
+          <div class="label">Total bilete (brut)</div>
+          <div class="value"><?php echo number_format((float)$report['total_bilete'], 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
+        </div>
+        <div class="raport-stat">
+          <div class="label">Taxă DITL (2%)</div>
+          <div class="value ditl"><?php echo number_format((float)$report['total_bilete'] * 0.02, 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
+        </div>
+      </div>
+      <div class="raport-meta">
+        <?php if ($report['original_name']): ?>📎 <?php echo h($report['original_name']); ?> · <?php endif; ?>
+        Actualizat <?php echo h(substr($report['uploaded_at'], 0, 10)); ?>
+      </div>
+      <details style="margin-bottom:16px">
+        <summary style="font-size:13px;color:var(--muted);cursor:pointer">Actualizează raportul</summary>
+        <div style="margin-top:12px">
+          <?php include __DIR__ . '/raport_upload_form.inc.php'; ?>
+        </div>
+      </details>
+      <form method="post" onsubmit="return confirm('Ștergi raportul financiar?');" style="margin-top:4px">
+        <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
+        <input type="hidden" name="action" value="delete_raport">
+        <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:4px 12px;color:var(--muted)">Șterge raportul</button>
+      </form>
+    </div>
+    <?php endif; ?>
+
     <!-- Distribuție bilete -->
     <div class="section-card">
       <h3>Distribuție bilete</h3>
@@ -288,44 +324,14 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
     </div>
     <?php endif; ?>
 
-    <!-- Raport eveniment -->
+    <?php if (!$report): ?>
+    <!-- Raport eveniment (jos — doar dacă nu există încă) -->
     <div class="section-card">
       <h3>Raport eveniment</h3>
-      <?php if ($report): ?>
-        <div class="raport-grid">
-          <div class="raport-stat">
-            <div class="label">Total încasări</div>
-            <div class="value"><?php echo number_format((float)$report['total_incasari'], 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
-          </div>
-          <div class="raport-stat">
-            <div class="label">Total bilete (brut)</div>
-            <div class="value"><?php echo number_format((float)$report['total_bilete'], 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
-          </div>
-          <div class="raport-stat">
-            <div class="label">Taxă DITL (2%)</div>
-            <div class="value ditl"><?php echo number_format((float)$report['total_bilete'] * 0.02, 2, ',', '.'); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
-          </div>
-        </div>
-        <div class="raport-meta">
-          <?php if ($report['original_name']): ?>📎 <?php echo h($report['original_name']); ?> · <?php endif; ?>
-          Actualizat <?php echo h(substr($report['uploaded_at'], 0, 10)); ?>
-        </div>
-        <details style="margin-bottom:16px">
-          <summary style="font-size:13px;color:var(--muted);cursor:pointer">Actualizează raportul</summary>
-          <div style="margin-top:12px">
-            <?php include __DIR__ . '/raport_upload_form.inc.php'; ?>
-          </div>
-        </details>
-        <form method="post" onsubmit="return confirm('Ștergi raportul financiar?');" style="margin-top:4px">
-          <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
-          <input type="hidden" name="action" value="delete_raport">
-          <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:4px 12px;color:var(--muted)">Șterge raportul</button>
-        </form>
-      <?php else: ?>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Niciun raport încărcat. Încarcă fișierul XLSX primit după eveniment pentru a vedea încasările și taxa DITL.</p>
-        <?php include __DIR__ . '/raport_upload_form.inc.php'; ?>
-      <?php endif; ?>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Încarcă fișierul XLSX primit după eveniment pentru a vedea încasările și taxa DITL.</p>
+      <?php include __DIR__ . '/raport_upload_form.inc.php'; ?>
     </div>
+    <?php endif; ?>
 
     <!-- Lista participanți -->
     <?php if (!empty($dist['name_counts'])): ?>
