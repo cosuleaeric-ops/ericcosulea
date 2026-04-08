@@ -327,38 +327,6 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
       <?php endif; ?>
     </div>
 
-    <!-- Viză bilete -->
-    <div class="section-card">
-      <h3>Viză bilete</h3>
-      <?php if (!empty($vizaFiles)): ?>
-        <?php foreach ($vizaFiles as $f): ?>
-          <div class="viza-file">
-            <div>
-              <a class="viza-name" href="/clp/uploads/<?php echo h($f['filename']); ?>" target="_blank" rel="noopener">
-                📄 <?php echo h($f['original_name']); ?>
-              </a>
-              <div class="viza-date">Încărcat <?php echo h(substr($f['uploaded_at'], 0, 10)); ?></div>
-            </div>
-            <form method="post" onsubmit="return confirm('Ștergi acest fișier?');">
-              <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
-              <input type="hidden" name="action" value="delete_viza">
-              <input type="hidden" name="file_id" value="<?php echo (int)$f['id']; ?>">
-              <button type="submit" class="icon-btn danger" title="Șterge">✕</button>
-            </form>
-          </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
-
-      <form method="post" enctype="multipart/form-data" style="margin-top:<?php echo empty($vizaFiles) ? 0 : 12; ?>px">
-        <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
-        <input type="hidden" name="action" value="upload_viza">
-        <div class="upload-zone">
-          <input type="file" name="viza" accept=".pdf" onchange="this.form.submit()">
-          <p>📎 Trage sau apasă pentru a încărca o Viză PDF</p>
-        </div>
-      </form>
-    </div>
-
     <!-- Lista participanți -->
     <?php if (!empty($dist['name_counts'])): ?>
     <div class="section-card">
