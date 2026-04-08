@@ -115,6 +115,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: /clp/cursuri/view.php?id={$id}"); exit;
     }
 
+    if ($action === 'upload_viza') {
+        $file = $_FILES['viza'] ?? null;
+        if ($file && $file['error'] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if ($ext === 'pdf') {
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $safeName = bin2hex(random_bytes(10)) . '-' . $id . '.pdf';
+                if (move_uploaded_file($file['tmp_name'], $uploadDir . $safeName)) {
+                    $ins = $db->prepare('INSERT INTO course_files (course_id, filename, original_name, file_type, uploaded_at) VALUES (:cid, :fn, :on, \'viza\', :now)');
+                    $ins->bindValue(':cid', $id,            SQLITE3_INTEGER);
+                    $ins->bindValue(':fn',  $safeName,      SQLITE3_TEXT);
+                    $ins->bindValue(':on',  $file['name'],  SQLITE3_TEXT);
+                    $ins->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+                    $ins->execute();
+                }
+            } else { $error = 'Doar fișiere PDF sunt acceptate.'; }
+        } else { $error = 'Eroare la upload.'; }
+        if (!$error) { header("Location: /clp/cursuri/view.php?id={$id}"); exit; }
+    }
+
+    if ($action === 'delete_viza') {
+        $fid = (int)($_POST['file_id'] ?? 0);
+        $row = $db->querySingle("SELECT filename FROM course_files WHERE id={$fid} AND course_id={$id}", true);
+        if ($row) {
+            @unlink($uploadDir . $row['filename']);
+            $db->exec("DELETE FROM course_files WHERE id={$fid}");
+        }
+        header("Location: /clp/cursuri/view.php?id={$id}"); exit;
+    }
+
     if ($action === 'delete_course') {
         // Delete associated files from disk
         $res = $db->query("SELECT filename FROM course_files WHERE course_id={$id}");
@@ -138,6 +168,10 @@ $vizaFiles = [];
 while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
 
 $report = $db->querySingle("SELECT * FROM course_reports WHERE course_id={$id}", true) ?: null;
+
+$res = $db->query("SELECT * FROM course_files WHERE course_id={$id} AND file_type='viza' ORDER BY uploaded_at DESC");
+$vizaFiles = [];
+while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
 
 // Returning participants: people in this course who attended other CLP courses
 $retRes = $db->query("
@@ -372,6 +406,35 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
         <div class="update-preview" id="updatePreview"></div>
         <div class="update-submit" id="updateSubmit">
           <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:10px">Înlocuiește lista de participanți</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Viza bilete -->
+    <div class="section-card">
+      <h3>Viza bilete</h3>
+      <?php foreach ($vizaFiles as $f): ?>
+        <div class="viza-file">
+          <div>
+            <a class="viza-name" href="/clp/uploads/<?php echo h($f['filename']); ?>" target="_blank" rel="noopener">
+              📄 <?php echo h($f['original_name']); ?>
+            </a>
+            <div class="viza-date">Incarcat <?php echo h(substr($f['uploaded_at'], 0, 10)); ?></div>
+          </div>
+          <form method="post" onsubmit="return confirm('Stergi acest fisier?');">
+            <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
+            <input type="hidden" name="action" value="delete_viza">
+            <input type="hidden" name="file_id" value="<?php echo (int)$f['id']; ?>">
+            <button type="submit" class="icon-btn danger" title="Sterge">✕</button>
+          </form>
+        </div>
+      <?php endforeach; ?>
+      <form method="post" enctype="multipart/form-data" style="margin-top:<?php echo empty($vizaFiles) ? 0 : 12; ?>px">
+        <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
+        <input type="hidden" name="action" value="upload_viza">
+        <div class="upload-zone">
+          <input type="file" name="viza" accept=".pdf" onchange="this.form.submit()">
+          <p>📎 Trage sau apasa pentru a incarca o Viza PDF</p>
         </div>
       </form>
     </div>
