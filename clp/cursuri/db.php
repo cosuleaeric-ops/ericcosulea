@@ -1,7 +1,5 @@
 <?php
 declare(strict_types=1);
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
 
 function get_clp_db(): SQLite3 {
     $path = __DIR__ . '/../data/clp.sqlite';
@@ -86,9 +84,10 @@ function parse_viza_subtips(string $text): array {
     return $subtips;
 }
 
-// Încearcă extragerea textului din PDF cu pdftotext
+// Încearcă extragerea textului din PDF cu pdftotext (fallback server-side)
 function pdf_to_text(string $filepath): string {
     if (!file_exists($filepath)) return '';
+    if (!function_exists('escapeshellarg') || !function_exists('shell_exec')) return '';
     $cmd = 'pdftotext -layout ' . escapeshellarg($filepath) . ' -';
     $out = @shell_exec($cmd);
     return $out ?? '';
