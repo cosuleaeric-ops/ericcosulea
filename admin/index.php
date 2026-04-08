@@ -88,6 +88,16 @@ $latestPost = $posts[0] ?? null;
         <h2>dogu</h2>
         <p>reviews, comenzi și vânzări restaurant — Bolt, Glovo, Breeze.</p>
       </a>
+      <a class="quick-card" href="/elite-deux/">
+        <span class="quick-card-kicker">tool intern</span>
+        <h2>elite deux</h2>
+        <p>task grid săptămânal cu teme, coloane configurabile și export.</p>
+      </a>
+      <a class="quick-card" href="/deep-work/">
+        <span class="quick-card-kicker">tool intern</span>
+        <h2>deep work</h2>
+        <p>timer de focus cu calendar heatmap și integrare wip.co.</p>
+      </a>
     </section>
 
     <!-- ── Overview blog ── -->
