@@ -21,7 +21,7 @@ if ($allYear) {
         FROM courses c
         JOIN course_reports r ON r.course_id = c.id
         WHERE c.date LIKE '{$year}%'
-        ORDER BY c.date ASC
+        ORDER BY c.date DESC
     ");
 } else {
     $monthPad = str_pad((string)$month, 2, '0', STR_PAD_LEFT);
@@ -32,7 +32,7 @@ if ($allYear) {
         FROM courses c
         JOIN course_reports r ON r.course_id = c.id
         WHERE c.date LIKE '{$prefix}%'
-        ORDER BY c.date ASC
+        ORDER BY c.date DESC
     ");
 }
 $rows = [];
@@ -76,8 +76,7 @@ rsort($years);
   <style>
     .page-wrap { max-width: 800px; margin: 0 auto; }
     .filter-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; }
-    .filter-bar select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); }
-    .filter-bar button { padding: 8px 18px; background: var(--green); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; font-family: 'Crimson Pro', serif; font-weight: 600; }
+    .filter-bar select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); cursor: pointer; }
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px; }
     .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); }
     .stat-box .label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
@@ -112,8 +111,8 @@ rsort($years);
     </div>
 
     <!-- Filtru -->
-    <form method="get" class="filter-bar">
-      <select name="year">
+    <form method="get" class="filter-bar" id="filterForm">
+      <select name="year" onchange="document.getElementById('filterForm').submit()">
         <?php foreach ($years as $y): ?>
           <option value="<?php echo h((string)$y); ?>" <?php echo (int)$y === $year ? 'selected' : ''; ?>>
             <?php echo h((string)$y); ?>
@@ -123,7 +122,7 @@ rsort($years);
           <option value="<?php echo $year; ?>" selected><?php echo $year; ?></option>
         <?php endif; ?>
       </select>
-      <select name="month">
+      <select name="month" onchange="document.getElementById('filterForm').submit()">
         <option value="0" <?php echo $allYear ? 'selected' : ''; ?>>Tot anul</option>
         <?php for ($m = 1; $m <= 12; $m++): ?>
           <option value="<?php echo $m; ?>" <?php echo !$allYear && $m === $month ? 'selected' : ''; ?>>
@@ -131,7 +130,6 @@ rsort($years);
           </option>
         <?php endfor; ?>
       </select>
-      <button type="submit">Afișează</button>
     </form>
 
     <!-- Sumar -->
