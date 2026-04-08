@@ -94,7 +94,7 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
 $retRes = $db->query("
     SELECT t.participant_name,
            COUNT(DISTINCT t2.course_id) AS num_other,
-           GROUP_CONCAT(DISTINCT c2.name || ' (' || c2.date || ')', '|') AS other_list
+           GROUP_CONCAT(c2.name || '|||' || c2.date, '|') AS other_list
     FROM tickets t
     JOIN tickets t2 ON LOWER(TRIM(t2.participant_name)) = LOWER(TRIM(t.participant_name))
                     AND t2.course_id != {$id}
@@ -210,9 +210,10 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
         <?php foreach ($returningParticipants as $rp): ?>
           <?php
             $courses = array_map(function($c) {
-                [$cname, $cdate] = explode(' (', rtrim($c, ')'), 2);
-                return h($cname) . ' <span style="color:var(--muted)">(' . h(ro_date($cdate)) . ')</span>';
-            }, explode('|', $rp['other_list']));
+                $parts = explode('|||', $c, 2);
+                if (count($parts) < 2) return h($c);
+                return h($parts[0]) . ' <span style="color:var(--muted)">(' . h(ro_date($parts[1])) . ')</span>';
+            }, array_unique(explode('|', $rp['other_list'])));
           ?>
           <li>
             <span class="returning-badge">×<?php echo $rp['num_other']; ?></span>
