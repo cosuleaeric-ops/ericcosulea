@@ -33,7 +33,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   </div>
 </header>
 <main class="container" style="max-width:800px">
-<a href="#" onclick="history.back();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
+<a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
 <?php if (empty($courses)): ?>
   <div style="text-align:center;padding:80px 24px;color:var(--muted)">
     <div style="font-size:40px;margin-bottom:16px">📋</div>
