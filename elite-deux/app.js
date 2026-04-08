@@ -67,6 +67,7 @@ const storageStatus = document.getElementById("storageStatus");
 const exportDataBtn = document.getElementById("exportData");
 const importDataBtn = document.getElementById("importData");
 const importFileInput = document.getElementById("importFile");
+const trashZone = document.getElementById("trashZone");
 let remoteSaveTimer = null;
 let remoteInitSucceeded = false;
 
@@ -601,7 +602,6 @@ function renderTask(dateKey, task) {
   const checkBtn = fragment.querySelector(".check-btn");
   const content = fragment.querySelector(".task-content");
   const editBtn = fragment.querySelector(".edit-btn");
-  const deleteBtn = fragment.querySelector(".delete-btn");
 
   node.dataset.taskId = task.id;
   node.dataset.dateKey = dateKey;
@@ -617,10 +617,6 @@ function renderTask(dateKey, task) {
     }
   });
 
-  deleteBtn.addEventListener("click", () => {
-    removeTask(dateKey, task.id);
-  });
-
   editBtn.addEventListener("click", () => {
     beginTaskEdit(content, dateKey, task);
   });
@@ -629,11 +625,13 @@ function renderTask(dateKey, task) {
     event.dataTransfer.setData("text/task-id", task.id);
     event.dataTransfer.setData("text/date-key", dateKey);
     node.classList.add("dragging");
+    showTrashZone(true);
   });
 
   node.addEventListener("dragend", () => {
     node.classList.remove("dragging");
     document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
+    showTrashZone(false);
   });
 
   return node;
@@ -773,7 +771,26 @@ function removeTask(dateKey, taskId) {
   renderWeek();
 }
 
+function showTrashZone(visible) {
+  if (!trashZone) {
+    return;
+  }
+
+  trashZone.classList.toggle("visible", visible);
+  if (!visible) {
+    trashZone.classList.remove("over");
+  }
+}
+
 function onGlobalDragOver(event) {
+  if (event.target.closest(".trash-zone")) {
+    event.preventDefault();
+    trashZone.classList.add("over");
+    return;
+  }
+
+  trashZone?.classList.remove("over");
+
   const list = event.target.closest(".task-list");
   if (!list) {
     return;
@@ -795,6 +812,18 @@ function onGlobalDragOver(event) {
 }
 
 function onGlobalDrop(event) {
+  showTrashZone(false);
+
+  if (event.target.closest(".trash-zone")) {
+    event.preventDefault();
+    const sourceDate = event.dataTransfer.getData("text/date-key");
+    const taskId = event.dataTransfer.getData("text/task-id");
+    if (sourceDate && taskId) {
+      removeTask(sourceDate, taskId);
+    }
+    return;
+  }
+
   const list = event.target.closest(".task-list");
   if (!list) {
     return;

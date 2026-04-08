@@ -20,7 +20,7 @@ header('X-Robots-Tag: noindex, nofollow');
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260408-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260408-2" />
     <script>
       window.ELITE_DEUX_CONFIG = {
         stateUrl: "./state.php",
@@ -161,11 +161,15 @@ header('X-Robots-Tag: noindex, nofollow');
 
         <div class="task-actions">
           <button class="tiny-btn edit-btn" title="Editează">✎</button>
-          <button class="tiny-btn delete-btn" title="Șterge">✕</button>
         </div>
       </li>
     </template>
 
-    <script defer src="./app.js?v=20260408-1"></script>
+    <div id="trashZone" class="trash-zone" aria-hidden="true">
+      <span class="trash-icon">🗑</span>
+      <span class="trash-label">Trage aici pentru a șterge</span>
+    </div>
+
+    <script defer src="./app.js?v=20260408-2"></script>
   </body>
 </html>
