@@ -139,8 +139,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ins->bindValue(':on',  $file['name'],  SQLITE3_TEXT);
                     $ins->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
                     $ins->execute();
-                    // Extrage subtipuri din PDF
-                    $pdfText = pdf_to_text($uploadDir . $safeName);
+                    // Extrage subtipuri din PDF (preferă textul trimis din browser via PDF.js)
+                    $pdfText = trim($_POST['viza_text'] ?? '');
+                    if (!$pdfText) $pdfText = pdf_to_text($uploadDir . $safeName);
+                    // Salvează textul raw pentru debug (în fișier temporar)
+                    if ($pdfText) {
+                        file_put_contents($uploadDir . 'viza_debug_' . $id . '.txt', $pdfText);
+                    }
                     if ($pdfText) {
                         $subtips = parse_viza_subtips($pdfText);
                         $db->exec("DELETE FROM viza_subtips WHERE course_id={$id}");
@@ -261,6 +266,7 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/pnlcursuri/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     .course-wrap { max-width: 800px; margin: 0 auto; }
     .course-hero { margin-bottom: 28px; }
@@ -548,12 +554,13 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 
       <?php endif; ?>
 
-      <form method="post" enctype="multipart/form-data" style="margin-top:<?php echo empty($vizaFiles) ? 0 : 16; ?>px">
+      <form method="post" enctype="multipart/form-data" id="vizaUploadForm" style="margin-top:<?php echo empty($vizaFiles) ? 0 : 16; ?>px">
         <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
         <input type="hidden" name="action" value="upload_viza">
-        <div class="upload-zone">
-          <input type="file" name="viza" accept=".pdf" onchange="this.form.submit()">
-          <p>📎 <?php echo empty($vizaFiles) ? 'Trage sau apasă pentru a încărca Viža PDF' : 'Înlocuiește viža'; ?></p>
+        <input type="hidden" name="viza_text" id="vizaTextInput">
+        <div class="upload-zone" id="vizaUploadZone">
+          <input type="file" name="viza" accept=".pdf" onchange="handleVizaUpload(this)">
+          <p id="vizaUploadLabel">📎 <?php echo empty($vizaFiles) ? 'Trage sau apasă pentru a încărca Viză PDF' : 'Înlocuiește viža'; ?></p>
         </div>
       </form>
     </div>
@@ -633,6 +640,48 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 })();
+
+// ── Viță PDF upload + text extraction ────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+async function handleVizaUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const label = document.getElementById('vizaUploadLabel');
+    label.textContent = '⏳ Extrag date din PDF…';
+    try {
+        const text = await extractPdfText(file);
+        document.getElementById('vizaTextInput').value = text;
+    } catch(e) {
+        document.getElementById('vizaTextInput').value = '';
+    }
+    document.getElementById('vizaUploadForm').submit();
+}
+
+async function extractPdfText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    let result = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        // Group items by y-position to reconstruct lines
+        const byY = {};
+        for (const item of content.items) {
+            if (!item.str) continue;
+            const y = Math.round(item.transform[5]);
+            if (!byY[y]) byY[y] = [];
+            byY[y].push({ x: item.transform[4], str: item.str });
+        }
+        const ys = Object.keys(byY).map(Number).sort((a, b) => b - a);
+        for (const y of ys) {
+            const items = byY[y].sort((a, b) => a.x - b.x);
+            result += items.map(i => i.str).join(' ') + '\n';
+        }
+        result += '\n';
+    }
+    return result;
+}
 
 // ── Raport XLSX parser ────────────────────────────────────────────────────────
 (function() {

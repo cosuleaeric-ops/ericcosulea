@@ -64,12 +64,12 @@ function ro_date(string $date): string {
     return ltrim($d, '0') . ' ' . $months[(int)$m] . ' ' . $y;
 }
 
-// Extrage subtipurile de bilete dintr-un text PDF (output pdftotext)
+// Extrage subtipurile de bilete dintr-un text PDF (output pdftotext sau PDF.js)
 function parse_viza_subtips(string $text): array {
     $subtips = [];
     $text = preg_replace('/\r\n?/', "\n", $text);
-    // Pattern: linia cu nr_unitati tarif valoare_totala urmată de seria de_la pana_la
-    $pattern = '/Tariful pe buc[aă]t[aă]\s*\(lei\)[^\n]*\n\s*(\d+)\s+([\d,.]+)\s+[\d,.]+\s*\n\s*Seria\s+De la nr\.\s+La nr\.\s*\n\s*([A-Z]+)\s+(\d+)\s+(\d+)/u';
+    // Pattern flexibil: acceptă orice whitespace (newline sau spații) între câmpuri
+    $pattern = '/Tariful\s+pe\s+buc[aă]t[aă]\s*\(lei\)[^\n]*\s+(\d+)\s+([\d,.]+)\s+[\d,.]+\s+Seria\s+De\s+la\s+nr\.\s+La\s+nr\.[^\n]*\s+([A-Z]+)\s+(\d+)\s+(\d+)/u';
     if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $m) {
             $subtips[] = [
