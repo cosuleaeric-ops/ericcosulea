@@ -14,43 +14,12 @@ $course = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 if (!$course) { header('Location: /clp/cursuri/'); exit; }
 
 $csrf = csrf_token();
-$uploadDir = __DIR__ . '/../uploads/';
 $error = '';
 
 // ── Handle POST ───────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? '')) { http_response_code(400); exit('CSRF invalid'); }
     $action = $_POST['action'] ?? '';
-
-    if ($action === 'upload_viza') {
-        $file = $_FILES['viza'] ?? null;
-        if ($file && $file['error'] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            if ($ext === 'pdf') {
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                $safeName = bin2hex(random_bytes(10)) . '-' . $id . '.pdf';
-                if (move_uploaded_file($file['tmp_name'], $uploadDir . $safeName)) {
-                    $ins = $db->prepare('INSERT INTO course_files (course_id, filename, original_name, file_type, uploaded_at) VALUES (:cid, :fn, :on, \'viza\', :now)');
-                    $ins->bindValue(':cid', $id, SQLITE3_INTEGER);
-                    $ins->bindValue(':fn',  $safeName, SQLITE3_TEXT);
-                    $ins->bindValue(':on',  $file['name'], SQLITE3_TEXT);
-                    $ins->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-                    $ins->execute();
-                }
-            } else { $error = 'Doar fișiere PDF sunt acceptate.'; }
-        } else { $error = 'Eroare la upload.'; }
-        if (!$error) { header("Location: /clp/cursuri/view.php?id={$id}"); exit; }
-    }
-
-    if ($action === 'delete_viza') {
-        $fid = (int)($_POST['file_id'] ?? 0);
-        $row = $db->querySingle("SELECT filename FROM course_files WHERE id={$fid} AND course_id={$id}", true);
-        if ($row) {
-            @unlink($uploadDir . $row['filename']);
-            $db->exec("DELETE FROM course_files WHERE id={$fid}");
-        }
-        header("Location: /clp/cursuri/view.php?id={$id}"); exit;
-    }
 
     if ($action === 'update_participants') {
         $participantsJson = $_POST['participants_json'] ?? '[]';
@@ -85,10 +54,6 @@ $tickets = [];
 while ($r = $res->fetchArray(SQLITE3_ASSOC)) $tickets[] = $r;
 
 $dist = ticket_distribution($tickets);
-
-$res = $db->query("SELECT * FROM course_files WHERE course_id={$id} AND file_type='viza' ORDER BY uploaded_at DESC");
-$vizaFiles = [];
-while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
 
 // Returning participants: people in this course who attended other CLP courses
 $retRes = $db->query("
@@ -129,14 +94,6 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
     .dist-list { list-style:none; display:flex; flex-direction:column; gap:10px; }
     .dist-list li { display:flex; align-items:center; gap:12px; font-size:15px; }
     .dist-bullet { width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; }
-    .viza-file { display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:10px; }
-    .viza-name { font-size:13px; color:var(--text); text-decoration:none; font-weight:500; }
-    .viza-name:hover { color:var(--green); }
-    .viza-date { font-size:12px; color:var(--muted); }
-    .upload-zone { border:2px dashed var(--border); border-radius:var(--radius-sm); padding:20px; text-align:center; position:relative; cursor:pointer; transition:all .15s; }
-    .upload-zone:hover { border-color:var(--green); background:var(--green-light); }
-    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-    .upload-zone p { font-size:13px; color:var(--muted); margin:0; }
     .participants-list { columns:2; column-gap:24px; list-style:none; }
     .participants-list li { font-size:13px; padding:3px 0; break-inside:avoid; }
     .participants-list li span { font-size:11px; color:var(--muted); margin-left:4px; }
@@ -224,38 +181,6 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
       </ul>
     </div>
     <?php endif; ?>
-
-    <!-- Viză bilete -->
-    <div class="section-card">
-      <h3>Viză bilete</h3>
-      <?php if (!empty($vizaFiles)): ?>
-        <?php foreach ($vizaFiles as $f): ?>
-          <div class="viza-file">
-            <div>
-              <a class="viza-name" href="/clp/uploads/<?php echo h($f['filename']); ?>" target="_blank" rel="noopener">
-                📄 <?php echo h($f['original_name']); ?>
-              </a>
-              <div class="viza-date">Încărcat <?php echo h(substr($f['uploaded_at'], 0, 10)); ?></div>
-            </div>
-            <form method="post" onsubmit="return confirm('Ștergi acest fișier?');">
-              <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
-              <input type="hidden" name="action" value="delete_viza">
-              <input type="hidden" name="file_id" value="<?php echo (int)$f['id']; ?>">
-              <button type="submit" class="icon-btn danger" title="Șterge">✕</button>
-            </form>
-          </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
-
-      <form method="post" enctype="multipart/form-data" style="margin-top:<?php echo empty($vizaFiles) ? 0 : 12; ?>px">
-        <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
-        <input type="hidden" name="action" value="upload_viza">
-        <div class="upload-zone">
-          <input type="file" name="viza" accept=".pdf" onchange="this.form.submit()">
-          <p>📎 Trage sau apasă pentru a încărca o Viză PDF</p>
-        </div>
-      </form>
-    </div>
 
     <!-- Lista participanți -->
     <?php if (!empty($dist['name_counts'])): ?>

@@ -27,6 +27,10 @@ function get_clp_db(): SQLite3 {
         file_type     TEXT NOT NULL DEFAULT \'viza\',
         uploaded_at   TEXT NOT NULL
     );');
+    // Migration: add viza_done column if missing
+    try { $db->exec('ALTER TABLE courses ADD COLUMN viza_done INTEGER NOT NULL DEFAULT 0'); } catch (\Exception $e) {}
+    // Auto-check courses that already had a viza PDF
+    $db->exec("UPDATE courses SET viza_done = 1 WHERE viza_done = 0 AND id IN (SELECT DISTINCT course_id FROM course_files WHERE file_type = 'viza')");
     return $db;
 }
 
