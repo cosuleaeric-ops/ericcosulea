@@ -302,7 +302,7 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
     .returning-list li { font-size:14px; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
     .returning-badge { background:var(--green-light); color:var(--green); border:1px solid #b2d9c0; border-radius:12px; font-size:11px; font-weight:700; padding:2px 9px; white-space:nowrap; }
     .returning-courses { font-size:12px; color:var(--muted); }
-    /* Viță subtipuri */
+    /* Viză subtipuri */
     .subtip-table { width:100%; border-collapse:collapse; font-size:14px; margin-top:12px; }
     .subtip-table th { font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); padding:6px 10px; text-align:left; border-bottom:1px solid var(--border); }
     .subtip-table td { padding:10px 10px; border-bottom:1px solid var(--border); }
@@ -483,7 +483,7 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 
     <!-- Viza bilete -->
     <div class="section-card">
-      <h3>Viță bilete</h3>
+      <h3>Viză bilete</h3>
 
       <?php if (!empty($vizaFiles)): $vf = $vizaFiles[0]; ?>
         <div class="viza-file" style="margin-bottom:12px">
