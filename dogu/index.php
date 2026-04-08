@@ -155,6 +155,8 @@ header('X-Robots-Tag: noindex, nofollow');
   </nav>
 
   <div class="hub-footer">
+    <a href="/admin/" class="logout-link">← Dashboard</a>
+    &nbsp;
     <a href="/admin/logout.php" class="logout-link">Ieși din cont</a>
   </div>
 

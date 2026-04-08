@@ -52,8 +52,8 @@ header('X-Robots-Tag: noindex, nofollow');
 
 <main class="container">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-    <a href="#" onclick="history.back();return false;"
-       style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px">← Înapoi</a>
+    <a href="/admin/"
+       style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px">← Dashboard</a>
     <span class="last-entry-badge" id="lastEntryBadge"></span>
   </div>
 

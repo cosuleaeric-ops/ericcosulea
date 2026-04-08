@@ -126,6 +126,7 @@ if (!is_logged_in()) {
 <body>
 
   <div class="header">
+    <a href="/admin/" style="font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:16px;display:inline-block">← Dashboard</a>
     <h1>Cursuri la Pahar</h1>
     <p>toolurile tale interne</p>
   </div>
