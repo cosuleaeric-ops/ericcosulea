@@ -47,6 +47,18 @@ header('X-Robots-Tag: noindex, nofollow');
     <span class="last-entry-badge" id="lastEntryBadge"></span>
   </div>
 
+  <!-- Quick Add Bar -->
+  <div class="quick-add-bar">
+    <button class="quick-add-btn quick-add-cheltuiala" id="topBtnCheltuiala">
+      <span class="qab-icon">−</span>
+      <span class="qab-text">Adaugă cheltuială</span>
+    </button>
+    <button class="quick-add-btn quick-add-venit" id="topBtnVenit">
+      <span class="qab-icon">+</span>
+      <span class="qab-text">Adaugă venit</span>
+    </button>
+  </div>
+
   <!-- Stats -->
   <div class="stats-grid">
     <div class="stat-card accent-green">
@@ -716,6 +728,14 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
     errEl.textContent = res.error || 'Eroare';
     errEl.style.display = 'block';
   }
+});
+
+// ── Quick Add Bar ─────────────────────────────────────────────────────────────
+document.getElementById('topBtnCheltuiala').addEventListener('click', () => {
+  document.getElementById('btnAddCheltuiala').click();
+});
+document.getElementById('topBtnVenit').addEventListener('click', () => {
+  document.getElementById('btnAddVenit').click();
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
