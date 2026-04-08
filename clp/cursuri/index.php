@@ -5,23 +5,9 @@ require __DIR__ . '/db.php';
 if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/'); exit; }
 
 $db = get_clp_db();
-$csrf = csrf_token();
-
-// AJAX toggle viza_done
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verify_csrf($_POST['csrf_token'] ?? '')) { http_response_code(400); exit('CSRF invalid'); }
-    if (($_POST['action'] ?? '') === 'toggle_viza') {
-        $cid = (int)($_POST['course_id'] ?? 0);
-        $val = ($_POST['value'] ?? '0') === '1' ? 1 : 0;
-        $db->exec("UPDATE courses SET viza_done = {$val} WHERE id = {$cid}");
-        header('Content-Type: application/json');
-        echo json_encode(['ok' => true]);
-        exit;
-    }
-}
-
-$result = $db->query('SELECT c.id, c.name, c.date, c.viza_done,
-    (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets
+$result = $db->query('SELECT c.id, c.name, c.date,
+    (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
+    (SELECT 1 FROM course_reports r WHERE r.course_id = c.id LIMIT 1) as has_report
     FROM courses c ORDER BY c.date DESC');
 $courses = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
@@ -36,9 +22,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/pnlcursuri/style.css" />
-  <style>
-    .viza-cb { width:17px; height:17px; cursor:pointer; accent-color:var(--green); }
-  </style>
 </head>
 <body>
 <header class="app-header">
@@ -46,7 +29,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   <div class="header-controls">
     <a href="/clp/cursuri/add.php" class="btn btn-green" style="font-size:12px;padding:5px 14px">+ Curs nou</a>
     <a href="/clp/" class="logout-link">← CLP</a>
-
   </div>
 </header>
 <main class="container" style="max-width:800px">
@@ -66,7 +48,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <th style="width:100%">Curs</th>
             <th style="white-space:nowrap">Data</th>
             <th class="right" style="white-space:nowrap">Bilete</th>
-            <th style="white-space:nowrap;text-align:center">Viză</th>
+            <th style="white-space:nowrap;text-align:center">Raport</th>
           </tr>
         </thead>
         <tbody>
@@ -75,9 +57,12 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <td><strong><?php echo h($c['name']); ?></strong></td>
             <td style="white-space:nowrap"><?php echo h(ro_date($c['date'])); ?></td>
             <td class="right"><?php echo (int)$c['total_tickets']; ?></td>
-            <td style="text-align:center" onclick="event.stopPropagation()">
-              <input type="checkbox" class="viza-cb" data-id="<?php echo (int)$c['id']; ?>"
-                     <?php echo $c['viza_done'] ? 'checked' : ''; ?>>
+            <td style="text-align:center">
+              <?php if ($c['has_report']): ?>
+                <span style="color:var(--green);font-size:16px">✓</span>
+              <?php else: ?>
+                <span style="color:var(--border);font-size:16px">—</span>
+              <?php endif; ?>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -87,20 +72,5 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   </div>
 <?php endif; ?>
 </main>
-<script>
-const CSRF = <?php echo json_encode($csrf); ?>;
-document.querySelectorAll('.viza-cb').forEach(cb => {
-    cb.addEventListener('change', function() {
-        const fd = new FormData();
-        fd.append('csrf_token', CSRF);
-        fd.append('action', 'toggle_viza');
-        fd.append('course_id', this.dataset.id);
-        fd.append('value', this.checked ? '1' : '0');
-        fetch('', { method: 'POST', body: fd }).catch(() => {
-            this.checked = !this.checked; // revert on error
-        });
-    });
-});
-</script>
 </body>
 </html>
