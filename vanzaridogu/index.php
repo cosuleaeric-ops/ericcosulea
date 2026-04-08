@@ -137,9 +137,25 @@ function parse_breeze_xls(string $path): array {
         throw new Exception('Secțiunea Restaurant nu conține produse. Verifică formatul fișierului.');
     }
 
+    // Collect ambalaj from ALL sections (all rows in file)
+    $ambalajTotal = 0.0;
+    foreach ($rows as $row) {
+        $cells   = $row->children($ns)->Cell;
+        $cellArr = iterator_to_array($cells, false);
+        if (count($cellArr) < 7) continue;
+        $d0 = $cellArr[0]->children($ns)->Data;
+        $d6 = $cellArr[6]->children($ns)->Data;
+        if (!$d0 || !$d6) continue;
+        $name = (string)$d0;
+        if (stripos($name, 'ambalaj') !== false) {
+            $ambalajTotal += (float)(string)$d6;
+        }
+    }
+
     return [
-        'sections' => $sections,
-        'products' => $products,
+        'sections'     => $sections,
+        'products'     => $products,
+        'ambalaj_total'=> $ambalajTotal,
     ];
 }
 
@@ -183,20 +199,15 @@ function generate_breeze_report(array $data): array {
         }
     }
 
-    $ambalaj = 0.0;
-    foreach ($products as $p) {
-        if (stripos($p['name'], 'ambalaj') !== false) $ambalaj += $p['incasat'];
-    }
-
     return [
-        'total'       => $total,
-        'gustoria'    => $gustoria,
-        'hotdog'      => $hotdog,
-        'turmerizza'  => $turmerizza,
-        'dogu'        => $dogu,
-        'ambalaj'     => $ambalaj,
-        'by_category' => $byCategory,
-        'sections'    => $data['sections'],
+        'total'        => $total,
+        'gustoria'     => $gustoria,
+        'hotdog'       => $hotdog,
+        'turmerizza'   => $turmerizza,
+        'dogu'         => $dogu,
+        'ambalaj'      => $data['ambalaj_total'],
+        'by_category'  => $byCategory,
+        'sections'     => $data['sections'],
     ];
 }
 
