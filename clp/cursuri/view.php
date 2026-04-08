@@ -476,9 +476,10 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 
                 let totalBilete = 0, totalIncasari = 0;
                 for (const row of rows) {
-                    const tb = Number(row['Total bilete']   || row['total_bilete']   || 0);
-                    const ti = Number(row['Total incasari'] || row['total_incasari'] || 0);
-                    if (!isNaN(tb)) totalBilete   += tb;
+                    const tb      = Number(row['Total bilete']     || row['total_bilete']     || 0);
+                    const refund  = Number(row['Valoare retururi'] || row['valoare_retururi'] || 0);
+                    const ti      = Number(row['Total incasari']   || row['total_incasari']   || 0);
+                    if (!isNaN(tb)) totalBilete   += tb - (isNaN(refund) ? 0 : refund);
                     if (!isNaN(ti)) totalIncasari += ti;
                 }
 
