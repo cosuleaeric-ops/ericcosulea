@@ -7,7 +7,7 @@ if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/
 $db = get_clp_db();
 $result = $db->query('SELECT c.id, c.name, c.date,
     (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
-    (SELECT filename FROM course_files f WHERE f.course_id = c.id AND f.file_type = \'viza\' ORDER BY f.uploaded_at DESC LIMIT 1) as viza_filename
+    (SELECT 1 FROM course_reports r WHERE r.course_id = c.id LIMIT 1) as has_report
     FROM courses c ORDER BY c.date DESC');
 $courses = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
@@ -29,7 +29,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   <div class="header-controls">
     <a href="/clp/cursuri/add.php" class="btn btn-green" style="font-size:12px;padding:5px 14px">+ Curs nou</a>
     <a href="/clp/" class="logout-link">← CLP</a>
-
   </div>
 </header>
 <main class="container" style="max-width:800px">
@@ -49,7 +48,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <th style="width:100%">Curs</th>
             <th style="white-space:nowrap">Data</th>
             <th class="right" style="white-space:nowrap">Bilete</th>
-            <th style="white-space:nowrap;text-align:center">Viză</th>
+            <th style="white-space:nowrap;text-align:center">Raport</th>
           </tr>
         </thead>
         <tbody>
@@ -58,9 +57,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
             <td><strong><?php echo h($c['name']); ?></strong></td>
             <td style="white-space:nowrap"><?php echo h(ro_date($c['date'])); ?></td>
             <td class="right"><?php echo (int)$c['total_tickets']; ?></td>
-            <td style="text-align:center;white-space:nowrap">
-              <?php if ($c['viza_filename']): ?>
-                <a href="/clp/uploads/<?php echo h($c['viza_filename']); ?>" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;gap:3px;color:var(--green);font-size:13px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📄 viză</a>
+            <td style="text-align:center">
+              <?php if ($c['has_report']): ?>
+                <span style="color:var(--green);font-size:16px">✓</span>
               <?php else: ?>
                 <span style="color:var(--border);font-size:16px">—</span>
               <?php endif; ?>
