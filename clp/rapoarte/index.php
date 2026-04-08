@@ -9,21 +9,32 @@ $db = get_clp_db();
 // ── Selector an/lună ──────────────────────────────────────────────────────────
 $now   = new DateTimeImmutable();
 $year  = (int)($_GET['year']  ?? $now->format('Y'));
-$month = (int)($_GET['month'] ?? (int)$now->format('n'));
-if ($month < 1 || $month > 12) $month = (int)$now->format('n');
+$month = isset($_GET['month']) ? (int)$_GET['month'] : (int)$now->format('n');
+if ($month < 0 || $month > 12) $month = (int)$now->format('n');
+$allYear = ($month === 0);
 
-$monthPad = str_pad((string)$month, 2, '0', STR_PAD_LEFT);
-$prefix   = "{$year}-{$monthPad}";
-
-// ── Date cursuri cu raport în luna selectată ──────────────────────────────────
-$res = $db->query("
-    SELECT c.id, c.name, c.date,
-           r.total_bilete, r.total_incasari, r.uploaded_at
-    FROM courses c
-    JOIN course_reports r ON r.course_id = c.id
-    WHERE c.date LIKE '{$prefix}%'
-    ORDER BY c.date ASC
-");
+// ── Date cursuri cu raport ────────────────────────────────────────────────────
+if ($allYear) {
+    $res = $db->query("
+        SELECT c.id, c.name, c.date,
+               r.total_bilete, r.total_incasari, r.uploaded_at
+        FROM courses c
+        JOIN course_reports r ON r.course_id = c.id
+        WHERE c.date LIKE '{$year}%'
+        ORDER BY c.date ASC
+    ");
+} else {
+    $monthPad = str_pad((string)$month, 2, '0', STR_PAD_LEFT);
+    $prefix   = "{$year}-{$monthPad}";
+    $res = $db->query("
+        SELECT c.id, c.name, c.date,
+               r.total_bilete, r.total_incasari, r.uploaded_at
+        FROM courses c
+        JOIN course_reports r ON r.course_id = c.id
+        WHERE c.date LIKE '{$prefix}%'
+        ORDER BY c.date ASC
+    ");
+}
 $rows = [];
 while ($r = $res->fetchArray(SQLITE3_ASSOC)) $rows[] = $r;
 
@@ -112,8 +123,9 @@ rsort($years);
         <?php endif; ?>
       </select>
       <select name="month">
+        <option value="0" <?php echo $allYear ? 'selected' : ''; ?>>Tot anul</option>
         <?php for ($m = 1; $m <= 12; $m++): ?>
-          <option value="<?php echo $m; ?>" <?php echo $m === $month ? 'selected' : ''; ?>>
+          <option value="<?php echo $m; ?>" <?php echo !$allYear && $m === $month ? 'selected' : ''; ?>>
             <?php echo ucfirst($roMonths[$m]); ?>
           </option>
         <?php endfor; ?>
@@ -121,7 +133,7 @@ rsort($years);
       <button type="submit">Afișează</button>
     </form>
 
-    <!-- Sumar lunar -->
+    <!-- Sumar -->
     <div class="summary-grid">
       <div class="stat-box">
         <div class="label">Total încasări</div>
@@ -139,8 +151,11 @@ rsort($years);
 
     <!-- Tabel cursuri -->
     <div class="table-card">
+      <?php
+        $emptyLabel = $allYear ? (string)$year : (ucfirst($roMonths[$month]) . ' ' . $year);
+      ?>
       <?php if (empty($rows)): ?>
-        <div class="empty-state">Niciun raport pentru <?php echo $roMonths[$month] . ' ' . $year; ?>.<br><small>Încarcă rapoarte XLSX pe paginile individuale ale cursurilor.</small></div>
+        <div class="empty-state">Niciun raport pentru <?php echo h($emptyLabel); ?>.<br><small>Încarcă rapoarte XLSX pe paginile individuale ale cursurilor.</small></div>
       <?php else: ?>
         <table>
           <thead>
@@ -153,7 +168,20 @@ rsort($years);
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($rows as $r): ?>
+            <?php
+              $prevMonth = '';
+              foreach ($rows as $r):
+                // Separator pe lună când vedem tot anul
+                if ($allYear) {
+                    $rowMonth = substr($r['date'], 0, 7); // YYYY-MM
+                    if ($rowMonth !== $prevMonth) {
+                        $mNum = (int)substr($r['date'], 5, 2);
+                        $prevMonth = $rowMonth;
+                        echo '<tr><td colspan="5" style="background:var(--bg);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 16px">'
+                           . h(ucfirst($roMonths[$mNum]) . ' ' . $year) . '</td></tr>';
+                    }
+                }
+            ?>
               <tr>
                 <td><a class="course-link" href="/clp/cursuri/view.php?id=<?php echo (int)$r['id']; ?>"><?php echo h($r['name']); ?></a></td>
                 <td style="color:var(--muted)"><?php echo h(ro_date($r['date'])); ?></td>
@@ -165,7 +193,7 @@ rsort($years);
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="2">Total <?php echo ucfirst($roMonths[$month]) . ' ' . $year; ?></td>
+              <td colspan="2">Total <?php echo h($emptyLabel); ?></td>
               <td><?php echo fmt($sumBilete); ?> RON</td>
               <td><?php echo fmt($sumIncasari); ?> RON</td>
               <td class="ditl-cell"><?php echo fmt($sumDitl); ?> RON</td>
