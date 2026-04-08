@@ -104,7 +104,7 @@ rsort($years);
 <header class="app-header">
   <h1>Rapoarte DITL</h1>
   <div class="header-controls">
-    <a href="/clp/" class="logout-link">← CLP</a>
+    <a href="/clp/" class="logout-link">← Dashboard</a>
   </div>
 </header>
 <main class="container">
