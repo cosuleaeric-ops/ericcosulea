@@ -27,6 +27,15 @@ function get_clp_db(): SQLite3 {
         file_type     TEXT NOT NULL DEFAULT \'viza\',
         uploaded_at   TEXT NOT NULL
     );');
+    $db->exec('CREATE TABLE IF NOT EXISTS course_reports (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id      INTEGER NOT NULL UNIQUE REFERENCES courses(id) ON DELETE CASCADE,
+        total_bilete   REAL NOT NULL DEFAULT 0,
+        total_incasari REAL NOT NULL DEFAULT 0,
+        filename       TEXT NOT NULL DEFAULT \'\',
+        original_name  TEXT NOT NULL DEFAULT \'\',
+        uploaded_at    TEXT NOT NULL
+    );');
     return $db;
 }
 
