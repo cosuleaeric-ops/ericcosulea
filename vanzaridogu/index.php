@@ -183,12 +183,18 @@ function generate_breeze_report(array $data): array {
         }
     }
 
+    $ambalaj = 0.0;
+    foreach ($products as $p) {
+        if (stripos($p['name'], 'ambalaj') !== false) $ambalaj += $p['incasat'];
+    }
+
     return [
         'total'       => $total,
         'gustoria'    => $gustoria,
         'hotdog'      => $hotdog,
         'turmerizza'  => $turmerizza,
         'dogu'        => $dogu,
+        'ambalaj'     => $ambalaj,
         'by_category' => $byCategory,
         'sections'    => $data['sections'],
     ];
@@ -345,6 +351,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </details>
     </div>
     <?php endforeach; ?>
+  </div>
+
+  <!-- ── Ambalaj ───────────────────────────────────────────────────────────── -->
+  <div class="section-title" style="margin-top:28px">Total ambalaje</div>
+  <div class="ambalaj-strip">
+    <span class="ambalaj-icon">📦</span>
+    <div>
+      <div class="ambalaj-label">Produse conținând „Ambalaj" — total incasat</div>
+      <div class="ambalaj-value"><?php echo ron($report['ambalaj']); ?></div>
+    </div>
   </div>
 
   <!-- ── Other sections detected ──────────────────────────────────────────── -->
