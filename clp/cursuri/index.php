@@ -29,7 +29,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
   <h1>Cursuri</h1>
   <div class="header-controls">
     <a href="/clp/cursuri/add.php" class="btn btn-green" style="font-size:12px;padding:5px 14px">+ Curs nou</a>
-    <a href="/clp/" class="logout-link">← CLP</a>
   </div>
 </header>
 <main class="container" style="max-width:800px">

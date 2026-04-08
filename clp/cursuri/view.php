@@ -338,7 +338,6 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 <header class="app-header">
   <h1><?php echo h($course['name']); ?></h1>
   <div class="header-controls">
-    <a href="/clp/cursuri/" class="logout-link">← Cursuri</a>
 
   </div>
 </header>
