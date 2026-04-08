@@ -232,8 +232,12 @@ body[data-bullets="none"] .check-btn {
   min-height: 21px;
   line-height: 1.35;
   word-break: break-word;
-  cursor: text;
+  cursor: grab;
   font-size: var(--task-font-size);
+}
+
+.task-content:active {
+  cursor: grabbing;
 }
 
 .task-actions {

@@ -167,6 +167,16 @@ async function init() {
 
   document.addEventListener("dragover", onGlobalDragOver);
   document.addEventListener("drop", onGlobalDrop);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && HAS_REMOTE_STORAGE && remoteInitSucceeded) {
+      if (remoteSaveTimer) {
+        window.clearTimeout(remoteSaveTimer);
+        remoteSaveTimer = null;
+      }
+      pushStateToRemote(buildStateSnapshot()).catch(() => {});
+    }
+  });
 }
 
 async function initializeState() {
@@ -186,7 +196,11 @@ async function initializeState() {
   try {
     const remoteSnapshot = await fetchRemoteSnapshot();
     if (remoteSnapshot) {
-      applyStateSnapshot(remoteSnapshot);
+      const localSavedAt = localSnapshot?.savedAt ?? 0;
+      const remoteSavedAt = remoteSnapshot.savedAt ?? 0;
+      if (remoteSavedAt > localSavedAt) {
+        applyStateSnapshot(remoteSnapshot);
+      }
       persistLocalSnapshot();
     } else {
       await pushStateToRemote(buildStateSnapshot());
@@ -242,6 +256,7 @@ function buildStateSnapshot() {
     tasksByDate: state.tasksByDate,
     settings: state.settings,
     lastSeenDate: state.lastSeenDate,
+    savedAt: Date.now(),
   };
 }
 
@@ -585,6 +600,7 @@ function renderTask(dateKey, task) {
   const node = fragment.querySelector(".task-item");
   const checkBtn = fragment.querySelector(".check-btn");
   const content = fragment.querySelector(".task-content");
+  const editBtn = fragment.querySelector(".edit-btn");
   const deleteBtn = fragment.querySelector(".delete-btn");
 
   node.dataset.taskId = task.id;
@@ -605,17 +621,8 @@ function renderTask(dateKey, task) {
     removeTask(dateKey, task.id);
   });
 
-  content.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  editBtn.addEventListener("click", () => {
     beginTaskEdit(content, dateKey, task);
-  });
-
-  content.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      beginTaskEdit(content, dateKey, task);
-    }
   });
 
   node.addEventListener("dragstart", (event) => {
