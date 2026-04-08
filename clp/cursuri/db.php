@@ -36,6 +36,17 @@ function get_clp_db(): SQLite3 {
         original_name  TEXT NOT NULL DEFAULT \'\',
         uploaded_at    TEXT NOT NULL
     );');
+    // Coloana types_json adăugată ulterior (ignoră eroarea dacă există deja)
+    try { $db->exec('ALTER TABLE course_reports ADD COLUMN types_json TEXT NOT NULL DEFAULT \'[]\';'); } catch (\Exception $e) {}
+    $db->exec('CREATE TABLE IF NOT EXISTS viza_subtips (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id  INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        seria      TEXT NOT NULL,
+        tarif      REAL NOT NULL,
+        nr_unitati INTEGER NOT NULL,
+        de_la      TEXT NOT NULL,
+        pana_la    TEXT NOT NULL
+    );');
     return $db;
 }
 
@@ -51,6 +62,34 @@ function ro_date(string $date): string {
                'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
     [$y, $m, $d] = explode('-', $date);
     return ltrim($d, '0') . ' ' . $months[(int)$m] . ' ' . $y;
+}
+
+// Extrage subtipurile de bilete dintr-un text PDF (output pdftotext)
+function parse_viza_subtips(string $text): array {
+    $subtips = [];
+    $text = preg_replace('/\r\n?/', "\n", $text);
+    // Pattern: linia cu nr_unitati tarif valoare_totala urmată de seria de_la pana_la
+    $pattern = '/Tariful pe buc[aă]t[aă]\s*\(lei\)[^\n]*\n\s*(\d+)\s+([\d,.]+)\s+[\d,.]+\s*\n\s*Seria\s+De la nr\.\s+La nr\.\s*\n\s*([A-Z]+)\s+(\d+)\s+(\d+)/u';
+    if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $m) {
+            $subtips[] = [
+                'nr_unitati' => (int)$m[1],
+                'tarif'      => (float)str_replace(',', '.', $m[2]),
+                'seria'      => trim($m[3]),
+                'de_la'      => $m[4],
+                'pana_la'    => $m[5],
+            ];
+        }
+    }
+    return $subtips;
+}
+
+// Încearcă extragerea textului din PDF cu pdftotext
+function pdf_to_text(string $filepath): string {
+    if (!file_exists($filepath)) return '';
+    $cmd = 'pdftotext -layout ' . escapeshellarg($filepath) . ' -';
+    $out = @shell_exec($cmd);
+    return $out ?? '';
 }
 
 function ticket_distribution(array $tickets): array {
