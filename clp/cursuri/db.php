@@ -37,7 +37,7 @@ function get_clp_db(): SQLite3 {
         uploaded_at    TEXT NOT NULL
     );');
     // Coloana types_json adăugată ulterior (ignoră eroarea dacă există deja)
-    try { $db->exec('ALTER TABLE course_reports ADD COLUMN types_json TEXT NOT NULL DEFAULT \'[]\';'); } catch (\Exception $e) {}
+    @$db->exec('ALTER TABLE course_reports ADD COLUMN types_json TEXT NOT NULL DEFAULT \'[]\';');
     $db->exec('CREATE TABLE IF NOT EXISTS viza_subtips (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         course_id  INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
