@@ -52,6 +52,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: /clp/cursuri/view.php?id={$id}"); exit;
     }
 
+    if ($action === 'update_participants') {
+        $participantsJson = $_POST['participants_json'] ?? '[]';
+        $participants = json_decode($participantsJson, true);
+        if (is_array($participants) && !empty($participants)) {
+            $db->exec("DELETE FROM tickets WHERE course_id={$id}");
+            $ins = $db->prepare('INSERT INTO tickets (course_id, participant_name) VALUES (:cid, :name)');
+            foreach ($participants as $pname) {
+                $pname = trim((string)$pname);
+                if ($pname === '') continue;
+                $ins->bindValue(':cid',  $id,    SQLITE3_INTEGER);
+                $ins->bindValue(':name', $pname, SQLITE3_TEXT);
+                $ins->execute();
+                $ins->reset();
+            }
+        }
+        header("Location: /clp/cursuri/view.php?id={$id}"); exit;
+    }
+
     if ($action === 'delete_course') {
         // Delete associated files from disk
         $res = $db->query("SELECT filename FROM course_files WHERE course_id={$id}");
@@ -71,6 +89,22 @@ $dist = ticket_distribution($tickets);
 $res = $db->query("SELECT * FROM course_files WHERE course_id={$id} AND file_type='viza' ORDER BY uploaded_at DESC");
 $vizaFiles = [];
 while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
+
+// Returning participants: people in this course who attended other CLP courses
+$retRes = $db->query("
+    SELECT t.participant_name,
+           COUNT(DISTINCT t2.course_id) AS num_other,
+           GROUP_CONCAT(DISTINCT c2.name || ' (' || c2.date || ')', '|') AS other_list
+    FROM tickets t
+    JOIN tickets t2 ON LOWER(TRIM(t2.participant_name)) = LOWER(TRIM(t.participant_name))
+                    AND t2.course_id != {$id}
+    JOIN courses c2 ON c2.id = t2.course_id
+    WHERE t.course_id = {$id}
+    GROUP BY LOWER(TRIM(t.participant_name))
+    ORDER BY num_other DESC, t.participant_name ASC
+");
+$returningParticipants = [];
+while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 ?>
 <!doctype html>
 <html lang="ro">
@@ -82,6 +116,7 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/pnlcursuri/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     .course-wrap { max-width: 800px; margin: 0 auto; }
     .course-hero { margin-bottom: 28px; }
@@ -107,6 +142,22 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
     .participants-list li span { font-size:11px; color:var(--muted); margin-left:4px; }
     .danger-zone { border-top:1px solid var(--border); padding-top:16px; margin-top:8px; }
     @media(max-width:600px) { .participants-list { columns:1; } }
+    /* Update participants */
+    .update-drop { border:2px dashed var(--border); border-radius:var(--radius-sm); padding:24px; text-align:center; position:relative; cursor:pointer; transition:all .15s; }
+    .update-drop:hover, .update-drop.dragover { border-color:var(--green); background:var(--green-light); }
+    .update-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .update-drop p { font-size:13px; color:var(--muted); margin:0; }
+    .update-col-picker { display:none; margin-top:12px; }
+    .update-col-picker label { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+    .update-col-picker select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; background:var(--bg); }
+    .update-preview { display:none; margin-top:12px; background:var(--green-light); border:1px solid #b2d9c0; border-radius:var(--radius-sm); padding:14px 16px; font-size:13px; }
+    .update-preview strong { font-family:'Crimson Pro',Georgia,serif; font-size:18px; }
+    .update-submit { display:none; margin-top:12px; }
+    /* Returning participants */
+    .returning-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .returning-list li { font-size:14px; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+    .returning-badge { background:var(--green-light); color:var(--green); border:1px solid #b2d9c0; border-radius:12px; font-size:11px; font-weight:700; padding:2px 9px; white-space:nowrap; }
+    .returning-courses { font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
@@ -150,6 +201,28 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
         </ul>
       <?php endif; ?>
     </div>
+
+    <!-- Participanți fideli -->
+    <?php if (!empty($returningParticipants)): ?>
+    <div class="section-card">
+      <h3>Participanți fideli (<?php echo count($returningParticipants); ?>)</h3>
+      <ul class="returning-list">
+        <?php foreach ($returningParticipants as $rp): ?>
+          <?php
+            $courses = array_map(function($c) {
+                [$cname, $cdate] = explode(' (', rtrim($c, ')'), 2);
+                return h($cname) . ' <span style="color:var(--muted)">(' . h(ro_date($cdate)) . ')</span>';
+            }, explode('|', $rp['other_list']));
+          ?>
+          <li>
+            <span class="returning-badge">×<?php echo $rp['num_other']; ?></span>
+            <strong><?php echo h($rp['participant_name']); ?></strong>
+            <span class="returning-courses"><?php echo implode(', ', $courses); ?></span>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+    <?php endif; ?>
 
     <!-- Viză bilete -->
     <div class="section-card">
@@ -202,6 +275,30 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
     </div>
     <?php endif; ?>
 
+    <!-- Actualizează participanți -->
+    <div class="section-card">
+      <h3>Actualizează participanți</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Încarcă un nou XLSX pentru a actualiza lista. Participanții existenți vor fi înlocuiți cu noua listă — dacă unii se repetă, nu vor fi duplicați.</p>
+      <form method="post" id="updateForm">
+        <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
+        <input type="hidden" name="action" value="update_participants">
+        <input type="hidden" name="participants_json" id="updateParticipantsJson">
+        <div class="update-drop" id="updateDrop">
+          <input type="file" id="updateFileInput" accept=".xlsx,.xls,.csv">
+          <p>📊 Trage sau apasă pentru a încărca XLSX / CSV</p>
+        </div>
+        <div class="update-col-picker" id="updateColPicker">
+          <label>Selectează coloana cu nume participanți</label>
+          <select id="updateColSelect"></select>
+          <button type="button" class="btn btn-ghost" id="btnUpdateApplyCol" style="margin-top:8px;width:100%;justify-content:center">Aplică</button>
+        </div>
+        <div class="update-preview" id="updatePreview"></div>
+        <div class="update-submit" id="updateSubmit">
+          <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:10px">Înlocuiește lista de participanți</button>
+        </div>
+      </form>
+    </div>
+
     <!-- Danger zone -->
     <div class="section-card" style="border-color:#f5c6c7">
       <div class="danger-zone">
@@ -215,5 +312,68 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $vizaFiles[] = $r;
 
   </div>
 </main>
+<script>
+(function() {
+    let parsedRows = [], allHeaders = [];
+    const drop = document.getElementById('updateDrop');
+    const fileInput = document.getElementById('updateFileInput');
+    const colPicker = document.getElementById('updateColPicker');
+    const colSelect = document.getElementById('updateColSelect');
+    const preview = document.getElementById('updatePreview');
+    const submitWrap = document.getElementById('updateSubmit');
+
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    function handleFile(file) {
+        colPicker.style.display = 'none'; preview.style.display = 'none'; submitWrap.style.display = 'none';
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                parsedRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                if (!parsedRows.length) { alert('Fișierul pare gol.'); return; }
+                allHeaders = Object.keys(parsedRows[0]);
+                const detected = detectCol(allHeaders);
+                if (detected) { applyCol(detected); }
+                else {
+                    colSelect.innerHTML = allHeaders.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+                    colPicker.style.display = 'block';
+                }
+            } catch (err) { alert('Nu am putut citi fișierul.'); }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function detectCol(headers) {
+        for (const re of [/^prenume$/i, /prenume/i, /^nume complet$/i, /^participant/i, /^cump[aă]r[aă]tor/i, /^client/i, /^name$/i, /full.?name/i, /^nume$/i, /nume/i]) {
+            const found = headers.find(h => re.test(h.trim()));
+            if (found) return found;
+        }
+        return null;
+    }
+
+    document.getElementById('btnUpdateApplyCol').addEventListener('click', () => {
+        colPicker.style.display = 'none'; applyCol(colSelect.value);
+    });
+
+    function applyCol(col) {
+        const names = parsedRows.map(r => String(r[col] ?? '').trim()).filter(n => n);
+        if (!names.length) { alert('Coloana selectată pare goală.'); return; }
+        const counts = {};
+        names.forEach(n => counts[n] = (counts[n] || 0) + 1);
+        const orders = Object.keys(counts).length;
+        preview.innerHTML = `<strong>${names.length}</strong> bilete · <strong>${orders}</strong> comenzi · coloana: <em>${esc(col)}</em>`;
+        document.getElementById('updateParticipantsJson').value = JSON.stringify(names);
+        preview.style.display = 'block';
+        submitWrap.style.display = 'block';
+    }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script>
 </body>
 </html>
