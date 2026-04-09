@@ -212,18 +212,14 @@ $tab = $_GET['tab'] ?? 'cursuri';
     <?php else: ?>
 
       <!-- Sumar an -->
-      <div class="summary-grid">
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr">
         <div class="stat-box">
           <div class="lbl">Total încasări</div>
           <div class="val"><?php echo fmt($sumIncasari); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
         </div>
         <div class="stat-box">
-          <div class="lbl">Total bilete (brut)</div>
-          <div class="val"><?php echo fmt($sumBilete); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
-        </div>
-        <div class="stat-box">
           <div class="lbl">Taxă DITL (2%)</div>
-          <div class="val ditl"><?php echo fmt($sumBilete * 0.02); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
+          <div class="val ditl"><?php echo fmt($sumIncasari * 0.02); ?> <small style="font-size:14px;font-weight:400">RON</small></div>
         </div>
       </div>
 
@@ -242,7 +238,6 @@ $tab = $_GET['tab'] ?? 'cursuri';
               <tr>
                 <th>Curs</th>
                 <th>Data</th>
-                <th>Total bilete</th>
                 <th>Total încasări</th>
                 <th>DITL (2%)</th>
               </tr>
@@ -262,13 +257,12 @@ $tab = $_GET['tab'] ?? 'cursuri';
                   <?php endif; ?>
                 </td>
                 <td style="color:var(--muted)"><?php echo h(ro_date($r['date'])); ?></td>
-                <td><?php echo fmt((float)$r['total_bilete']); ?> RON</td>
                 <td><?php echo fmt((float)$r['total_incasari']); ?> RON</td>
-                <td class="ditl-cell"><?php echo fmt((float)$r['total_bilete'] * 0.02); ?> RON</td>
+                <td class="ditl-cell"><?php echo fmt((float)$r['total_incasari'] * 0.02); ?> RON</td>
               </tr>
               <?php if (!empty($subs)): ?>
               <tr class="viza-subtips-row" id="<?php echo $rowId; ?>">
-                <td colspan="5" style="padding:0;background:var(--bg)">
+                <td colspan="4" style="padding:0;background:var(--bg)">
                   <div class="viza-subtips-inner">
                     <table class="viza-subtable">
                       <thead>
@@ -306,9 +300,8 @@ $tab = $_GET['tab'] ?? 'cursuri';
             <tfoot>
               <tr>
                 <td colspan="2">Total <?php echo h($mLabel); ?></td>
-                <td><?php echo fmt($mBilete); ?> RON</td>
                 <td><?php echo fmt($mIncasari); ?> RON</td>
-                <td class="ditl-cell"><?php echo fmt($mBilete * 0.02); ?> RON</td>
+                <td class="ditl-cell"><?php echo fmt($mIncasari * 0.02); ?> RON</td>
               </tr>
             </tfoot>
           </table>

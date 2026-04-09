@@ -40,7 +40,7 @@ while ($r = $res->fetchArray(SQLITE3_ASSOC)) $rows[] = $r;
 
 $sumBilete   = array_sum(array_column($rows, 'total_bilete'));
 $sumIncasari = array_sum(array_column($rows, 'total_incasari'));
-$sumDitl     = $sumBilete * 0.02;
+$sumDitl     = $sumIncasari * 0.02;
 
 // ── Viza subtipuri + vândute per curs ────────────────────────────────────────
 $vizaSubtipsByCourse = [];
@@ -167,14 +167,10 @@ rsort($years);
     </form>
 
     <!-- Sumar -->
-    <div class="summary-grid">
+    <div class="summary-grid" style="grid-template-columns:1fr 1fr">
       <div class="stat-box">
         <div class="label">Total încasări</div>
         <div class="value"><?php echo fmt($sumIncasari); ?> <small style="font-size:15px;font-weight:400">RON</small></div>
-      </div>
-      <div class="stat-box">
-        <div class="label">Total bilete (brut)</div>
-        <div class="value"><?php echo fmt($sumBilete); ?> <small style="font-size:15px;font-weight:400">RON</small></div>
       </div>
       <div class="stat-box">
         <div class="label">Taxă DITL (2%)</div>
@@ -195,7 +191,6 @@ rsort($years);
             <tr>
               <th>Curs</th>
               <th>Data</th>
-              <th>Total bilete</th>
               <th>Total încasări</th>
               <th>DITL (2%)</th>
             </tr>
@@ -210,7 +205,7 @@ rsort($years);
                     if ($rowMonth !== $prevMonth) {
                         $mNum = (int)substr($r['date'], 5, 2);
                         $prevMonth = $rowMonth;
-                        echo '<tr><td colspan="5" style="background:var(--bg);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 16px">'
+                        echo '<tr><td colspan="4" style="background:var(--bg);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 16px">'
                            . h(ucfirst($roMonths[$mNum]) . ' ' . $year) . '</td></tr>';
                     }
                 }
@@ -228,15 +223,14 @@ rsort($years);
                   <?php endif; ?>
                 </td>
                 <td style="color:var(--muted)"><?php echo h(ro_date($r['date'])); ?></td>
-                <td><?php echo fmt((float)$r['total_bilete']); ?> RON</td>
                 <td><?php echo fmt((float)$r['total_incasari']); ?> RON</td>
-                <td class="ditl-cell"><?php echo fmt((float)$r['total_bilete'] * 0.02); ?> RON</td>
+                <td class="ditl-cell"><?php echo fmt((float)$r['total_incasari'] * 0.02); ?> RON</td>
               </tr>
               <?php if (!empty($subs)):
                 $byPrice = $reportByPriceByCourse[(int)$r['id']] ?? [];
               ?>
               <tr class="viza-subtips-row" id="<?php echo $rowId; ?>">
-                <td colspan="5" style="padding:0;background:var(--bg)">
+                <td colspan="4" style="padding:0;background:var(--bg)">
                   <div class="viza-subtips-inner">
                     <table class="viza-subtable">
                       <thead>
@@ -274,7 +268,6 @@ rsort($years);
           <tfoot>
             <tr>
               <td colspan="2">Total <?php echo h($emptyLabel); ?></td>
-              <td><?php echo fmt($sumBilete); ?> RON</td>
               <td><?php echo fmt($sumIncasari); ?> RON</td>
               <td class="ditl-cell"><?php echo fmt($sumDitl); ?> RON</td>
             </tr>
