@@ -181,7 +181,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'reprocess_viza') {
         $row = $db->querySingle("SELECT filename FROM course_files WHERE course_id={$id} AND file_type='viza' LIMIT 1", true);
         if ($row) {
-            $pdfText = pdf_to_text($uploadDir . $row['filename']);
+            $pdfText = trim($_POST['viza_text'] ?? '');
+            if (!$pdfText) $pdfText = pdf_to_text($uploadDir . $row['filename']);
             if ($pdfText) {
                 $subtips = parse_viza_subtips($pdfText);
                 $db->exec("DELETE FROM viza_subtips WHERE course_id={$id}");
@@ -500,10 +501,13 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <?php if (empty($vizaSubtips)): ?>
-              <form method="post" style="margin:0">
+              <form method="post" style="margin:0" id="reprocessVizaForm">
                 <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
                 <input type="hidden" name="action" value="reprocess_viza">
-                <button type="submit" class="reprocess-btn" title="Extrage date din PDF">↻ Extrage date</button>
+                <input type="hidden" name="viza_text" id="reprocessVizaText">
+                <button type="button" class="reprocess-btn" id="reprocessVizaBtn"
+                  data-pdf-url="/clp/uploads/<?php echo h($vf['filename']); ?>"
+                  title="Extrage date din PDF">↻ Extrage date</button>
               </form>
             <?php endif; ?>
             <form method="post" onsubmit="return confirm('Ștergi viža?');" style="margin:0">
@@ -642,6 +646,28 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
 
 // ── Viță PDF upload + text extraction ────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// Butonul "Extrage date" — fetch PDF de pe server, extrage text, submit
+(function() {
+    const btn = document.getElementById('reprocessVizaBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async function() {
+        btn.textContent = '⏳ Extrag…';
+        btn.disabled = true;
+        try {
+            const url = btn.dataset.pdfUrl;
+            const resp = await fetch(url);
+            const buf  = await resp.arrayBuffer();
+            const text = await extractPdfText(new Blob([buf], {type:'application/pdf'}));
+            document.getElementById('reprocessVizaText').value = text;
+            document.getElementById('reprocessVizaForm').submit();
+        } catch(e) {
+            btn.textContent = '↻ Extrage date';
+            btn.disabled = false;
+            alert('Nu am putut extrage textul din PDF: ' + e.message);
+        }
+    });
+})();
 
 async function handleVizaUpload(input) {
     const file = input.files[0];
