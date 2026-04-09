@@ -209,9 +209,10 @@ rsort($years);
               ?>
               <tr>
                 <td>
-                  <a class="course-link" href="/clp/cursuri/view.php?id=<?php echo (int)$r['id']; ?>"><?php echo h($r['name']); ?></a>
                   <?php if (!empty($subs)): ?>
-                    <button class="toggle-viza" onclick="toggleViza('<?php echo $rowId; ?>', this)" title="Detalii viză bilete">▸ viză</button>
+                    <span class="course-link" style="cursor:pointer" onclick="toggleViza('<?php echo $rowId; ?>', this)"><?php echo h($r['name']); ?></span>
+                  <?php else: ?>
+                    <span><?php echo h($r['name']); ?></span>
                   <?php endif; ?>
                 </td>
                 <td style="color:var(--muted)"><?php echo h(ro_date($r['date'])); ?></td>
@@ -266,10 +267,9 @@ rsort($years);
   </div>
 </main>
 <script>
-function toggleViza(id, btn) {
+function toggleViza(id, el) {
     const row = document.getElementById(id);
-    const open = row.classList.toggle('open');
-    btn.textContent = open ? '▾ viză' : '▸ viză';
+    row.classList.toggle('open');
 }
 </script>
 </body>
