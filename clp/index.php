@@ -147,7 +147,7 @@ if (!is_logged_in()) {
       <div class="tool-name">P&amp;L Cursuri</div>
       <div class="tool-desc">venituri, cheltuieli și profit net pe luni și categorii</div>
     </a>
-    <a class="tool-card" href="/clp/rapoarte/">
+    <a class="tool-card" href="/clp/cursuri/?tab=ditl">
       <div class="tool-icon">🧾</div>
       <div class="tool-name">Rapoarte DITL</div>
       <div class="tool-desc">încasări lunare și taxă DITL (2%) calculată automat</div>

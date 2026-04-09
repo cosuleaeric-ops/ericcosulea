@@ -6,18 +6,18 @@ if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/
 
 $db = get_clp_db();
 
-// ── Lista cursuri ─────────────────────────────────────────────────────────────
-$result = $db->query('SELECT c.id, c.name, c.date,
-    (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
-    (SELECT filename FROM course_files f WHERE f.course_id = c.id AND f.file_type = \'viza\' ORDER BY f.uploaded_at DESC LIMIT 1) as viza_filename,
-    (SELECT 1 FROM course_reports r WHERE r.course_id = c.id LIMIT 1) as has_report
-    FROM courses c ORDER BY c.date DESC');
-$courses = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
-
-// ── DITL — selector an ────────────────────────────────────────────────────────
+// ── An comun pentru ambele tab-uri ────────────────────────────────────────────
 $now      = new DateTimeImmutable();
 $ditlYear = (int)($_GET['year'] ?? $now->format('Y'));
+
+// ── Lista cursuri (filtrat pe an) ─────────────────────────────────────────────
+$result = $db->query("SELECT c.id, c.name, c.date,
+    (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
+    (SELECT filename FROM course_files f WHERE f.course_id = c.id AND f.file_type = 'viza' ORDER BY f.uploaded_at DESC LIMIT 1) as viza_filename,
+    (SELECT 1 FROM course_reports r WHERE r.course_id = c.id LIMIT 1) as has_report
+    FROM courses c WHERE c.date LIKE '{$ditlYear}%' ORDER BY c.date DESC");
+$courses = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
 
 $ditlRes = $db->query("
     SELECT c.id, c.name, c.date,
@@ -133,10 +133,21 @@ $tab = $_GET['tab'] ?? 'cursuri';
 <main class="container" style="max-width:800px">
   <a href="/clp/" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:20px">← Înapoi</a>
 
-  <!-- Tab toggle -->
-  <div class="tabs">
-    <button class="tab-btn <?php echo $tab !== 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'cursuri')">Cursuri</button>
-    <button class="tab-btn <?php echo $tab === 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'ditl')">Rapoarte DITL</button>
+  <!-- Selector an + tab toggle -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px">
+    <div class="tabs" style="margin-bottom:0">
+      <button class="tab-btn <?php echo $tab !== 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'cursuri')">Cursuri</button>
+      <button class="tab-btn <?php echo $tab === 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'ditl')">Rapoarte DITL</button>
+    </div>
+    <form method="get" id="yearForm" style="display:flex;align-items:center;gap:8px">
+      <input type="hidden" name="tab" value="<?php echo h($tab); ?>">
+      <label style="font-size:12px;color:var(--muted)">An:</label>
+      <select name="year" onchange="document.getElementById('yearForm').submit()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg);cursor:pointer">
+        <?php foreach ($ditlYears as $y): ?>
+          <option value="<?php echo h($y); ?>" <?php echo (int)$y === $ditlYear ? 'selected' : ''; ?>><?php echo h($y); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </form>
   </div>
 
   <!-- ── Tab: Cursuri ─────────────────────────────────────────────────── -->
@@ -183,16 +194,6 @@ $tab = $_GET['tab'] ?? 'cursuri';
 
   <!-- ── Tab: Rapoarte DITL ───────────────────────────────────────────── -->
   <div class="tab-panel <?php echo $tab === 'ditl' ? 'active' : ''; ?>" id="panel-ditl">
-
-    <!-- Selector an -->
-    <form method="get" class="ditl-year-bar" id="ditlYearForm">
-      <input type="hidden" name="tab" value="ditl">
-      <select name="year" onchange="document.getElementById('ditlYearForm').submit()">
-        <?php foreach ($ditlYears as $y): ?>
-          <option value="<?php echo h($y); ?>" <?php echo (int)$y === $ditlYear ? 'selected' : ''; ?>><?php echo h($y); ?></option>
-        <?php endforeach; ?>
-      </select>
-    </form>
 
     <?php if (empty($ditlRows)): ?>
       <div style="text-align:center;padding:60px 24px;color:var(--muted);font-size:15px">
@@ -316,7 +317,10 @@ function switchTab(e, tab) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
     e.currentTarget.classList.add('active');
-    history.replaceState(null, '', tab === 'ditl' ? '?tab=ditl' : '?');
+    document.querySelector('#yearForm input[name=tab]').value = tab;
+    const year = document.querySelector('#yearForm select[name=year]').value;
+    const qs = tab === 'ditl' ? `?tab=ditl&year=${year}` : `?year=${year}`;
+    history.replaceState(null, '', qs);
 }
 function toggleViza(id) {
     document.getElementById(id).classList.toggle('open');
