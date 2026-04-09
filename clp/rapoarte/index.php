@@ -42,13 +42,25 @@ $sumBilete   = array_sum(array_column($rows, 'total_bilete'));
 $sumIncasari = array_sum(array_column($rows, 'total_incasari'));
 $sumDitl     = $sumBilete * 0.02;
 
-// ── Viza subtipuri per curs ───────────────────────────────────────────────────
+// ── Viza subtipuri + vândute per curs ────────────────────────────────────────
 $vizaSubtipsByCourse = [];
+$reportByPriceByCourse = [];
 if (!empty($rows)) {
     $ids = implode(',', array_map(fn($r) => (int)$r['id'], $rows));
+    // Subtipuri viză
     $vsRes = $db->query("SELECT * FROM viza_subtips WHERE course_id IN ({$ids}) ORDER BY course_id, tarif DESC");
     while ($vs = $vsRes->fetchArray(SQLITE3_ASSOC)) {
         $vizaSubtipsByCourse[(int)$vs['course_id']][] = $vs;
+    }
+    // types_json din rapoarte (conține nr. vândute per preț)
+    $rjRes = $db->query("SELECT course_id, types_json FROM course_reports WHERE course_id IN ({$ids})");
+    while ($rj = $rjRes->fetchArray(SQLITE3_ASSOC)) {
+        $types = json_decode($rj['types_json'] ?? '[]', true) ?: [];
+        $byPrice = [];
+        foreach ($types as $t) {
+            $byPrice[(string)(float)($t['pret'] ?? 0)] = $t;
+        }
+        $reportByPriceByCourse[(int)$rj['course_id']] = $byPrice;
     }
 }
 
@@ -220,7 +232,9 @@ rsort($years);
                 <td><?php echo fmt((float)$r['total_incasari']); ?> RON</td>
                 <td class="ditl-cell"><?php echo fmt((float)$r['total_bilete'] * 0.02); ?> RON</td>
               </tr>
-              <?php if (!empty($subs)): ?>
+              <?php if (!empty($subs)):
+                $byPrice = $reportByPriceByCourse[(int)$r['id']] ?? [];
+              ?>
               <tr class="viza-subtips-row" id="<?php echo $rowId; ?>">
                 <td colspan="5" style="padding:0;background:var(--bg)">
                   <div class="viza-subtips-inner">
@@ -229,17 +243,22 @@ rsort($years);
                         <tr>
                           <th>Seria</th>
                           <th>Tarif</th>
-                          <th>Nr. bilete</th>
+                          <th>Total bilete</th>
+                          <th>Vândute</th>
                           <th>De la</th>
                           <th>Până la</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <?php foreach ($subs as $sub): ?>
+                        <?php foreach ($subs as $sub):
+                          $key = (string)(float)$sub['tarif'];
+                          $vandute = isset($byPrice[$key]) ? (int)$byPrice[$key]['vandute'] : null;
+                        ?>
                         <tr>
                           <td><span class="seria-badge"><?php echo h($sub['seria']); ?></span></td>
                           <td><?php echo number_format((float)$sub['tarif'], 0, ',', '.'); ?> RON</td>
                           <td><?php echo (int)$sub['nr_unitati']; ?></td>
+                          <td><?php echo $vandute !== null ? '<strong>' . $vandute . '</strong>' : '<span style="color:var(--muted)">—</span>'; ?></td>
                           <td><?php echo h($sub['de_la']); ?></td>
                           <td><?php echo h($sub['pana_la']); ?></td>
                         </tr>
