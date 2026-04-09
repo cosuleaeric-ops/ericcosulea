@@ -6,16 +6,20 @@ if (!is_logged_in()) { header('Location: /admin/login.php?redirect=/clp/cursuri/
 
 $db = get_clp_db();
 
-// ── An comun pentru ambele tab-uri ────────────────────────────────────────────
-$now      = new DateTimeImmutable();
-$ditlYear = (int)($_GET['year'] ?? $now->format('Y'));
+// ── An + lună comune pentru ambele tab-uri ────────────────────────────────────
+$now       = new DateTimeImmutable();
+$ditlYear  = (int)($_GET['year']  ?? $now->format('Y'));
+$ditlMonth = isset($_GET['month']) ? (int)$_GET['month'] : 0; // 0 = tot anul
+$datePrefix = $ditlMonth > 0
+    ? $ditlYear . '-' . str_pad((string)$ditlMonth, 2, '0', STR_PAD_LEFT)
+    : (string)$ditlYear;
 
-// ── Lista cursuri (filtrat pe an) ─────────────────────────────────────────────
+// ── Lista cursuri (filtrat pe an/lună) ────────────────────────────────────────
 $result = $db->query("SELECT c.id, c.name, c.date,
     (SELECT COUNT(*) FROM tickets t WHERE t.course_id = c.id) as total_tickets,
     (SELECT filename FROM course_files f WHERE f.course_id = c.id AND f.file_type = 'viza' ORDER BY f.uploaded_at DESC LIMIT 1) as viza_filename,
     (SELECT 1 FROM course_reports r WHERE r.course_id = c.id LIMIT 1) as has_report
-    FROM courses c WHERE c.date LIKE '{$ditlYear}%' ORDER BY c.date DESC");
+    FROM courses c WHERE c.date LIKE '{$datePrefix}%' ORDER BY c.date DESC");
 $courses = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) $courses[] = $row;
 
@@ -24,7 +28,7 @@ $ditlRes = $db->query("
            r.total_bilete, r.total_incasari, r.types_json
     FROM courses c
     JOIN course_reports r ON r.course_id = c.id
-    WHERE c.date LIKE '{$ditlYear}%'
+    WHERE c.date LIKE '{$datePrefix}%'
     ORDER BY c.date DESC
 ");
 $ditlRows = [];
@@ -139,13 +143,18 @@ $tab = $_GET['tab'] ?? 'cursuri';
       <button class="tab-btn <?php echo $tab !== 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'cursuri')">Cursuri</button>
       <button class="tab-btn <?php echo $tab === 'ditl' ? 'active' : ''; ?>" onclick="switchTab(event,'ditl')">Rapoarte DITL</button>
     </div>
-    <form method="get" id="yearForm" style="display:flex;align-items:center;gap:8px">
+    <form method="get" id="yearForm" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <input type="hidden" name="tab" value="<?php echo h($tab); ?>">
-      <label style="font-size:12px;color:var(--muted)">An:</label>
       <select name="year" onchange="document.getElementById('yearForm').submit()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg);cursor:pointer">
         <?php foreach ($ditlYears as $y): ?>
           <option value="<?php echo h($y); ?>" <?php echo (int)$y === $ditlYear ? 'selected' : ''; ?>><?php echo h($y); ?></option>
         <?php endforeach; ?>
+      </select>
+      <select name="month" onchange="document.getElementById('yearForm').submit()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg);cursor:pointer">
+        <option value="0" <?php echo $ditlMonth === 0 ? 'selected' : ''; ?>>Toate lunile</option>
+        <?php for ($m = 1; $m <= 12; $m++): ?>
+          <option value="<?php echo $m; ?>" <?php echo $ditlMonth === $m ? 'selected' : ''; ?>><?php echo ucfirst($roMonths[$m]); ?></option>
+        <?php endfor; ?>
       </select>
     </form>
   </div>
@@ -318,9 +327,10 @@ function switchTab(e, tab) {
     document.getElementById('panel-' + tab).classList.add('active');
     e.currentTarget.classList.add('active');
     document.querySelector('#yearForm input[name=tab]').value = tab;
-    const year = document.querySelector('#yearForm select[name=year]').value;
-    const qs = tab === 'ditl' ? `?tab=ditl&year=${year}` : `?year=${year}`;
-    history.replaceState(null, '', qs);
+    const year  = document.querySelector('#yearForm select[name=year]').value;
+    const month = document.querySelector('#yearForm select[name=month]').value;
+    const base  = tab === 'ditl' ? `?tab=ditl&year=${year}` : `?year=${year}`;
+    history.replaceState(null, '', month > 0 ? `${base}&month=${month}` : base);
 }
 function toggleViza(id) {
     document.getElementById(id).classList.toggle('open');
