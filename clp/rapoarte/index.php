@@ -42,6 +42,16 @@ $sumBilete   = array_sum(array_column($rows, 'total_bilete'));
 $sumIncasari = array_sum(array_column($rows, 'total_incasari'));
 $sumDitl     = $sumBilete * 0.02;
 
+// ── Viza subtipuri per curs ───────────────────────────────────────────────────
+$vizaSubtipsByCourse = [];
+if (!empty($rows)) {
+    $ids = implode(',', array_map(fn($r) => (int)$r['id'], $rows));
+    $vsRes = $db->query("SELECT * FROM viza_subtips WHERE course_id IN ({$ids}) ORDER BY course_id, tarif DESC");
+    while ($vs = $vsRes->fetchArray(SQLITE3_ASSOC)) {
+        $vizaSubtipsByCourse[(int)$vs['course_id']][] = $vs;
+    }
+}
+
 // ── An/luni disponibile (pentru dropdown) ─────────────────────────────────────
 $availRes = $db->query("
     SELECT DISTINCT strftime('%Y', c.date) AS y, strftime('%m', c.date) AS m
@@ -96,6 +106,18 @@ rsort($years);
     .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 15px; }
     .course-link { color: var(--text); text-decoration: none; font-weight: 500; }
     .course-link:hover { color: var(--green); }
+    .toggle-viza { background: none; border: none; cursor: pointer; font-size: 12px; color: var(--muted); padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+    .toggle-viza:hover { background: var(--border); color: var(--text); }
+    .viza-subtips-row { display: none; }
+    .viza-subtips-row.open { display: table-row; }
+    .viza-subtips-inner { padding: 0 16px 12px 32px; }
+    .viza-subtable { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+    .viza-subtable th { padding: 5px 10px; font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); text-align: left; border-bottom: 1px solid var(--border); }
+    .viza-subtable th:not(:first-child) { text-align: right; }
+    .viza-subtable td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
+    .viza-subtable td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .viza-subtable tr:last-child td { border-bottom: none; }
+    .seria-badge { background: var(--green-light); border: 1px solid #b2d9c0; border-radius: 4px; padding: 1px 6px; font-weight: 700; font-size: 11px; }
     @media(max-width:600px) { .summary-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -181,13 +203,52 @@ rsort($years);
                     }
                 }
             ?>
+              <?php
+                $subs = $vizaSubtipsByCourse[(int)$r['id']] ?? [];
+                $rowId = 'viza-' . (int)$r['id'];
+              ?>
               <tr>
-                <td><a class="course-link" href="/clp/cursuri/view.php?id=<?php echo (int)$r['id']; ?>"><?php echo h($r['name']); ?></a></td>
+                <td>
+                  <a class="course-link" href="/clp/cursuri/view.php?id=<?php echo (int)$r['id']; ?>"><?php echo h($r['name']); ?></a>
+                  <?php if (!empty($subs)): ?>
+                    <button class="toggle-viza" onclick="toggleViza('<?php echo $rowId; ?>', this)" title="Detalii viză bilete">▸ viză</button>
+                  <?php endif; ?>
+                </td>
                 <td style="color:var(--muted)"><?php echo h(ro_date($r['date'])); ?></td>
                 <td><?php echo fmt((float)$r['total_bilete']); ?> RON</td>
                 <td><?php echo fmt((float)$r['total_incasari']); ?> RON</td>
                 <td class="ditl-cell"><?php echo fmt((float)$r['total_bilete'] * 0.02); ?> RON</td>
               </tr>
+              <?php if (!empty($subs)): ?>
+              <tr class="viza-subtips-row" id="<?php echo $rowId; ?>">
+                <td colspan="5" style="padding:0;background:var(--bg)">
+                  <div class="viza-subtips-inner">
+                    <table class="viza-subtable">
+                      <thead>
+                        <tr>
+                          <th>Seria</th>
+                          <th>Tarif</th>
+                          <th>Nr. bilete</th>
+                          <th>De la</th>
+                          <th>Până la</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($subs as $sub): ?>
+                        <tr>
+                          <td><span class="seria-badge"><?php echo h($sub['seria']); ?></span></td>
+                          <td><?php echo number_format((float)$sub['tarif'], 0, ',', '.'); ?> RON</td>
+                          <td><?php echo (int)$sub['nr_unitati']; ?></td>
+                          <td><?php echo h($sub['de_la']); ?></td>
+                          <td><?php echo h($sub['pana_la']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+              <?php endif; ?>
             <?php endforeach; ?>
           </tbody>
           <tfoot>
@@ -204,5 +265,12 @@ rsort($years);
 
   </div>
 </main>
+<script>
+function toggleViza(id, btn) {
+    const row = document.getElementById(id);
+    const open = row.classList.toggle('open');
+    btn.textContent = open ? '▾ viză' : '▸ viză';
+}
+</script>
 </body>
 </html>
