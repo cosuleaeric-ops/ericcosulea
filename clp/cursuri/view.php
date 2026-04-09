@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
                 $safeName = bin2hex(random_bytes(10)) . '-' . $id . '.pdf';
                 if (move_uploaded_file($file['tmp_name'], $uploadDir . $safeName)) {
-                    // Șterge viža veche
+                    // Șterge viza veche
                     $old = $db->querySingle("SELECT filename FROM course_files WHERE course_id={$id} AND file_type='viza' LIMIT 1", true);
                     if ($old) {
                         @unlink($uploadDir . $old['filename']);
@@ -510,7 +510,7 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
                   title="Extrage date din PDF">↻ Extrage date</button>
               </form>
             <?php endif; ?>
-            <form method="post" onsubmit="return confirm('Ștergi viža?');" style="margin:0">
+            <form method="post" onsubmit="return confirm('Ștergi viza?');" style="margin:0">
               <input type="hidden" name="csrf_token" value="<?php echo h($csrf); ?>">
               <input type="hidden" name="action" value="delete_viza">
               <input type="hidden" name="file_id" value="<?php echo (int)$vf['id']; ?>">
@@ -563,7 +563,7 @@ while ($r = $retRes->fetchArray(SQLITE3_ASSOC)) $returningParticipants[] = $r;
         <input type="hidden" name="viza_text" id="vizaTextInput">
         <div class="upload-zone" id="vizaUploadZone">
           <input type="file" name="viza" accept=".pdf" onchange="handleVizaUpload(this)">
-          <p id="vizaUploadLabel">📎 <?php echo empty($vizaFiles) ? 'Trage sau apasă pentru a încărca Viză PDF' : 'Înlocuiește viža'; ?></p>
+          <p id="vizaUploadLabel">📎 <?php echo empty($vizaFiles) ? 'Trage sau apasă pentru a încărca Viză PDF' : 'Înlocuiește viza'; ?></p>
         </div>
       </form>
     </div>
