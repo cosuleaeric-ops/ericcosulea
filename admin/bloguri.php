@@ -22,25 +22,70 @@ if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
 
-function grab_screenshot(string $url, string $uploadDir): ?string {
-    if (!function_exists('curl_init')) return null;
-    $ch = curl_init('https://image.thum.io/get/width/1200/crop/630/' . $url);
+function fetch_page_html(string $url): string|false {
+    if (!function_exists('curl_init')) return false;
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 25,
+        CURLOPT_TIMEOUT        => 10,
         CURLOPT_USERAGENT      => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_HTTPHEADER     => ['Accept: image/webp,image/jpeg,image/*,*/*'],
+        CURLOPT_HTTPHEADER     => ['Accept: text/html'],
+    ]);
+    $html = curl_exec($ch);
+    curl_close($ch);
+    return $html;
+}
+
+function extract_og_image(string $html, string $baseUrl): string {
+    // og:image
+    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\'][^>]*>/i', $html, $m) ||
+        preg_match('/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\'][^>]*>/i', $html, $m)) {
+        return resolve_url(trim($m[1]), $baseUrl);
+    }
+    // twitter:image
+    if (preg_match('/<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\'][^>]*>/i', $html, $m) ||
+        preg_match('/<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\'][^>]*>/i', $html, $m)) {
+        return resolve_url(trim($m[1]), $baseUrl);
+    }
+    return '';
+}
+
+function resolve_url(string $url, string $base): string {
+    if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) return $url;
+    $p = parse_url($base);
+    if (str_starts_with($url, '//')) return ($p['scheme'] ?? 'https') . ':' . $url;
+    if (str_starts_with($url, '/')) return ($p['scheme'] ?? 'https') . '://' . $p['host'] . $url;
+    return rtrim($base, '/') . '/' . $url;
+}
+
+function download_image(string $imageUrl, string $uploadDir): ?string {
+    if (!function_exists('curl_init') || $imageUrl === '') return null;
+    $ch = curl_init($imageUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible)',
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
     $data  = curl_exec($ch);
-    $code  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $ctype = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $code  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($data === false || $code !== 200 || !str_contains((string)$ctype, 'image/')) return null;
-    $filename = bin2hex(random_bytes(8)) . '.jpg';
+    if ($data === false || $code !== 200 || !str_contains($ctype, 'image/') || strlen($data) < 1024) return null;
+    $ext = str_contains($ctype, 'png') ? 'png' : (str_contains($ctype, 'gif') ? 'gif' : 'jpg');
+    $filename = bin2hex(random_bytes(8)) . '.' . $ext;
     file_put_contents($uploadDir . '/' . $filename, $data);
     return $filename;
+}
+
+function grab_image(string $pageUrl, string $uploadDir): ?string {
+    $html = fetch_page_html($pageUrl);
+    if ($html === false) return null;
+    $ogUrl = extract_og_image($html, $pageUrl);
+    return download_image($ogUrl, $uploadDir);
 }
 
 $error = '';
@@ -53,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['generate_all'])) {
         $missing = $db->query('SELECT id, url, screenshot_filename FROM blogs WHERE screenshot_filename IS NULL');
         while ($r = $missing->fetchArray(SQLITE3_ASSOC)) {
-            $newFile = grab_screenshot($r['url'], $uploadDir);
+            $newFile = grab_image($r['url'], $uploadDir);
             if ($newFile) {
                 $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
                 $upd->bindValue(':ss', $newFile, SQLITE3_TEXT);
@@ -85,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($r['screenshot_filename'] && is_file($uploadDir . '/' . $r['screenshot_filename'])) {
                 @unlink($uploadDir . '/' . $r['screenshot_filename']);
             }
-            $newFile = grab_screenshot($r['url'], $uploadDir);
+            $newFile = grab_image($r['url'], $uploadDir);
             $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
             $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
             $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
@@ -104,10 +149,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'URL invalid.';
         } else {
             $name = '';
-            $ctx  = stream_context_create(['http' => ['timeout' => 8, 'user_agent' => 'Mozilla/5.0', 'follow_location' => 1]]);
-            $html = @file_get_contents($url, false, $ctx);
-            if ($html !== false && preg_match('/<title[^>]*>\s*(.*?)\s*<\/title>/si', $html, $m)) {
-                $name = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+            $html = fetch_page_html($url);
+            if ($html !== false) {
+                if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\'][^>]*>/i', $html, $m) ||
+                    preg_match('/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:title["\'][^>]*>/i', $html, $m)) {
+                    $name = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                } elseif (preg_match('/<title[^>]*>\s*(.*?)\s*<\/title>/si', $html, $m)) {
+                    $name = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+                }
             }
             if ($name === '') $name = parse_url($url, PHP_URL_HOST) ?: $url;
 
