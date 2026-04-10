@@ -50,6 +50,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400); exit('CSRF invalid');
     }
 
+    if (isset($_POST['generate_all'])) {
+        $missing = $db->query('SELECT id, url, screenshot_filename FROM blogs WHERE screenshot_filename IS NULL');
+        while ($r = $missing->fetchArray(SQLITE3_ASSOC)) {
+            $newFile = grab_screenshot($r['url'], $uploadDir);
+            if ($newFile) {
+                $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
+                $upd->bindValue(':ss', $newFile, SQLITE3_TEXT);
+                $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
+                $upd->execute();
+            }
+        }
+        header('Location: /admin/bloguri.php'); exit;
+    }
+
     if (isset($_POST['delete_id'])) {
         $stmt = $db->prepare('SELECT screenshot_filename FROM blogs WHERE id = :id');
         $stmt->bindValue(':id', (int)$_POST['delete_id'], SQLITE3_INTEGER);
@@ -141,11 +155,25 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $blogs[] = $row;
         <p style="color:#c0392b; margin-bottom:1rem; font-size:15px;"><?php echo h($error); ?></p>
       <?php endif; ?>
 
-      <form class="bloguri-add" method="post" action="/admin/bloguri.php">
-        <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-        <input type="url" name="url" placeholder="https://exemplu.com/" required>
-        <button type="submit">adaugă</button>
-      </form>
+      <div style="display:flex; gap:10px; margin-bottom:1.5rem; flex-wrap:wrap;">
+        <form class="bloguri-add" method="post" action="/admin/bloguri.php" style="margin-bottom:0; flex:1; min-width:280px;">
+          <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+          <input type="url" name="url" placeholder="https://exemplu.com/" required>
+          <button type="submit">adaugă</button>
+        </form>
+        <?php
+          $missingCount = (int)$db->querySingle('SELECT COUNT(*) FROM blogs WHERE screenshot_filename IS NULL');
+          if ($missingCount > 0):
+        ?>
+          <form method="post" action="/admin/bloguri.php">
+            <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+            <input type="hidden" name="generate_all" value="1">
+            <button type="submit" style="padding:8px 18px; border:1px solid #c9bfb0; border-radius:10px; background:transparent; font-family:inherit; font-size:16px; cursor:pointer; color:#3f2d1b; white-space:nowrap;">
+              ↻ generează toate (<?php echo $missingCount; ?>)
+            </button>
+          </form>
+        <?php endif; ?>
+      </div>
 
       <?php if (empty($blogs)): ?>
         <p>Nicio intrare încă.</p>
