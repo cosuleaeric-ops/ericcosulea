@@ -81,8 +81,8 @@ function download_image(string $imageUrl, string $uploadDir): ?string {
     return $filename;
 }
 
-function grab_image(string $pageUrl, string $uploadDir): ?string {
-    $html = fetch_page_html($pageUrl);
+function grab_image(string $pageUrl, string $uploadDir, string|false $html = false): ?string {
+    if ($html === false) $html = fetch_page_html($pageUrl);
     if ($html === false) return null;
     $ogUrl = extract_og_image($html, $pageUrl);
     return download_image($ogUrl, $uploadDir);
@@ -93,20 +93,6 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? '')) {
         http_response_code(400); exit('CSRF invalid');
-    }
-
-    if (isset($_POST['generate_all'])) {
-        $missing = $db->query('SELECT id, url, screenshot_filename FROM blogs WHERE screenshot_filename IS NULL');
-        while ($r = $missing->fetchArray(SQLITE3_ASSOC)) {
-            $newFile = grab_image($r['url'], $uploadDir);
-            if ($newFile) {
-                $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
-                $upd->bindValue(':ss', $newFile, SQLITE3_TEXT);
-                $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
-                $upd->execute();
-            }
-        }
-        header('Location: /admin/bloguri.php'); exit;
     }
 
     if (isset($_POST['delete_id'])) {
@@ -122,23 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: /admin/bloguri.php'); exit;
     }
 
-    if (isset($_POST['screenshot_id'])) {
-        $stmt = $db->prepare('SELECT id, url, screenshot_filename FROM blogs WHERE id = :id');
-        $stmt->bindValue(':id', (int)$_POST['screenshot_id'], SQLITE3_INTEGER);
-        $r = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
-        if ($r) {
-            if ($r['screenshot_filename'] && is_file($uploadDir . '/' . $r['screenshot_filename'])) {
-                @unlink($uploadDir . '/' . $r['screenshot_filename']);
-            }
-            $newFile = grab_image($r['url'], $uploadDir);
-            $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
-            $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
-            $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
-            $upd->execute();
-        }
-        header('Location: /admin/bloguri.php'); exit;
-    }
-
     $rawUrl = trim($_POST['url'] ?? '');
     if ($rawUrl !== '') {
         if (!str_starts_with($rawUrl, 'http://') && !str_starts_with($rawUrl, 'https://')) {
@@ -148,8 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$url) {
             $error = 'URL invalid.';
         } else {
-            $name = '';
             $html = fetch_page_html($url);
+            $name = '';
             if ($html !== false) {
                 if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\'][^>]*>/i', $html, $m) ||
                     preg_match('/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:title["\'][^>]*>/i', $html, $m)) {
@@ -160,9 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($name === '') $name = parse_url($url, PHP_URL_HOST) ?: $url;
 
-            $stmt = $db->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, NULL, :ts)');
+            // Fetch og:image immediately on add
+            $imgFile = ($html !== false) ? grab_image($url, $uploadDir, $html) : null;
+
+            $stmt = $db->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, :ss, :ts)');
             $stmt->bindValue(':url', $url, SQLITE3_TEXT);
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+            $stmt->bindValue(':ss', $imgFile, $imgFile ? SQLITE3_TEXT : SQLITE3_NULL);
             $stmt->bindValue(':ts', date('Y-m-d H:i:s'), SQLITE3_TEXT);
             $stmt->execute();
 
@@ -173,6 +146,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $error = $error ?: urldecode($_GET['err'] ?? '');
+
+// Auto-fetch missing images on page load (one at a time to avoid timeout)
+$missing = $db->querySingle('SELECT id FROM blogs WHERE screenshot_filename IS NULL LIMIT 1');
+if ($missing) {
+    $r = $db->querySingle("SELECT id, url FROM blogs WHERE screenshot_filename IS NULL LIMIT 1", true);
+    if ($r) {
+        $newFile = grab_image($r['url'], $uploadDir);
+        $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
+        $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
+        $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
+        $upd->execute();
+        // Refresh to pick up next missing one
+        if ($newFile) {
+            header('Location: /admin/bloguri.php'); exit;
+        }
+    }
+}
+
 $result = $db->query('SELECT id, url, name, screenshot_filename FROM blogs ORDER BY created_at ASC');
 $blogs  = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) $blogs[] = $row;
@@ -204,25 +195,11 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $blogs[] = $row;
         <p style="color:#c0392b; margin-bottom:1rem; font-size:15px;"><?php echo h($error); ?></p>
       <?php endif; ?>
 
-      <div style="display:flex; gap:10px; margin-bottom:1.5rem; flex-wrap:wrap;">
-        <form class="bloguri-add" method="post" action="/admin/bloguri.php" style="margin-bottom:0; flex:1; min-width:280px;">
-          <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-          <input type="url" name="url" placeholder="https://exemplu.com/" required>
-          <button type="submit">adaugă</button>
-        </form>
-        <?php
-          $missingCount = (int)$db->querySingle('SELECT COUNT(*) FROM blogs WHERE screenshot_filename IS NULL');
-          if ($missingCount > 0):
-        ?>
-          <form method="post" action="/admin/bloguri.php">
-            <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-            <input type="hidden" name="generate_all" value="1">
-            <button type="submit" style="padding:8px 18px; border:1px solid #c9bfb0; border-radius:10px; background:transparent; font-family:inherit; font-size:16px; cursor:pointer; color:#3f2d1b; white-space:nowrap;">
-              ↻ generează toate (<?php echo $missingCount; ?>)
-            </button>
-          </form>
-        <?php endif; ?>
-      </div>
+      <form class="bloguri-add" method="post" action="/admin/bloguri.php">
+        <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+        <input type="url" name="url" placeholder="https://exemplu.com/" required>
+        <button type="submit">adaugă</button>
+      </form>
 
       <?php if (empty($blogs)): ?>
         <p>Nicio intrare încă.</p>
@@ -242,11 +219,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) $blogs[] = $row;
                 </div>
               </a>
               <div class="blog-card-actions">
-                <form method="post" action="/admin/bloguri.php">
-                  <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
-                  <input type="hidden" name="screenshot_id" value="<?php echo (int)$b['id']; ?>">
-                  <button type="submit" title="regenerează screenshot">↻</button>
-                </form>
                 <form method="post" action="/admin/bloguri.php" onsubmit="return confirm('Ștergi blogul?');">
                   <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
                   <input type="hidden" name="delete_id" value="<?php echo (int)$b['id']; ?>">
