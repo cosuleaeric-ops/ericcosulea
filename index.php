@@ -176,6 +176,7 @@ $toolsPage = null;
 $heroAvatarUrl = hero_avatar_url();
 $postHasTwitterEmbeds = false;
 $siteTextMap = [];
+$is404 = false;
 
 if (file_exists($dbPath)) {
     $siteTextDb = new SQLite3($dbPath);
@@ -248,6 +249,10 @@ if ($uri === '/blog') {
     $slug = ltrim($uri, '/');
     if (preg_match('/^[a-z0-9\-]+$/i', $slug)) {
         $post = fetch_post($slug, $dbPath);
+    }
+    if ($post === null) {
+        http_response_code(404);
+        $is404 = true;
     }
 }
 ?>
@@ -381,6 +386,14 @@ if ($uri === '/blog') {
           <?php endforeach; ?>
         </div>
       <?php endif; ?>
+    </section>
+  </main>
+<?php elseif ($is404): ?>
+  <main class="page">
+    <section class="section" style="text-align:center; padding-top:4rem;">
+      <h1 style="font-size:5rem; margin:0; line-height:1;">404</h1>
+      <p style="margin-top:1rem;">pagina nu există</p>
+      <a class="post-back" href="/" style="display:inline-block; margin-top:1.5rem;">← înapoi acasă</a>
     </section>
   </main>
 <?php else: ?>

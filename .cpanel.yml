@@ -18,5 +18,6 @@ deployment:
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp styles.css $DEPLOYPATH
+    - /bin/cp .htaccess $DEPLOYPATH
     - /bin/cp inspo.html $DEPLOYPATH
     - /bin/cp tools.html $DEPLOYPATH
