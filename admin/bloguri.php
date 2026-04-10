@@ -79,23 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $name = parse_url($url, PHP_URL_HOST) ?: $url;
             }
 
-            // Download screenshot via thum.io
-            $screenshotFilename = null;
-            $screenshotUrl = 'https://image.thum.io/get/width/1200/crop/630/' . urlencode($url);
-            $imgCtx = stream_context_create(['http' => [
-                'timeout' => 15,
-                'user_agent' => 'Mozilla/5.0 (compatible; EricBot/1.0)',
-            ]]);
-            $imgData = @file_get_contents($screenshotUrl, false, $imgCtx);
-            if ($imgData !== false && strlen($imgData) > 1024) {
-                $screenshotFilename = bin2hex(random_bytes(8)) . '.jpg';
-                file_put_contents($uploadDir . '/' . $screenshotFilename, $imgData);
-            }
-
-            $stmt = $db->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, :ss, :created_at)');
+            $stmt = $db->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, NULL, :created_at)');
             $stmt->bindValue(':url', $url, SQLITE3_TEXT);
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-            $stmt->bindValue(':ss', $screenshotFilename, $screenshotFilename ? SQLITE3_TEXT : SQLITE3_NULL);
             $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
             $stmt->execute();
 
@@ -189,11 +175,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       <div class="blog-list">
         <?php foreach ($blogs as $b): ?>
           <div class="blog-row">
-            <?php if ($b['screenshot_filename']): ?>
-              <img src="/uploads/bloguri/<?php echo h($b['screenshot_filename']); ?>" alt="">
-            <?php else: ?>
-              <div style="width:80px;height:45px;border-radius:6px;background:#f0ebe0;flex-shrink:0;"></div>
-            <?php endif; ?>
+            <img src="https://image.thum.io/get/width/400/crop/225/<?php echo urlencode($b['url']); ?>" alt="" loading="lazy" style="flex-shrink:0;">
             <div class="blog-row-info">
               <div class="blog-row-name"><?php echo h($b['name']); ?></div>
               <div class="blog-row-url"><?php echo h($b['url']); ?></div>
