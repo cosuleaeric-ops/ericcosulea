@@ -495,7 +495,7 @@ if ($uri === '/blog') {
     </section>
   </main>
 <?php elseif ($uri === '/bloguri'): ?>
-  <main class="page">
+  <main class="page page-wide">
     <section class="section">
       <a class="post-back" href="/">← homepage</a>
       <h1 class="page-title" style="margin-top:1rem;">bloguri</h1>
