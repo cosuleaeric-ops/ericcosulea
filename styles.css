@@ -903,6 +903,8 @@ body.lightbox-open {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 4px;
 }
 
 .blog-card-actions button {
