@@ -858,6 +858,43 @@ body.lightbox-open {
 }
 
 /* ── Bloguri ── */
+.bloguri-add {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.bloguri-add input[type=url] {
+  flex: 1;
+  padding: 8px 14px;
+  border: 1px solid #c9bfb0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  background: #fffaf2;
+  color: var(--text);
+}
+
+.bloguri-add input[type=url]:focus {
+  outline: 2px solid #c9a97b;
+  outline-offset: 1px;
+}
+
+.bloguri-add button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #3f2d1b;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.bloguri-add button:hover {
+  background: #5a3f26;
+}
+
 .blog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
