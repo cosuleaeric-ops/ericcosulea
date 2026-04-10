@@ -175,7 +175,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
       <div class="blog-list">
         <?php foreach ($blogs as $b): ?>
           <div class="blog-row">
-            <img src="https://image.thum.io/get/width/400/crop/225/<?php echo urlencode($b['url']); ?>" alt="" loading="lazy" style="flex-shrink:0;">
+            <img src="https://image.thum.io/get/width/400/crop/225/<?php echo h($b['url']); ?>" alt="" loading="lazy" style="flex-shrink:0;">
             <div class="blog-row-info">
               <div class="blog-row-name"><?php echo h($b['name']); ?></div>
               <div class="blog-row-url"><?php echo h($b['url']); ?></div>

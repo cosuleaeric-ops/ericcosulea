@@ -427,7 +427,7 @@ if ($uri === '/blog') {
         <div class="blog-grid">
           <?php foreach ($blogs as $b): ?>
             <a class="blog-card" href="<?php echo h($b['url']); ?>" target="_blank" rel="noopener noreferrer">
-              <img class="blog-card-thumb" src="https://image.thum.io/get/width/1200/crop/630/<?php echo urlencode($b['url']); ?>" alt="<?php echo h($b['name']); ?>" loading="lazy">
+              <img class="blog-card-thumb" src="https://image.thum.io/get/width/1200/crop/630/<?php echo h($b['url']); ?>" alt="<?php echo h($b['name']); ?>" loading="lazy">
               <div class="blog-card-body">
                 <p class="blog-card-name"><?php echo h($b['name']); ?></p>
                 <p class="blog-card-url"><?php echo h(parse_url($b['url'], PHP_URL_HOST) ?: $b['url']); ?></p>
