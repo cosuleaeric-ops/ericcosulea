@@ -895,6 +895,39 @@ body.lightbox-open {
   background: #5a3f26;
 }
 
+.blog-card-wrap {
+  position: relative;
+}
+
+.blog-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.blog-card-actions button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,250,242,0.9);
+  color: #3f2d1b;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+.blog-card-actions button:hover {
+  background: #fff;
+}
+
+.blog-card-thumb--empty {
+  background: #ede8df;
+}
+
 .blog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

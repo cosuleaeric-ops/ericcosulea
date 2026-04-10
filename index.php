@@ -240,33 +240,46 @@ if ($uri === '/blog') {
             http_response_code(400);
             exit('CSRF invalid');
         }
-        $rawUrl = trim($_POST['url'] ?? '');
-        if ($rawUrl !== '') {
-            if (!str_starts_with($rawUrl, 'http://') && !str_starts_with($rawUrl, 'https://')) {
-                $rawUrl = 'https://' . $rawUrl;
+        $blogUploadDir = __DIR__ . '/uploads/bloguri';
+        if (!is_dir($blogUploadDir)) mkdir($blogUploadDir, 0755, true);
+        $blogDb = new SQLite3($dbPath);
+        $blogDb->exec('CREATE TABLE IF NOT EXISTS blogs (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT UNIQUE NOT NULL, name TEXT NOT NULL, screenshot_filename TEXT, created_at TEXT NOT NULL);');
+
+        if (isset($_POST['screenshot_id'])) {
+            $row = $blogDb->prepare('SELECT id, url, screenshot_filename FROM blogs WHERE id = :id');
+            $row->bindValue(':id', (int)$_POST['screenshot_id'], SQLITE3_INTEGER);
+            $r = $row->execute()->fetchArray(SQLITE3_ASSOC);
+            if ($r) {
+                if ($r['screenshot_filename'] && is_file($blogUploadDir . '/' . $r['screenshot_filename'])) {
+                    @unlink($blogUploadDir . '/' . $r['screenshot_filename']);
+                }
+                $newFile = grab_blog_screenshot($r['url'], $blogUploadDir);
+                $upd = $blogDb->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
+                $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
+                $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
+                $upd->execute();
             }
-            $addUrl = filter_var($rawUrl, FILTER_VALIDATE_URL);
-            if ($addUrl) {
-                $name = '';
-                $ctx  = stream_context_create(['http' => ['timeout' => 8, 'user_agent' => 'Mozilla/5.0', 'follow_location' => 1]]);
-                $html = @file_get_contents($addUrl, false, $ctx);
-                if ($html !== false && preg_match('/<title[^>]*>\s*(.*?)\s*<\/title>/si', $html, $m)) {
-                    $name = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        } else {
+            $rawUrl = trim($_POST['url'] ?? '');
+            if ($rawUrl !== '') {
+                if (!str_starts_with($rawUrl, 'http://') && !str_starts_with($rawUrl, 'https://')) {
+                    $rawUrl = 'https://' . $rawUrl;
                 }
-                if ($name === '') {
-                    $name = parse_url($addUrl, PHP_URL_HOST) ?: $addUrl;
+                $addUrl = filter_var($rawUrl, FILTER_VALIDATE_URL);
+                if ($addUrl) {
+                    $name = '';
+                    $ctx  = stream_context_create(['http' => ['timeout' => 8, 'user_agent' => 'Mozilla/5.0', 'follow_location' => 1]]);
+                    $html = @file_get_contents($addUrl, false, $ctx);
+                    if ($html !== false && preg_match('/<title[^>]*>\s*(.*?)\s*<\/title>/si', $html, $m)) {
+                        $name = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+                    }
+                    if ($name === '') $name = parse_url($addUrl, PHP_URL_HOST) ?: $addUrl;
+                    $stmt = $blogDb->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, NULL, :ts)');
+                    $stmt->bindValue(':url', $addUrl, SQLITE3_TEXT);
+                    $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+                    $stmt->bindValue(':ts', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+                    $stmt->execute();
                 }
-                $blogUploadDir = __DIR__ . '/uploads/bloguri';
-                if (!is_dir($blogUploadDir)) mkdir($blogUploadDir, 0755, true);
-                $ssFile = grab_blog_screenshot($addUrl, $blogUploadDir);
-                $db = new SQLite3($dbPath);
-                $db->exec('CREATE TABLE IF NOT EXISTS blogs (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT UNIQUE NOT NULL, name TEXT NOT NULL, screenshot_filename TEXT, created_at TEXT NOT NULL);');
-                $stmt = $db->prepare('INSERT OR IGNORE INTO blogs (url, name, screenshot_filename, created_at) VALUES (:url, :name, :ss, :ts)');
-                $stmt->bindValue(':url', $addUrl, SQLITE3_TEXT);
-                $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-                $stmt->bindValue(':ss', $ssFile, $ssFile ? SQLITE3_TEXT : SQLITE3_NULL);
-                $stmt->bindValue(':ts', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-                $stmt->execute();
             }
         }
         header('Location: /bloguri');
@@ -499,18 +512,26 @@ if ($uri === '/blog') {
       <?php else: ?>
         <div class="blog-grid">
           <?php foreach ($blogs as $b): ?>
-            <a class="blog-card" href="<?php echo h($b['url']); ?>" target="_blank" rel="noopener noreferrer">
-              <?php
-                $thumbSrc = $b['screenshot_filename']
-                    ? '/uploads/bloguri/' . h($b['screenshot_filename'])
-                    : 'https://image.thum.io/get/width/1200/crop/630/' . h($b['url']);
-              ?>
-              <img class="blog-card-thumb" src="<?php echo $thumbSrc; ?>" alt="<?php echo h($b['name']); ?>" loading="lazy">
-              <div class="blog-card-body">
-                <p class="blog-card-name"><?php echo h($b['name']); ?></p>
-                <p class="blog-card-url"><?php echo h(parse_url($b['url'], PHP_URL_HOST) ?: $b['url']); ?></p>
-              </div>
-            </a>
+            <div class="blog-card-wrap">
+              <a class="blog-card" href="<?php echo h($b['url']); ?>" target="_blank" rel="noopener noreferrer">
+                <?php if ($b['screenshot_filename']): ?>
+                  <img class="blog-card-thumb" src="/uploads/bloguri/<?php echo h($b['screenshot_filename']); ?>" alt="<?php echo h($b['name']); ?>" loading="lazy">
+                <?php else: ?>
+                  <div class="blog-card-thumb blog-card-thumb--empty"></div>
+                <?php endif; ?>
+                <div class="blog-card-body">
+                  <p class="blog-card-name"><?php echo h($b['name']); ?></p>
+                  <p class="blog-card-url"><?php echo h(parse_url($b['url'], PHP_URL_HOST) ?: $b['url']); ?></p>
+                </div>
+              </a>
+              <?php if ($isLoggedIn): ?>
+                <form class="blog-card-actions" method="post" action="/bloguri">
+                  <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+                  <input type="hidden" name="screenshot_id" value="<?php echo (int)$b['id']; ?>">
+                  <button type="submit" title="regenerează screenshot">↻</button>
+                </form>
+              <?php endif; ?>
+            </div>
           <?php endforeach; ?>
         </div>
       <?php endif; ?>
