@@ -870,7 +870,7 @@ body.lightbox-open {
   flex-direction: column;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1.5px solid #c9bfb0;
   background: var(--card);
   text-decoration: none;
   color: var(--text);
