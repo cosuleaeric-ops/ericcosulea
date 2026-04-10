@@ -83,11 +83,11 @@ function download_image(string $imageUrl, string $uploadDir): ?string {
 
 function microlink_screenshot(string $pageUrl, string $uploadDir): ?string {
     if (!function_exists('curl_init')) return null;
+    // Step 1: get screenshot URL from Microlink JSON API
     $apiUrl = 'https://api.microlink.io/?' . http_build_query([
         'url'        => $pageUrl,
         'screenshot' => 'true',
         'meta'       => 'false',
-        'embed'      => 'screenshot.url',
     ]);
     $ch = curl_init($apiUrl);
     curl_setopt_array($ch, [
@@ -103,6 +103,7 @@ function microlink_screenshot(string $pageUrl, string $uploadDir): ?string {
     $json = json_decode($body, true);
     $imgUrl = $json['data']['screenshot']['url'] ?? null;
     if (!$imgUrl) return null;
+    // Step 2: download the actual image
     return download_image($imgUrl, $uploadDir);
 }
 
@@ -179,10 +180,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $error = $error ?: urldecode($_GET['err'] ?? '');
 
-// Reset screenshot_filename if the file no longer exists on disk
+// Reset screenshot_filename if file missing or not a valid image (e.g. old corrupt thum.io files)
 $allBlogs = $db->query('SELECT id, screenshot_filename FROM blogs WHERE screenshot_filename IS NOT NULL');
 while ($b = $allBlogs->fetchArray(SQLITE3_ASSOC)) {
-    if (!is_file($uploadDir . '/' . $b['screenshot_filename'])) {
+    $path = $uploadDir . '/' . $b['screenshot_filename'];
+    if (!is_file($path) || @getimagesize($path) === false) {
+        if (is_file($path)) @unlink($path);
         $db->exec('UPDATE blogs SET screenshot_filename = NULL WHERE id = ' . (int)$b['id']);
     }
 }
