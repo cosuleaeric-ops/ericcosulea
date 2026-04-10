@@ -23,6 +23,7 @@ let memory = { days: {}, settings: {}, activeTimer: null };
 // --- State
 let mode = "work";
 let remainingSeconds = 60 * 60;
+let endTimestamp = null;
 let intervalId = null;
 let workDurationMin = DEFAULT_WORK_MIN;
 let restDurationMin = DEFAULT_REST_MIN;
@@ -239,7 +240,7 @@ function getDurationSeconds() {
 }
 
 function saveActiveTimer() {
-  const endTimestamp = Date.now() + remainingSeconds * 1000;
+  endTimestamp = Date.now() + remainingSeconds * 1000;
   const payload = { endTimestamp, mode };
   if (useFileStorage) {
     memory.activeTimer = payload;
@@ -320,7 +321,8 @@ function loadActiveTimer() {
     clearActiveTimer();
     return false;
   }
-  remainingSeconds = Math.ceil((data.endTimestamp - now) / 1000);
+  endTimestamp = data.endTimestamp;
+  remainingSeconds = Math.ceil((endTimestamp - now) / 1000);
   mode = data.mode;
   tabs.forEach((t) => t.classList.remove("active"));
   const activeTab = document.querySelector(`.tab[data-mode="${mode}"]`);
@@ -345,7 +347,7 @@ function resetDisplay() {
 }
 
 function tick() {
-  remainingSeconds--;
+  remainingSeconds = Math.max(0, Math.ceil((endTimestamp - Date.now()) / 1000));
   timerDisplay.textContent = formatTime(remainingSeconds);
   updateTabTitle();
   if (remainingSeconds <= 0) {
@@ -405,6 +407,7 @@ function stopTimer() {
     clearInterval(intervalId);
     intervalId = null;
   }
+  endTimestamp = null;
   setExtensionBlockFlag(false);
   savePausedTimer();
   if (useFileStorage) {
