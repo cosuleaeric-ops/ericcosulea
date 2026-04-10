@@ -118,6 +118,11 @@ $latestPost = $posts[0] ?? null;
         <h2>tools</h2>
         <p>actualizezi rapid pagina publică cu tool-urile și resursele tale.</p>
       </a>
+      <a class="quick-card" href="/admin/bloguri.php">
+        <span class="quick-card-kicker">pagina</span>
+        <h2>bloguri</h2>
+        <p>adaugi și gestionezi lista de bloguri recomandate.</p>
+      </a>
     </section>
 
   </div>

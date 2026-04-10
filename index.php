@@ -138,6 +138,26 @@ function fetch_images(string $dbPath, ?int $limit = null): array {
     return $images;
 }
 
+function fetch_blogs(string $dbPath): array {
+    if (!file_exists($dbPath)) {
+        return [];
+    }
+    $db = new SQLite3($dbPath);
+    $db->exec('CREATE TABLE IF NOT EXISTS blogs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        screenshot_filename TEXT,
+        created_at TEXT NOT NULL
+    );');
+    $result = $db->query('SELECT id, url, name, screenshot_filename FROM blogs ORDER BY created_at ASC');
+    $blogs = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $blogs[] = $row;
+    }
+    return $blogs;
+}
+
 function hero_avatar_url(): string {
     $customDir = __DIR__ . '/uploads/profile';
     $extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -168,10 +188,11 @@ if ($uri === '') {
     $uri = '/';
 }
 
-$reserved = ['/', '/index.php', '/styles.css', '/admin', '/admin/import.php', '/tools', '/inspo', '/elite-deux'];
+$reserved = ['/', '/index.php', '/styles.css', '/admin', '/admin/import.php', '/tools', '/inspo', '/bloguri', '/elite-deux'];
 $post = null;
 $posts = [];
 $images = [];
+$blogs = [];
 $toolsPage = null;
 $heroAvatarUrl = hero_avatar_url();
 $postHasTwitterEmbeds = false;
@@ -185,6 +206,8 @@ if (file_exists($dbPath)) {
 
 if ($uri === '/blog') {
     $posts = fetch_posts($dbPath);
+} elseif ($uri === '/bloguri') {
+    $blogs = fetch_blogs($dbPath);
 } elseif ($uri === '/tools') {
     $toolsPage = fetch_page('tools', $dbPath);
 } elseif ($uri === '/inspo') {
@@ -261,7 +284,11 @@ if ($uri === '/blog') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?php echo $post ? h($post['title']) . ' - Eric Cosulea' : 'Eric Cosulea'; ?></title>
+  <title><?php
+    if ($post) echo h($post['title']) . ' - Eric Cosulea';
+    elseif ($uri === '/bloguri') echo 'Bloguri - Eric Cosulea';
+    else echo 'Eric Cosulea';
+  ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -382,6 +409,33 @@ if ($uri === '/blog') {
             <a class="post-item" href="/<?php echo h($p['slug']); ?>">
               <span class="post-item-title"><?php echo h($p['title']); ?></span>
               <span class="post-item-date"><?php echo h(date('j F Y', strtotime($p['published_at']))); ?></span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </section>
+  </main>
+<?php elseif ($uri === '/bloguri'): ?>
+  <main class="page">
+    <section class="section">
+      <a class="post-back" href="/">← homepage</a>
+      <h1 class="page-title" style="margin-top:1rem;">bloguri</h1>
+      <p class="page-lead" style="margin-bottom:1.5rem;">bloguri care merită citite.</p>
+      <?php if (empty($blogs)): ?>
+        <p>Nu există bloguri adăugate încă.</p>
+      <?php else: ?>
+        <div class="blog-grid">
+          <?php foreach ($blogs as $b): ?>
+            <a class="blog-card" href="<?php echo h($b['url']); ?>" target="_blank" rel="noopener noreferrer">
+              <?php if ($b['screenshot_filename']): ?>
+                <img class="blog-card-thumb" src="/uploads/bloguri/<?php echo h($b['screenshot_filename']); ?>" alt="<?php echo h($b['name']); ?>">
+              <?php else: ?>
+                <div class="blog-card-thumb"></div>
+              <?php endif; ?>
+              <div class="blog-card-body">
+                <p class="blog-card-name"><?php echo h($b['name']); ?></p>
+                <p class="blog-card-url"><?php echo h(parse_url($b['url'], PHP_URL_HOST) ?: $b['url']); ?></p>
+              </div>
             </a>
           <?php endforeach; ?>
         </div>

@@ -11,6 +11,7 @@ deployment:
     - /bin/mkdir -p ${DEPLOYPATH}clp/data
     - /bin/mkdir -p ${DEPLOYPATH}clp/uploads
     - /bin/cp -R uploads $DEPLOYPATH
+    - /bin/mkdir -p ${DEPLOYPATH}uploads/bloguri
     - /bin/cp -R dogu $DEPLOYPATH
     - /bin/cp -R reviewsdogu $DEPLOYPATH
     - /bin/cp -R vanzaridogu $DEPLOYPATH

@@ -856,3 +856,61 @@ body.lightbox-open {
     font-size: 36px;
   }
 }
+
+/* ── Bloguri ── */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.blog-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--card);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.blog-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(90, 67, 39, 0.10);
+}
+
+.blog-card-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+  background: #f0ebe0;
+}
+
+.blog-card-body {
+  padding: 14px 16px 16px;
+}
+
+.blog-card-name {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.blog-card-url {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .blog-grid {
+    grid-template-columns: 1fr;
+  }
+}
