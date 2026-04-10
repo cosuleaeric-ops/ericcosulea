@@ -232,7 +232,10 @@ if (file_exists($dbPath)) {
 if ($uri === '/blog') {
     $posts = fetch_posts($dbPath);
 } elseif ($uri === '/bloguri') {
-    if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!$isLoggedIn) {
+        http_response_code(404);
+        $is404 = true;
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!verify_csrf($_POST['csrf_token'] ?? '')) {
             http_response_code(400);
             exit('CSRF invalid');
@@ -268,8 +271,9 @@ if ($uri === '/blog') {
         }
         header('Location: /bloguri');
         exit;
+    } else {
+        $blogs = fetch_blogs($dbPath);
     }
-    $blogs = fetch_blogs($dbPath);
 } elseif ($uri === '/tools') {
     $toolsPage = fetch_page('tools', $dbPath);
 } elseif ($uri === '/inspo') {
