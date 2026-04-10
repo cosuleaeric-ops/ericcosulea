@@ -81,11 +81,43 @@ function download_image(string $imageUrl, string $uploadDir): ?string {
     return $filename;
 }
 
+function microlink_screenshot(string $pageUrl, string $uploadDir): ?string {
+    if (!function_exists('curl_init')) return null;
+    $apiUrl = 'https://api.microlink.io/?' . http_build_query([
+        'url'        => $pageUrl,
+        'screenshot' => 'true',
+        'meta'       => 'false',
+        'embed'      => 'screenshot.url',
+    ]);
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible)',
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $body = curl_exec($ch);
+    curl_close($ch);
+    if (!$body) return null;
+    $json = json_decode($body, true);
+    $imgUrl = $json['data']['screenshot']['url'] ?? null;
+    if (!$imgUrl) return null;
+    return download_image($imgUrl, $uploadDir);
+}
+
 function grab_image(string $pageUrl, string $uploadDir, string|false $html = false): ?string {
     if ($html === false) $html = fetch_page_html($pageUrl);
-    if ($html === false) return null;
-    $ogUrl = extract_og_image($html, $pageUrl);
-    return download_image($ogUrl, $uploadDir);
+
+    // 1. Try og:image / twitter:image
+    if ($html !== false) {
+        $ogUrl = extract_og_image($html, $pageUrl);
+        $result = download_image($ogUrl, $uploadDir);
+        if ($result) return $result;
+    }
+
+    // 2. Fallback: Microlink screenshot API
+    return microlink_screenshot($pageUrl, $uploadDir);
 }
 
 $error = '';
@@ -147,20 +179,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $error = $error ?: urldecode($_GET['err'] ?? '');
 
-// Auto-fetch missing images on page load (one at a time to avoid timeout)
-$missing = $db->querySingle('SELECT id FROM blogs WHERE screenshot_filename IS NULL LIMIT 1');
-if ($missing) {
-    $r = $db->querySingle("SELECT id, url FROM blogs WHERE screenshot_filename IS NULL LIMIT 1", true);
-    if ($r) {
-        $newFile = grab_image($r['url'], $uploadDir);
-        $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
-        $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
-        $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
-        $upd->execute();
-        // Refresh to pick up next missing one
-        if ($newFile) {
-            header('Location: /admin/bloguri.php'); exit;
-        }
+// Reset screenshot_filename if the file no longer exists on disk
+$allBlogs = $db->query('SELECT id, screenshot_filename FROM blogs WHERE screenshot_filename IS NOT NULL');
+while ($b = $allBlogs->fetchArray(SQLITE3_ASSOC)) {
+    if (!is_file($uploadDir . '/' . $b['screenshot_filename'])) {
+        $db->exec('UPDATE blogs SET screenshot_filename = NULL WHERE id = ' . (int)$b['id']);
+    }
+}
+
+// Auto-fetch one missing image per page load
+$r = $db->querySingle('SELECT id, url FROM blogs WHERE screenshot_filename IS NULL LIMIT 1', true);
+if ($r) {
+    $newFile = grab_image($r['url'], $uploadDir);
+    $upd = $db->prepare('UPDATE blogs SET screenshot_filename = :ss WHERE id = :id');
+    $upd->bindValue(':ss', $newFile, $newFile ? SQLITE3_TEXT : SQLITE3_NULL);
+    $upd->bindValue(':id', (int)$r['id'], SQLITE3_INTEGER);
+    $upd->execute();
+    if ($newFile) {
+        header('Location: /admin/bloguri.php'); exit;
     }
 }
 
