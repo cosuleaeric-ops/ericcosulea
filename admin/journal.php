@@ -320,7 +320,7 @@ $csrfToken = csrf_token();
 
     <?php foreach ($entries as $i => $entry): ?>
       <?php
-        $weekLabel = "Săptămâna {$entry['week_number']}, {$entry['year']}";
+        $weekLabel = "Săptămâna {$entry['week_number']}";
         $dateRange = date('j M', strtotime($entry['week_start'])) . ' – ' . date('j M Y', strtotime($entry['week_end']));
         $isOpen    = ($i === 0 && !(int)$entry['completed']);
         $isCompleted = (int)$entry['completed'];
