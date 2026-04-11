@@ -366,5 +366,23 @@ $csrfToken = csrf_token();
 <?php endif; ?>
 
   </div>
+
+  <script>
+  document.querySelectorAll('.journal-textarea').forEach(ta => {
+    if (ta.disabled) return;
+    ta.addEventListener('input', function() {
+      const start = this.selectionStart;
+      const val = this.value;
+      const before = val.substring(0, start);
+      const lineStart = before.lastIndexOf('\n') + 1;
+      const linePrefix = val.substring(lineStart, start);
+
+      if (linePrefix === '- ') {
+        this.value = val.substring(0, lineStart) + '  • ' + val.substring(start);
+        this.selectionStart = this.selectionEnd = lineStart + 4;
+      }
+    });
+  });
+  </script>
 </body>
 </html>
