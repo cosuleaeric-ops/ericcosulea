@@ -315,6 +315,11 @@ body {
   flex-wrap: wrap;
 }
 
+.setting-row-actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
 #modal-close {
   margin-top: 1rem;
 }
