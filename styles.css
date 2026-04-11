@@ -1100,6 +1100,7 @@ body.lightbox-open {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
 }
 .journal-check {
   color: #2e7d32;
