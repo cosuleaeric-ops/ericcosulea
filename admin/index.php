@@ -98,6 +98,11 @@ $latestPost = $posts[0] ?? null;
         <h2>deep work</h2>
         <p>timer de focus cu calendar heatmap și integrare wip.co.</p>
       </a>
+      <a class="quick-card" href="/admin/journal.php">
+        <span class="quick-card-kicker">personal</span>
+        <h2>journal</h2>
+        <p>reflecții săptămânale — wins, challenges și lecții învățate.</p>
+      </a>
     </section>
 
     <!-- ── Overview blog ── -->
