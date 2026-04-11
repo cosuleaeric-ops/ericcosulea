@@ -74,32 +74,26 @@ $latestPost = $posts[0] ?? null;
     <h2 class="section-title">tooluri personale</h2>
     <section class="quick-grid" aria-label="Tooluri personale">
       <a class="quick-card" href="/clp/">
-        <span class="quick-card-kicker">tool intern</span>
         <h2>🍷 cursuri la pahar</h2>
         <p>dashboard cu P&amp;L, analizor bilete și tooluri viitoare.</p>
       </a>
       <a class="quick-card" href="/pnlpersonal/">
-        <span class="quick-card-kicker">tool intern</span>
         <h2>💰 p&amp;l personal</h2>
         <p>cheltuieli, venituri și portofel — cash, ING, Revolut, Trading212.</p>
       </a>
       <a class="quick-card" href="/dogu/">
-        <span class="quick-card-kicker">tool intern</span>
         <h2>🍜 dogu</h2>
         <p>reviews, comenzi și vânzări restaurant — Bolt, Glovo, Breeze.</p>
       </a>
       <a class="quick-card" href="/elite-deux/">
-        <span class="quick-card-kicker">tool intern</span>
         <h2>⚡ elite deux</h2>
         <p>task grid săptămânal cu teme, coloane configurabile și export.</p>
       </a>
       <a class="quick-card" href="/deep-work/">
-        <span class="quick-card-kicker">tool intern</span>
         <h2>🎯 deep work</h2>
         <p>timer de focus cu calendar heatmap și integrare wip.co.</p>
       </a>
       <a class="quick-card" href="/admin/journal.php">
-        <span class="quick-card-kicker">personal</span>
         <h2>📓 journal</h2>
         <p>reflecții săptămânale — wins, challenges și lecții învățate.</p>
       </a>
@@ -109,22 +103,18 @@ $latestPost = $posts[0] ?? null;
     <h2 class="section-title">overview blog</h2>
     <section class="quick-grid" aria-label="Blog">
       <a class="quick-card" href="/admin/posts.php">
-        <span class="quick-card-kicker">public</span>
         <h2><?php echo h((string)$postCount); ?> articole</h2>
         <p><?php echo $latestPost ? 'ultimul: ' . h($latestPost['title']) : 'inca nu ai publicat nimic.'; ?></p>
       </a>
       <a class="quick-card" href="/admin/edit.php">
-        <span class="quick-card-kicker">scris</span>
         <h2>articol nou</h2>
         <p>deschide editorul și pornește direct un draft nou.</p>
       </a>
       <a class="quick-card" href="/admin/page.php?slug=tools">
-        <span class="quick-card-kicker">pagina</span>
         <h2>tools</h2>
         <p>actualizezi rapid pagina publică cu tool-urile și resursele tale.</p>
       </a>
       <a class="quick-card" href="/admin/bloguri.php">
-        <span class="quick-card-kicker">pagina</span>
         <h2>bloguri</h2>
         <p>adaugi și gestionezi lista de bloguri recomandate.</p>
       </a>
