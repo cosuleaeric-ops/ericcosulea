@@ -75,32 +75,32 @@ $latestPost = $posts[0] ?? null;
     <section class="quick-grid" aria-label="Tooluri personale">
       <a class="quick-card" href="/clp/">
         <span class="quick-card-kicker">tool intern</span>
-        <h2>cursuri la pahar</h2>
+        <h2>🍷 cursuri la pahar</h2>
         <p>dashboard cu P&amp;L, analizor bilete și tooluri viitoare.</p>
       </a>
       <a class="quick-card" href="/pnlpersonal/">
         <span class="quick-card-kicker">tool intern</span>
-        <h2>p&amp;l personal</h2>
+        <h2>💰 p&amp;l personal</h2>
         <p>cheltuieli, venituri și portofel — cash, ING, Revolut, Trading212.</p>
       </a>
       <a class="quick-card" href="/dogu/">
         <span class="quick-card-kicker">tool intern</span>
-        <h2>dogu</h2>
+        <h2>🍜 dogu</h2>
         <p>reviews, comenzi și vânzări restaurant — Bolt, Glovo, Breeze.</p>
       </a>
       <a class="quick-card" href="/elite-deux/">
         <span class="quick-card-kicker">tool intern</span>
-        <h2>elite deux</h2>
+        <h2>⚡ elite deux</h2>
         <p>task grid săptămânal cu teme, coloane configurabile și export.</p>
       </a>
       <a class="quick-card" href="/deep-work/">
         <span class="quick-card-kicker">tool intern</span>
-        <h2>deep work</h2>
+        <h2>🎯 deep work</h2>
         <p>timer de focus cu calendar heatmap și integrare wip.co.</p>
       </a>
       <a class="quick-card" href="/admin/journal.php">
         <span class="quick-card-kicker">personal</span>
-        <h2>journal</h2>
+        <h2>📓 journal</h2>
         <p>reflecții săptămânale — wins, challenges și lecții învățate.</p>
       </a>
     </section>
