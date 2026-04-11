@@ -142,15 +142,8 @@ $csrfToken = csrf_token();
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="admin-bar">
-    <div class="admin-bar-inner">
-      <a class="btn" href="/admin/">Admin</a>
-      <a class="btn" href="/">Website</a>
-      <a class="btn" href="/admin/logout.php" style="margin-left:auto">Logout</a>
-    </div>
-  </div>
-
   <div class="journal-wrap">
+    <a class="journal-back" href="/admin/">&larr; admin</a>
 
 <?php if ($needsAuth): ?>
     <!-- ── SETUP: Register Touch ID ── -->

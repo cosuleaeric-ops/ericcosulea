@@ -1004,6 +1004,18 @@ body.lightbox-open {
   padding: 24px;
 }
 
+.journal-back {
+  display: inline-block;
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: color 160ms ease;
+}
+.journal-back:hover {
+  color: var(--text);
+}
+
 .journal-wrap h1 {
   font-size: 36px;
   font-weight: 600;
