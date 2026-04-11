@@ -90,16 +90,27 @@ function saveDays(days) {
   } catch (_) {}
 }
 
+let _postDataTimer = null;
+let _postDataPromiseResolve = null;
+
 function postData() {
   if (!useFileStorage) { console.log("[DW] postData skip: useFileStorage=false"); return Promise.resolve(); }
-  const body = { days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer };
-  console.log("[DW] postData sending:", JSON.stringify(body));
-  return fetch(DATA_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).then(r => { console.log("[DW] postData response:", r.status); return r.json().then(d => console.log("[DW] postData result:", JSON.stringify(d))); })
-    .catch(e => console.error("[DW] postData error:", e));
+  if (_postDataTimer) clearTimeout(_postDataTimer);
+  return new Promise(resolve => {
+    _postDataPromiseResolve = resolve;
+    _postDataTimer = setTimeout(() => {
+      _postDataTimer = null;
+      const body = { days: memory.days, settings: memory.settings, activeTimer: memory.activeTimer };
+      console.log("[DW] postData sending:", JSON.stringify(body));
+      fetch(DATA_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then(r => { console.log("[DW] postData response:", r.status); return r.json().then(d => console.log("[DW] postData result:", JSON.stringify(d))); })
+        .catch(e => console.error("[DW] postData error:", e))
+        .finally(() => { if (_postDataPromiseResolve) { _postDataPromiseResolve(); _postDataPromiseResolve = null; } });
+    }, 300);
+  });
 }
 
 const LUNI_RO = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
