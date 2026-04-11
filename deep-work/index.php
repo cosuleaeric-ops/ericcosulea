@@ -91,6 +91,6 @@ if (!is_logged_in()) {
       wipEndpoint: "./wip-post.php"
     };
   </script>
-  <script src="./app.js?v=4"></script>
+  <script src="./app.js?v=5"></script>
 </body>
 </html>

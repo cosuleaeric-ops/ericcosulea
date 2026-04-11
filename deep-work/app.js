@@ -328,6 +328,25 @@ function loadActiveTimer() {
   if (!data || !data.endTimestamp || !data.mode) return false;
   const now = Date.now();
   if (data.endTimestamp <= now) {
+    // Timer expired while tab was closed — count the session if it was work
+    if (data.mode === "work") {
+      const days = loadDays();
+      const expiredDate = new Date(data.endTimestamp);
+      const key = expiredDate.getFullYear() + "-" + pad(expiredDate.getMonth() + 1) + "-" + pad(expiredDate.getDate());
+      days[key] = (days[key] || 0) + 1;
+      if (useFileStorage) {
+        memory.days = days;
+        memory.activeTimer = null;
+        postData();
+      } else {
+        try { localStorage.setItem(STORAGE_DAYS, JSON.stringify(days)); } catch (_) {}
+      }
+      clearPausedTimer();
+      const sesiuni = days[key];
+      const shortMonth = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      const dateStr = " - " + pad(expiredDate.getDate()) + " " + shortMonth[expiredDate.getMonth()] + " '" + String(expiredDate.getFullYear()).slice(-2);
+      postToWip(workDurationMin + " mins deep work sesh " + sesiuni + dateStr + " #life");
+    }
     clearActiveTimer();
     return false;
   }
