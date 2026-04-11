@@ -37,7 +37,7 @@ $latestPost = $posts[0] ?? null;
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <style>
-    .wrap { max-width: 820px; margin: 24px auto; padding: 24px; }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px; }
     .top h1 { margin: 0; }
     .intro { margin-top: 18px; color: #6d6a64; font-size: 18px; }
     .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
