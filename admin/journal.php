@@ -382,6 +382,15 @@ $csrfToken = csrf_token();
         this.selectionStart = this.selectionEnd = lineStart + replacement.length;
       }
     });
+
+    // Save/restore textarea height
+    const key = 'journal-h-' + ta.name + '-' + ta.closest('form').querySelector('[name=entry_id]').value;
+    const saved = localStorage.getItem(key);
+    if (saved) ta.style.height = saved;
+
+    new ResizeObserver(() => {
+      localStorage.setItem(key, ta.style.height || ta.offsetHeight + 'px');
+    }).observe(ta);
   });
   </script>
 </body>
