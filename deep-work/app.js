@@ -570,6 +570,12 @@ istoricClose.addEventListener("click", () => istoricModal.close());
 istoricModal.addEventListener("cancel", () => istoricModal.close());
 
 btnSettings.addEventListener("click", () => settingsModal.showModal());
+
+const btnSaveSettings = document.getElementById("btn-save-settings");
+btnSaveSettings.addEventListener("click", () => {
+  Promise.resolve(saveSettings()).then(() => location.reload());
+});
+
 modalClose.addEventListener("click", () => {
   Promise.resolve(saveSettings()).then(() => settingsModal.close());
 });

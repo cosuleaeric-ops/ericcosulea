@@ -79,6 +79,7 @@ if (!is_logged_in()) {
         <button type="button" class="btn btn-ghost" id="btn-import">Import date</button>
         <input type="file" id="input-import" accept=".json,application/json" hidden />
       </div>
+      <button type="button" class="btn btn-primary" id="btn-save-settings">Save</button>
       <button type="button" class="btn btn-ghost" id="modal-close">Inchide</button>
     </div>
   </dialog>
@@ -91,6 +92,6 @@ if (!is_logged_in()) {
       wipEndpoint: "./wip-post.php"
     };
   </script>
-  <script src="./app.js?v=5"></script>
+  <script src="./app.js?v=6"></script>
 </body>
 </html>

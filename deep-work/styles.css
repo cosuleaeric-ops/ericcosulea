@@ -58,6 +58,18 @@ body {
   background: var(--tab-active);
 }
 
+.btn.btn-primary {
+  background: var(--btn-start-bg);
+  width: 100%;
+  padding: 0.5rem 1rem;
+  margin-top: 0.5rem;
+  font-size: 1rem;
+}
+
+.btn.btn-primary:hover {
+  background: #283551;
+}
+
 .user-badge {
   display: flex;
   align-items: center;
