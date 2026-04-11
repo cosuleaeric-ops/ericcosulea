@@ -381,6 +381,13 @@ $csrfToken = csrf_token();
         this.value = val.substring(0, lineStart) + '\t• ' + val.substring(start);
         this.selectionStart = this.selectionEnd = lineStart + 3;
       }
+
+      const numMatch = linePrefix.match(/^(\d+)\. $/);
+      if (numMatch) {
+        const replacement = '\t' + numMatch[1] + '. ';
+        this.value = val.substring(0, lineStart) + replacement + val.substring(start);
+        this.selectionStart = this.selectionEnd = lineStart + replacement.length;
+      }
     });
   });
   </script>
