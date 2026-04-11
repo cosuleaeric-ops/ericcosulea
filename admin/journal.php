@@ -378,8 +378,8 @@ $csrfToken = csrf_token();
       const linePrefix = val.substring(lineStart, start);
 
       if (linePrefix === '- ') {
-        this.value = val.substring(0, lineStart) + '  • ' + val.substring(start);
-        this.selectionStart = this.selectionEnd = lineStart + 4;
+        this.value = val.substring(0, lineStart) + '\t• ' + val.substring(start);
+        this.selectionStart = this.selectionEnd = lineStart + 3;
       }
     });
   });
