@@ -339,19 +339,19 @@ $csrfToken = csrf_token();
           <input type="hidden" name="entry_id" value="<?php echo (int)$entry['id']; ?>">
 
           <label class="journal-label">&#x1F4DD; Rezumat</label>
-          <textarea name="rezumat" class="journal-textarea" rows="4" placeholder="Ce s-a întâmplat săptămâna asta?"<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['rezumat']); ?></textarea>
+          <textarea name="rezumat" class="journal-textarea" rows="4"<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['rezumat']); ?></textarea>
 
           <label class="journal-label">&#x1F3C6; Wins — Ce a mers bine?</label>
           <p class="journal-hint">Enumeră 3 lucruri care au funcționat sau te-au făcut să te simți bine în această săptămână.</p>
-          <textarea name="wins" class="journal-textarea" rows="4" placeholder="1. ..."<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['wins']); ?></textarea>
+          <textarea name="wins" class="journal-textarea" rows="4"<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['wins']); ?></textarea>
 
           <label class="journal-label">&#x1FAA8; Challenges — Ce n-a mers bine?</label>
           <p class="journal-hint">Unde ai simțit că te-ai împotmolit, ai eșuat sau ai fost nemulțumit? De ce crezi că s-a întâmplat asta?</p>
-          <textarea name="challenges" class="journal-textarea" rows="4" placeholder="Am simțit că..."<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['challenges']); ?></textarea>
+          <textarea name="challenges" class="journal-textarea" rows="4"<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['challenges']); ?></textarea>
 
           <label class="journal-label">&#x1F9E0; Lessons — Ce ai învățat?</label>
           <p class="journal-hint">Ai învățat ceva din greșeli? Ai învățat o lecție nouă sau (re)definit un principiu?</p>
-          <textarea name="lessons" class="journal-textarea" rows="4" placeholder="Am învățat că..."<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['lessons']); ?></textarea>
+          <textarea name="lessons" class="journal-textarea" rows="4"<?php echo $isCompleted ? ' disabled' : ''; ?>><?php echo h($entry['lessons']); ?></textarea>
 
           <?php if (!$isCompleted): ?>
             <div class="journal-actions">
