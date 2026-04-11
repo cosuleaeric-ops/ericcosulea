@@ -58,15 +58,11 @@ body {
   background: var(--tab-active);
 }
 
-.btn.btn-primary {
+.btn.btn-save {
   background: var(--btn-start-bg);
-  width: 100%;
-  padding: 0.5rem 1rem;
-  margin-top: 0.5rem;
-  font-size: 1rem;
 }
 
-.btn.btn-primary:hover {
+.btn.btn-save:hover {
   background: #283551;
 }
 

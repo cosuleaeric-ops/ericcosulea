@@ -79,8 +79,10 @@ if (!is_logged_in()) {
         <button type="button" class="btn btn-ghost" id="btn-import">Import date</button>
         <input type="file" id="input-import" accept=".json,application/json" hidden />
       </div>
-      <button type="button" class="btn btn-primary" id="btn-save-settings">Save</button>
-      <button type="button" class="btn btn-ghost" id="modal-close">Inchide</button>
+      <div class="setting-row setting-row-actions">
+        <button type="button" class="btn" id="modal-close">Inchide</button>
+        <button type="button" class="btn btn-save" id="btn-save-settings">Save</button>
+      </div>
     </div>
   </dialog>
 
@@ -92,6 +94,6 @@ if (!is_logged_in()) {
       wipEndpoint: "./wip-post.php"
     };
   </script>
-  <script src="./app.js?v=6"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>
