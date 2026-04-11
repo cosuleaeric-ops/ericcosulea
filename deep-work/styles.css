@@ -58,13 +58,6 @@ body {
   background: var(--tab-active);
 }
 
-.btn.btn-save {
-  background: var(--btn-start-bg);
-}
-
-.btn.btn-save:hover {
-  background: #283551;
-}
 
 .user-badge {
   display: flex;

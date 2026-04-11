@@ -81,7 +81,7 @@ if (!is_logged_in()) {
       </div>
       <div class="setting-row setting-row-actions">
         <button type="button" class="btn" id="modal-close">Inchide</button>
-        <button type="button" class="btn btn-save" id="btn-save-settings">Save</button>
+        <button type="button" class="btn" id="btn-save-settings">Save</button>
       </div>
     </div>
   </dialog>
