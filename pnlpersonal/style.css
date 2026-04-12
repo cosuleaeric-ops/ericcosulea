@@ -1,14 +1,13 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Date navigation in modals ── */
-.date-nav { display: flex; align-items: center; gap: 6px; }
-.date-nav input[type="date"] { flex: 1; }
+.date-nav-row { display: flex; gap: 6px; margin-top: 6px; }
 .date-nav-btn {
-  width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg); font-size: 18px; cursor: pointer; color: var(--text);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  flex: 1; padding: 6px 0; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); font-size: 13px; cursor: pointer; color: var(--muted);
+  text-align: center;
 }
-.date-nav-btn:hover { background: var(--border); }
+.date-nav-btn:hover { background: var(--border); color: var(--text); }
 
 /* ── Privacy mode: hide all sums ── */
 body.hide-sums .value,
