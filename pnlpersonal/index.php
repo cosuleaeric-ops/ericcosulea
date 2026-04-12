@@ -54,7 +54,10 @@ header('X-Robots-Tag: noindex, nofollow');
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <a href="/admin/"
        style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px">← Dashboard</a>
-    <span class="last-entry-badge" id="lastEntryBadge"></span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btnHideSums" title="Ascunde/Arată sumele" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;line-height:1;color:var(--muted)">👁</button>
+      <span class="last-entry-badge" id="lastEntryBadge"></span>
+    </div>
   </div>
 
   <!-- ══ QUICK ADD ══════════════════════════════════════════════════════════ -->
@@ -1164,6 +1167,17 @@ document.getElementById('topBtnCheltuiala').addEventListener('click', () => {
 document.getElementById('topBtnVenit').addEventListener('click', () => {
   document.getElementById('btnAddVenit').click();
 });
+
+// ── Privacy toggle ───────────────────────────────────────────────────────────
+document.getElementById('btnHideSums').addEventListener('click', () => {
+  const hidden = document.body.classList.toggle('hide-sums');
+  document.getElementById('btnHideSums').textContent = hidden ? '🙈' : '👁';
+  localStorage.setItem('pnl_hide_sums', hidden ? '1' : '0');
+});
+if (localStorage.getItem('pnl_hide_sums') === '1') {
+  document.body.classList.add('hide-sums');
+  document.getElementById('btnHideSums').textContent = '🙈';
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 init();

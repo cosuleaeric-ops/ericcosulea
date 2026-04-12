@@ -1,5 +1,16 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Privacy mode: hide all sums ── */
+body.hide-sums .value,
+body.hide-sums td.right,
+body.hide-sums .chart-wrap,
+body.hide-sums .chart-wrap-donut,
+body.hide-sums .ranking-wrap {
+  filter: blur(8px);
+  user-select: none;
+  transition: filter 0.2s;
+}
+
 :root {
   --bg: #FFFDF7;
   --card: #FFFFFF;
