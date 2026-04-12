@@ -1178,6 +1178,7 @@ document.getElementById('topBtnVenit').addEventListener('click', () => {
 
 // ── Keyboard shortcuts ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id)); return; }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'c') document.getElementById('topBtnCheltuiala').click();
   if (e.key === 'v') document.getElementById('topBtnVenit').click();
