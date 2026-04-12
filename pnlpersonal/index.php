@@ -286,8 +286,8 @@ header('X-Robots-Tag: noindex, nofollow');
         <label>Data</label>
         <input type="date" name="data" id="venitData" required />
         <div class="date-nav-row">
-          <button type="button" class="date-nav-btn" data-dir="-1" data-target="venitData">‹ Ieri</button>
-          <button type="button" class="date-nav-btn" data-dir="1" data-target="venitData">Mâine ›</button>
+          <button type="button" class="date-nav-btn" data-dir="-1" data-target="venitData">‹</button>
+          <button type="button" class="date-nav-btn" data-dir="1" data-target="venitData">›</button>
         </div>
       </div>
       <div class="form-group">
@@ -320,8 +320,8 @@ header('X-Robots-Tag: noindex, nofollow');
         <label>Data</label>
         <input type="date" name="data" id="cheltuialaData" required />
         <div class="date-nav-row">
-          <button type="button" class="date-nav-btn" data-dir="-1" data-target="cheltuialaData">‹ Ieri</button>
-          <button type="button" class="date-nav-btn" data-dir="1" data-target="cheltuialaData">Mâine ›</button>
+          <button type="button" class="date-nav-btn" data-dir="-1" data-target="cheltuialaData">‹</button>
+          <button type="button" class="date-nav-btn" data-dir="1" data-target="cheltuialaData">›</button>
         </div>
       </div>
       <div class="form-group">

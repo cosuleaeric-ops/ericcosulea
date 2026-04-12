@@ -1,11 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Date navigation in modals ── */
-.date-nav-row { display: flex; gap: 6px; margin-top: 6px; }
+.date-nav-row { display: flex; gap: 4px; margin-top: 6px; }
 .date-nav-btn {
-  flex: 1; padding: 6px 0; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg); font-size: 13px; cursor: pointer; color: var(--muted);
-  text-align: center;
+  width: 10%; padding: 4px 0; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); font-size: 14px; cursor: pointer; color: var(--muted);
+  text-align: center; line-height: 1;
 }
 .date-nav-btn:hover { background: var(--border); color: var(--text); }
 
