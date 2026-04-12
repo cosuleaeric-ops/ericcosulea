@@ -73,10 +73,6 @@ $latestPost = $posts[0] ?? null;
     <!-- ── Tooluri personale ── -->
     <h2 class="section-title">tooluri personale</h2>
     <section class="quick-grid" aria-label="Tooluri personale">
-      <a class="quick-card" href="/clp/">
-        <h2>🍷 cursuri la pahar</h2>
-        <p>dashboard cu P&amp;L, analizor bilete și tooluri viitoare.</p>
-      </a>
       <a class="quick-card" href="/pnlpersonal/">
         <h2>💰 p&amp;l personal</h2>
         <p>cheltuieli, venituri și portofel — cash, ING, Revolut, Trading212.</p>
