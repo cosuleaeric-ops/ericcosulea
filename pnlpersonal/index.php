@@ -1176,6 +1176,13 @@ document.getElementById('topBtnVenit').addEventListener('click', () => {
   document.getElementById('btnAddVenit').click();
 });
 
+// ── Keyboard shortcuts ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'c') document.getElementById('topBtnCheltuiala').click();
+  if (e.key === 'v') document.getElementById('topBtnVenit').click();
+});
+
 // ── Date navigation arrows ───────────────────────────────────────────────────
 document.querySelectorAll('.date-nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
