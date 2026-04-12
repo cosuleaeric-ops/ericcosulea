@@ -20,7 +20,7 @@ header('X-Robots-Tag: noindex, nofollow');
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/pnlpersonal/style.css" />
+  <link rel="stylesheet" href="/pnlpersonal/style.css?v=2" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
     window.PNL = {
@@ -284,7 +284,11 @@ header('X-Robots-Tag: noindex, nofollow');
       <input type="hidden" name="id" id="venitId" />
       <div class="form-group">
         <label>Data</label>
-        <input type="date" name="data" id="venitData" required />
+        <div class="date-nav">
+          <button type="button" class="date-nav-btn" data-dir="-1" data-target="venitData">‹</button>
+          <input type="date" name="data" id="venitData" required />
+          <button type="button" class="date-nav-btn" data-dir="1" data-target="venitData">›</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Categorie</label>
@@ -314,7 +318,11 @@ header('X-Robots-Tag: noindex, nofollow');
       <input type="hidden" name="id" id="cheltuialaId" />
       <div class="form-group">
         <label>Data</label>
-        <input type="date" name="data" id="cheltuialaData" required />
+        <div class="date-nav">
+          <button type="button" class="date-nav-btn" data-dir="-1" data-target="cheltuialaData">‹</button>
+          <input type="date" name="data" id="cheltuialaData" required />
+          <button type="button" class="date-nav-btn" data-dir="1" data-target="cheltuialaData">›</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Categorie</label>
@@ -1166,6 +1174,16 @@ document.getElementById('topBtnCheltuiala').addEventListener('click', () => {
 });
 document.getElementById('topBtnVenit').addEventListener('click', () => {
   document.getElementById('btnAddVenit').click();
+});
+
+// ── Date navigation arrows ───────────────────────────────────────────────────
+document.querySelectorAll('.date-nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    const d = new Date(input.value || new Date().toISOString().slice(0, 10));
+    d.setDate(d.getDate() + Number(btn.dataset.dir));
+    input.value = d.toISOString().slice(0, 10);
+  });
 });
 
 // ── Privacy toggle ───────────────────────────────────────────────────────────
