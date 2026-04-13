@@ -14,6 +14,7 @@ if (!is_logged_in()) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>elite deep work</title>
+  <link rel="icon" type="image/png" href="/assets/Logo3.png">
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body data-app="elite-deep-work">

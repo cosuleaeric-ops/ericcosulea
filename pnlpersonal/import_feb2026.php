@@ -154,6 +154,7 @@ foreach ($rows as $row) { $total += $row[3]; }
 <head>
   <meta charset="UTF-8" />
   <title>Import Februarie 2026</title>
+  <link rel="icon" type="image/png" href="/assets/Logo3.png">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FFFDF7; color: #1C1C1A; padding: 40px 24px; }
     .box { max-width: 520px; margin: 0 auto; background: #fff; border: 1px solid #E8E3D8; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,.07); }

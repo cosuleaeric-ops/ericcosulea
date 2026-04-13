@@ -76,6 +76,7 @@ foreach ($seedUrls as $url) {
 <head>
   <meta charset="utf-8">
   <title>Seed Bloguri</title>
+  <link rel="icon" type="image/png" href="/assets/Logo3.png">
   <style>body{font-family:monospace;padding:32px;} pre{background:#f5f5f5;padding:16px;border-radius:8px;}</style>
 </head>
 <body>

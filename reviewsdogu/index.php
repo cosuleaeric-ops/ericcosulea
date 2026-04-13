@@ -116,6 +116,7 @@ function get_db(): SQLite3 {
         order_date         TEXT    NOT NULL,
         order_time         TEXT    NOT NULL DEFAULT \'\',
         status             TEXT    NOT NULL,
+        order_amount       REAL    NOT NULL DEFAULT 0,
         rating             INTEGER,
         rating_comment     TEXT    NOT NULL DEFAULT \'\',
         waiting_tax        REAL    NOT NULL DEFAULT 0,
@@ -127,6 +128,11 @@ function get_db(): SQLite3 {
         imported_at        TEXT    NOT NULL,
         UNIQUE(platform, order_id)
     )');
+    // Migration: add order_amount if missing (existing DBs)
+    $cols = []; $cr = $db->query("PRAGMA table_info(orders)");
+    while ($row = $cr->fetchArray(SQLITE3_ASSOC)) $cols[] = $row['name'];
+    if (!in_array('order_amount', $cols))
+        $db->exec('ALTER TABLE orders ADD COLUMN order_amount REAL NOT NULL DEFAULT 0');
     return $db;
 }
 
@@ -138,9 +144,9 @@ function save_bolt_rows(SQLite3 $db, array $rows): array {
     $stmt = $db->prepare(
         "INSERT OR IGNORE INTO orders
          (platform, order_id, restaurant_key, restaurant_name, order_date, order_time,
-          status, rating, rating_comment, waiting_tax, refund_amount,
+          status, order_amount, rating, rating_comment, waiting_tax, refund_amount,
           cancel_reason, cancel_responsible, has_complaint, complaint_reason, imported_at)
-         VALUES ('bolt', :oid, :rk, :rn, :od, '', :st, :rt, :rc, 0, 0, '', '', 0, '', :ia)"
+         VALUES ('bolt', :oid, :rk, :rn, :od, '', :st, :am, :rt, :rc, 0, 0, '', '', 0, '', :ia)"
     );
     foreach ($rows as $row) {
         $oid = trim($row['Order Reference ID'] ?? '');
@@ -152,6 +158,7 @@ function save_bolt_rows(SQLite3 $db, array $rows): array {
         $stmt->bindValue(':rn',  $pRaw);
         $stmt->bindValue(':od',  $row['Order Create Date'] ?? '');
         $stmt->bindValue(':st',  strtolower(trim($row['Finished Order Status'] ?? '')));
+        $stmt->bindValue(':am',  (float)($row['Order Total Gross'] ?? 0));
         if ($rating !== '') $stmt->bindValue(':rt', (int)$rating, SQLITE3_INTEGER);
         else                $stmt->bindValue(':rt', null, SQLITE3_NULL);
         $stmt->bindValue(':rc', trim($row['Rating Comment'] ?? ''));
@@ -169,9 +176,9 @@ function save_glovo_rows(SQLite3 $db, array $rows): array {
     $stmt = $db->prepare(
         "INSERT OR IGNORE INTO orders
          (platform, order_id, restaurant_key, restaurant_name, order_date, order_time,
-          status, rating, rating_comment, waiting_tax, refund_amount,
+          status, order_amount, rating, rating_comment, waiting_tax, refund_amount,
           cancel_reason, cancel_responsible, has_complaint, complaint_reason, imported_at)
-         VALUES ('glovo', :oid, :rk, :rn, :od, :ot, :st, NULL, '', :wt, :ra, :cr, :cb, :hc, :pr, :ia)"
+         VALUES ('glovo', :oid, :rk, :rn, :od, :ot, :st, :am, NULL, '', :wt, :ra, :cr, :cb, :hc, :pr, :ia)"
     );
     foreach ($rows as $row) {
         $oid = trim($row['ID comandă'] ?? '');
@@ -185,6 +192,7 @@ function save_glovo_rows(SQLite3 $db, array $rows): array {
         $stmt->bindValue(':od',  substr($datetime, 0, 10));
         $stmt->bindValue(':ot',  strlen($datetime) > 10 ? substr($datetime, 11, 5) : '');
         $stmt->bindValue(':st',  $status === 'Anulată' ? 'cancelled' : 'delivered');
+        $stmt->bindValue(':am',  $status === 'Anulată' ? 0.0 : glovo_float($row['Subtotal'] ?? '0'));
         $stmt->bindValue(':wt',  glovo_float($row['Taxa pentru timpul de așteptare'] ?? '0'));
         $stmt->bindValue(':ra',  glovo_float($row['Rambursări partener'] ?? '0'));
         $stmt->bindValue(':cr',  $status === 'Anulată' ? trim($row['Motiv anulare'] ?? '') : '');
@@ -204,6 +212,7 @@ function save_glovo_rows(SQLite3 $db, array $rows): array {
 function generate_bolt_report(array $rows): array {
     $keys = ['dogu', 'turmerizza', 'gustoria', 'hotdog', 'other'];
     $counts = array_fill_keys($keys, 0);
+    $sales  = array_fill_keys($keys, 0.0);
     $positive = array_fill_keys($keys, 0);
     $negative = array_fill_keys($keys, 0);
     $comments = array_fill_keys($keys, []);
@@ -217,6 +226,7 @@ function generate_bolt_report(array $rows): array {
         $comment = trim($row['Rating Comment'] ?? '');
         if ($date) $dates[] = $date;
         $counts[$key]++;
+        $sales[$key] += (float)($row['Order Total Gross'] ?? 0);
         if ($rating !== '') {
             $n = (int)$rating;
             if ($n >= 4)               $positive[$key]++;
@@ -226,13 +236,14 @@ function generate_bolt_report(array $rows): array {
     }
     sort($dates);
     return ['period_start' => $dates ? $dates[0] : null, 'period_end' => $dates ? $dates[count($dates)-1] : null,
-            'counts' => $counts, 'labels' => get_labels(), 'positive' => $positive, 'negative' => $negative,
-            'comments' => $comments, 'total' => array_sum($counts)];
+            'counts' => $counts, 'sales' => $sales, 'labels' => get_labels(), 'positive' => $positive, 'negative' => $negative,
+            'comments' => $comments, 'total' => array_sum($counts), 'total_sales' => array_sum($sales)];
 }
 
 function generate_glovo_report(array $rows): array {
     $keys = ['dogu', 'turmerizza', 'gustoria', 'hotdog', 'other'];
     $counts = array_fill_keys($keys, 0);
+    $sales  = array_fill_keys($keys, 0.0);
     $dates = []; $waitingTax = []; $waitingTotal = 0.0; $refunds = []; $refundTotal = 0.0; $cancels = []; $complaints = [];
     foreach ($rows as $row) {
         $pRaw   = trim(preg_replace('/\s*\(.*$/s', '', $row['Denumire restaurant'] ?? ''));
@@ -247,6 +258,7 @@ function generate_glovo_report(array $rows): array {
         }
         if ($date) $dates[] = $date;
         $counts[$key]++;
+        $sales[$key] += glovo_float($row['Subtotal'] ?? '0');
         $waitAmt = glovo_float($row['Taxa pentru timpul de așteptare'] ?? '0');
         if ($waitAmt > 0) { $waitingTax[] = ['date' => $date, 'time' => strlen($dt) > 10 ? substr($dt, 11, 5) : '', 'restaurant' => $pRaw, 'amount' => $waitAmt]; $waitingTotal += $waitAmt; }
         $refundAmt = glovo_float($row['Rambursări partener'] ?? '0');
@@ -255,7 +267,7 @@ function generate_glovo_report(array $rows): array {
     }
     sort($dates);
     return ['period_start' => $dates ? $dates[0] : null, 'period_end' => $dates ? $dates[count($dates)-1] : null,
-            'counts' => $counts, 'labels' => get_labels(), 'total' => array_sum($counts),
+            'counts' => $counts, 'sales' => $sales, 'labels' => get_labels(), 'total' => array_sum($counts), 'total_sales' => array_sum($sales),
             'waiting_tax' => $waitingTax, 'waiting_total' => $waitingTotal, 'refunds' => $refunds,
             'refund_total' => $refundTotal, 'cancels' => $cancels, 'complaints' => $complaints];
 }
@@ -265,17 +277,17 @@ function generate_glovo_report(array $rows): array {
 function bolt_report_from_db(SQLite3 $db, string $start, string $end): array {
     $keys = ['dogu', 'turmerizza', 'gustoria', 'hotdog', 'other'];
     $counts = array_fill_keys($keys, 0);
+    $sales  = array_fill_keys($keys, 0.0);
     $positive = array_fill_keys($keys, 0);
     $negative = array_fill_keys($keys, 0);
     $comments = array_fill_keys($keys, []);
-    $dates = [];
     $stmt = $db->prepare("SELECT * FROM orders WHERE platform='bolt' AND status!='cancelled' AND order_date BETWEEN :s AND :e ORDER BY order_date");
     $stmt->bindValue(':s', $start); $stmt->bindValue(':e', $end);
     $res = $stmt->execute();
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
         $key = in_array($row['restaurant_key'], $keys) ? $row['restaurant_key'] : 'other';
-        $dates[] = $row['order_date'];
         $counts[$key]++;
+        $sales[$key] += (float)$row['order_amount'];
         if ($row['rating'] !== null) {
             $n = (int)$row['rating'];
             if ($n >= 4) $positive[$key]++;
@@ -283,14 +295,15 @@ function bolt_report_from_db(SQLite3 $db, string $start, string $end): array {
             if (!empty($row['rating_comment'])) $comments[$key][] = ['provider' => $row['restaurant_name'], 'date' => $row['order_date'], 'rating' => $n, 'comment' => $row['rating_comment']];
         }
     }
-    sort($dates);
-    return ['period_start' => $start, 'period_end' => $end, 'counts' => $counts, 'labels' => get_labels(),
-            'positive' => $positive, 'negative' => $negative, 'comments' => $comments, 'total' => array_sum($counts)];
+    return ['period_start' => $start, 'period_end' => $end, 'counts' => $counts, 'sales' => $sales, 'labels' => get_labels(),
+            'positive' => $positive, 'negative' => $negative, 'comments' => $comments,
+            'total' => array_sum($counts), 'total_sales' => array_sum($sales)];
 }
 
 function glovo_report_from_db(SQLite3 $db, string $start, string $end): array {
     $keys = ['dogu', 'turmerizza', 'gustoria', 'hotdog', 'other'];
     $counts = array_fill_keys($keys, 0);
+    $sales  = array_fill_keys($keys, 0.0);
     $waitingTax = []; $waitingTotal = 0.0; $refunds = []; $refundTotal = 0.0; $cancels = []; $complaints = [];
 
     $stmt = $db->prepare("SELECT * FROM orders WHERE platform='glovo' AND status='cancelled' AND order_date BETWEEN :s AND :e ORDER BY order_date, order_time");
@@ -305,12 +318,14 @@ function glovo_report_from_db(SQLite3 $db, string $start, string $end): array {
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
         $key = in_array($row['restaurant_key'], $keys) ? $row['restaurant_key'] : 'other';
         $counts[$key]++;
+        $sales[$key] += (float)$row['order_amount'];
         if ((float)$row['waiting_tax'] > 0) { $waitingTax[] = ['date' => $row['order_date'], 'time' => $row['order_time'], 'restaurant' => $row['restaurant_name'], 'amount' => (float)$row['waiting_tax']]; $waitingTotal += (float)$row['waiting_tax']; }
         if ((float)$row['refund_amount'] > 0) { $refunds[] = ['date' => $row['order_date'], 'restaurant' => $row['restaurant_name'], 'amount' => (float)$row['refund_amount']]; $refundTotal += (float)$row['refund_amount']; }
         if ($row['has_complaint']) $complaints[] = ['date' => $row['order_date'], 'restaurant' => $row['restaurant_name'], 'reason' => $row['complaint_reason']];
     }
-    return ['period_start' => $start, 'period_end' => $end, 'counts' => $counts, 'labels' => get_labels(),
-            'total' => array_sum($counts), 'waiting_tax' => $waitingTax, 'waiting_total' => $waitingTotal,
+    return ['period_start' => $start, 'period_end' => $end, 'counts' => $counts, 'sales' => $sales, 'labels' => get_labels(),
+            'total' => array_sum($counts), 'total_sales' => array_sum($sales),
+            'waiting_tax' => $waitingTax, 'waiting_total' => $waitingTotal,
             'refunds' => $refunds, 'refund_total' => $refundTotal, 'cancels' => $cancels, 'complaints' => $complaints];
 }
 
@@ -416,6 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reviews DOGU</title>
+  <link rel="icon" type="image/png" href="/assets/Logo3.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -587,8 +603,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="orders-grid">
       <?php foreach ($report['counts'] as $key => $cnt):
           if ($key === 'other' && $cnt === 0) continue;
-          $c = $brandColors[$key];
-          $pct = $total > 0 ? round($cnt / $total * 100) : 0;
+          $c    = $brandColors[$key];
+          $pct  = $total > 0 ? round($cnt / $total * 100) : 0;
+          $sale = $report['sales'][$key] ?? 0.0;
       ?>
       <div class="order-card" style="--card-bg:<?php echo $c['bg']; ?>; --card-accent:<?php echo $c['accent']; ?>">
         <div class="order-card-icon"><?php echo $c['icon']; ?></div>
@@ -596,11 +613,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="order-card-label"><?php echo htmlspecialchars($report['labels'][$key]); ?></div>
           <div class="order-card-count"><?php echo $cnt; ?></div>
           <div class="order-card-pct"><?php echo $pct; ?>% din total</div>
+          <div class="order-card-sales"><?php echo number_format($sale, 2, ',', '.'); ?> RON</div>
         </div>
       </div>
       <?php endforeach; ?>
     </div>
-    <div class="total-strip">Total comenzi: <strong><?php echo $total; ?></strong></div>
+    <div class="total-strip">
+      Total comenzi: <strong><?php echo $total; ?></strong>
+      &nbsp;&nbsp;·&nbsp;&nbsp;
+      Total vânzări: <strong><?php echo number_format($report['total_sales'] ?? 0, 2, ',', '.'); ?> RON</strong>
+    </div>
 
     <?php if ($isBolt): ?>
     <!-- ══ BOLT: Reviews ══ -->
