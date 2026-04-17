@@ -153,6 +153,15 @@ header('X-Robots-Tag: noindex, nofollow');
       <span class="btn-arrow">→</span>
     </a>
 
+    <a href="/raportpnldogu/" class="hub-btn" style="--btn-bg:#E3F2FD">
+      <div class="btn-icon">📑</div>
+      <div class="btn-body">
+        <div class="btn-label">Raport P&amp;L lunar</div>
+        <div class="btn-desc">Încarcă PDF-urile Wolt, Glovo și Bolt — extragem automat sumele facturilor</div>
+      </div>
+      <span class="btn-arrow">→</span>
+    </a>
+
   </nav>
 
   <div class="hub-footer">
