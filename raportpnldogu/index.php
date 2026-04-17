@@ -179,39 +179,73 @@ header('X-Robots-Tag: noindex, nofollow');
   import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs";
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs";
 
-  // Regex per tip — caută eticheta și primul număr care urmează (cu punct/virgulă romanesc)
-  const PATTERNS = {
-    wolt:  /Suma\s+facturii[^0-9-]*(-?[\d.]+,\d{2})/i,
-    glovo: /Factura\s+totala[^0-9-]*(-?[\d.]+,\d{2})/i,
-    bolt:  /SUMA\s+DE\s+PLAT[ĂA][^0-9-]*(-?[\d.]+,\d{2})/i,
+  // Etichetă per tip (regex) — căutată pe linie reconstituită vizual
+  const LABELS = {
+    wolt:  /Suma\s+facturii/i,
+    glovo: /Factura\s+totala/i,
+    bolt:  /SUMA\s+DE\s+PLAT[ĂA]/i,
   };
+  const AMOUNT_RE = /-?\d{1,3}(?:[.\s]\d{3})*,\d{2}/g;
 
   function parseRo(n) {
-    // "1.542,74" -> 1542.74
-    return parseFloat(String(n).replace(/\./g, '').replace(',', '.'));
+    // "1.542,74" / "1 542,74" -> 1542.74
+    return parseFloat(String(n).replace(/[.\s]/g, '').replace(',', '.'));
   }
   function fmtRo(n) {
     return n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' RON';
   }
 
-  async function extractText(file) {
+  // Reconstituie liniile vizuale grupând itemii după coordonata Y
+  async function extractLines(file) {
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let text = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+    const lines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
       const content = await page.getTextContent();
-      text += content.items.map(it => it.str).join(' ') + ' ';
+      const items = content.items
+        .filter(it => it.str && it.str.trim())
+        .map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5] }));
+      // grupare pe Y cu toleranță (3 unități)
+      const groups = {};
+      for (const it of items) {
+        const key = Math.round(it.y / 3);
+        (groups[key] = groups[key] || []).push(it);
+      }
+      Object.keys(groups)
+        .sort((a, b) => Number(b) - Number(a)) // top-down
+        .forEach(k => {
+          const row = groups[k].sort((a, b) => a.x - b.x);
+          lines.push(row.map(r => r.str).join(' ').replace(/\s+/g, ' ').trim());
+        });
     }
-    return text;
+    return lines;
   }
 
   async function parseFile(file, type) {
     try {
-      const text = await extractText(file);
-      const m = text.match(PATTERNS[type]);
-      if (!m) return { ok: false, error: 'nu am găsit suma' };
-      return { ok: true, amount: parseRo(m[1]) };
+      const lines = await extractLines(file);
+      const labelRe = LABELS[type];
+      // 1. Caută pe aceeași linie vizuală ca eticheta
+      for (const line of lines) {
+        if (labelRe.test(line)) {
+          const nums = line.match(AMOUNT_RE);
+          if (nums && nums.length) {
+            // ia ultimul număr de pe linie (de obicei e în dreapta = totalul)
+            return { ok: true, amount: parseRo(nums[nums.length - 1]) };
+          }
+        }
+      }
+      // 2. Fallback: caută în următoarele 3 linii
+      for (let i = 0; i < lines.length; i++) {
+        if (labelRe.test(lines[i])) {
+          for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+            const nums = lines[j].match(AMOUNT_RE);
+            if (nums && nums.length) return { ok: true, amount: parseRo(nums[0]) };
+          }
+        }
+      }
+      return { ok: false, error: 'nu am găsit suma' };
     } catch (e) {
       return { ok: false, error: 'eroare citire PDF' };
     }
