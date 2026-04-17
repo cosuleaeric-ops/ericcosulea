@@ -25,8 +25,42 @@ let mode = "work";
 let remainingSeconds = 60 * 60;
 let endTimestamp = null;
 let intervalId = null;
+let tickWorker = null;
 let workDurationMin = DEFAULT_WORK_MIN;
 let restDurationMin = DEFAULT_REST_MIN;
+
+// Web Worker inline: setInterval în worker NU e throttled în background taburi
+const _workerBlob = new Blob(
+  ["setInterval(function(){postMessage('t')},1000);"],
+  { type: "application/javascript" }
+);
+const _workerUrl = URL.createObjectURL(_workerBlob);
+
+function startTickLoop() {
+  stopTickLoop();
+  try {
+    tickWorker = new Worker(_workerUrl);
+    tickWorker.onmessage = tick;
+  } catch (_) {
+    // fallback dacă Web Workers nu sunt disponibili
+    intervalId = setInterval(tick, 1000);
+  }
+}
+
+function stopTickLoop() {
+  if (tickWorker) {
+    try { tickWorker.terminate(); } catch (_) {}
+    tickWorker = null;
+  }
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+}
+
+function isTimerRunning() {
+  return tickWorker !== null || intervalId !== null;
+}
 
 // --- DOM
 const timerDisplay = document.getElementById("timer-display");
@@ -360,7 +394,7 @@ function loadActiveTimer() {
   timerDisplay.textContent = formatTime(remainingSeconds);
   updateTabTitle();
   btnStart.textContent = "stop";
-  intervalId = setInterval(tick, 1000);
+  startTickLoop();
   setExtensionBlockFlag(true, mode);
   return true;
 }
@@ -381,8 +415,7 @@ function tick() {
   timerDisplay.textContent = formatTime(remainingSeconds);
   updateTabTitle();
   if (remainingSeconds <= 0) {
-    clearInterval(intervalId);
-    intervalId = null;
+    stopTickLoop();
     setExtensionBlockFlag(false);
     btnStart.textContent = "start";
 
@@ -424,20 +457,17 @@ function tick() {
 }
 
 function startTimer() {
-  if (intervalId) return;
+  if (isTimerRunning()) return;
   clearPausedTimer();
   btnStart.textContent = "stop";
   endTimestamp = Date.now() + remainingSeconds * 1000;
-  intervalId = setInterval(tick, 1000);
+  startTickLoop();
   saveActiveTimer();
   setExtensionBlockFlag(true, mode);
 }
 
 function stopTimer() {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
+  stopTickLoop();
   setExtensionBlockFlag(false);
   savePausedTimer();
   if (useFileStorage) {
@@ -539,7 +569,7 @@ function renderLegend() {
 // --- Event listeners
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
-    if (intervalId) return;
+    if (isTimerRunning()) return;
     mode = tab.getAttribute("data-mode");
     tabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
@@ -548,8 +578,13 @@ tabs.forEach((tab) => {
 });
 
 btnStart.addEventListener("click", () => {
-  if (intervalId) stopTimer();
+  if (isTimerRunning()) stopTimer();
   else startTimer();
+});
+
+// Când revii pe tab după throttling, forțează un sync imediat al display-ului
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && isTimerRunning()) tick();
 });
 
 if (btnReset) {
