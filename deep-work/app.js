@@ -23,6 +23,7 @@ let memory = { days: {}, settings: {}, activeTimer: null };
 // --- State
 let mode = "work";
 let remainingSeconds = 60 * 60;
+let endTimestamp = null;
 let intervalId = null;
 let workDurationMin = DEFAULT_WORK_MIN;
 let restDurationMin = DEFAULT_REST_MIN;
@@ -350,6 +351,7 @@ function loadActiveTimer() {
     clearActiveTimer();
     return false;
   }
+  endTimestamp = data.endTimestamp;
   remainingSeconds = Math.ceil((data.endTimestamp - now) / 1000);
   mode = data.mode;
   tabs.forEach((t) => t.classList.remove("active"));
@@ -375,7 +377,7 @@ function resetDisplay() {
 }
 
 function tick() {
-  remainingSeconds--;
+  remainingSeconds = endTimestamp ? Math.max(0, Math.ceil((endTimestamp - Date.now()) / 1000)) : 0;
   timerDisplay.textContent = formatTime(remainingSeconds);
   updateTabTitle();
   if (remainingSeconds <= 0) {
@@ -425,6 +427,7 @@ function startTimer() {
   if (intervalId) return;
   clearPausedTimer();
   btnStart.textContent = "stop";
+  endTimestamp = Date.now() + remainingSeconds * 1000;
   intervalId = setInterval(tick, 1000);
   saveActiveTimer();
   setExtensionBlockFlag(true, mode);
