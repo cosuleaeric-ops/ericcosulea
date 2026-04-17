@@ -1161,7 +1161,14 @@ document.getElementById('formCheltuiala').addEventListener('submit', async e => 
 
   if (res.success || res.id) {
     if (!id) setLastDate(body.data);
-    closeModal('modalCheltuiala');
+    if (id) {
+      closeModal('modalCheltuiala');
+    } else {
+      // Păstrează modalul deschis pentru adăugare rapidă de mai multe cheltuieli
+      document.getElementById('cheltuialaSuma').value = '';
+      document.getElementById('cheltuialaDetalii').value = '';
+      document.getElementById('cheltuialaSuma').focus();
+    }
     refresh();
   } else {
     errEl.textContent = res.error || 'Eroare';
