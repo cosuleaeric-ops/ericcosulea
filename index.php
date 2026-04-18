@@ -436,48 +436,27 @@ if ($uri === '/blog') {
     <section class="section">
       <?php echo editable_text($isLoggedIn, 'home.projects_title', site_text_value($siteTextMap, 'home.projects_title', 'proiectele mele'), 'h2'); ?>
       <div class="projects">
-        <a class="project" href="https://cursurilapahar.ro/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-cursuri.png" alt="">
+        <?php
+        $projectsFile = __DIR__ . '/data/projects.json';
+        $homeProjects = [];
+        if (file_exists($projectsFile)) {
+            $homeProjects = json_decode(file_get_contents($projectsFile), true) ?: [];
+            usort($homeProjects, fn($a, $b) => ($a['sort'] ?? 99) <=> ($b['sort'] ?? 99));
+        }
+        foreach ($homeProjects as $proj):
+        ?>
+        <a class="project" href="<?= h($proj['url'] ?? '#') ?>" target="_blank" rel="noopener noreferrer">
+          <?php if (!empty($proj['logo'])): ?>
+            <img class="project-icon-img" src="<?= h($proj['logo']) ?>" alt="">
+          <?php endif; ?>
           <span class="project-text">
-            <span class="project-name">cursuri la pahar</span>
-            <span class="project-meta">(evenimente)</span>
+            <span class="project-name"><?= h($proj['name'] ?? '') ?></span>
+            <?php if (!empty($proj['description'])): ?>
+            <span class="project-meta">(<?= h($proj['description']) ?>)</span>
+            <?php endif; ?>
           </span>
         </a>
-        <a class="project" href="https://robotache.ro/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-robotache.png" alt="">
-          <span class="project-text">
-            <span class="project-name">robotache</span>
-            <span class="project-meta">(newsletter AI)</span>
-          </span>
-        </a>
-        <a class="project" href="https://cesaicumpar.ro/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-cumpar.png" alt="">
-          <span class="project-text">
-            <span class="project-name">ce să‑i cumpăr</span>
-            <span class="project-meta">(marketing afiliat)</span>
-          </span>
-        </a>
-        <a class="project" href="https://sportivoo.ro/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-sportivoo.jpg" alt="">
-          <span class="project-text">
-            <span class="project-name">sportivoo</span>
-            <span class="project-meta">(blog fitness)</span>
-          </span>
-        </a>
-        <a class="project" href="https://storyhub.ro/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-storyhub.png" alt="">
-          <span class="project-text">
-            <span class="project-name">story hub</span>
-            <span class="project-meta">(povești antreprenori)</span>
-          </span>
-        </a>
-        <a class="project" href="https://www.instagram.com/capsuladefotbal/" target="_blank" rel="noopener noreferrer">
-          <img class="project-icon-img" src="/assets/logo-capsula.png" alt="">
-          <span class="project-text">
-            <span class="project-name">capsula de fotbal</span>
-            <span class="project-meta">(blog fotbal)</span>
-          </span>
-        </a>
+        <?php endforeach; ?>
       </div>
     </section>
 

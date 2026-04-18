@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "cursuri la pahar",
+    "description": "evenimente",
+    "url": "https://cursurilapahar.ro/",
+    "logo": "/assets/logo-cursuri.png",
+    "sort": 1
+  },
+  {
+    "id": 2,
+    "name": "robotache",
+    "description": "newsletter AI",
+    "url": "https://robotache.ro/",
+    "logo": "/assets/logo-robotache.png",
+    "sort": 2
+  },
+  {
+    "id": 3,
+    "name": "ce să‑i cumpăr",
+    "description": "marketing afiliat",
+    "url": "https://cesaicumpar.ro/",
+    "logo": "/assets/logo-cumpar.png",
+    "sort": 3
+  },
+  {
+    "id": 4,
+    "name": "sportivoo",
+    "description": "blog fitness",
+    "url": "https://sportivoo.ro/",
+    "logo": "/assets/logo-sportivoo.jpg",
+    "sort": 4
+  },
+  {
+    "id": 5,
+    "name": "story hub",
+    "description": "povești antreprenori",
+    "url": "https://storyhub.ro/",
+    "logo": "/assets/logo-storyhub.png",
+    "sort": 5
+  },
+  {
+    "id": 6,
+    "name": "capsula de fotbal",
+    "description": "blog fotbal",
+    "url": "https://www.instagram.com/capsuladefotbal/",
+    "logo": "/assets/logo-capsula.png",
+    "sort": 6
+  }
+]

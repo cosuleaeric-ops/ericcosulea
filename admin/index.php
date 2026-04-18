@@ -96,6 +96,15 @@ $latestPost = $posts[0] ?? null;
       </a>
     </section>
 
+    <!-- ── Website ── -->
+    <h2 class="section-title">website</h2>
+    <section class="quick-grid" aria-label="Website">
+      <a class="quick-card" href="/admin/proiecte.php">
+        <h2>🚀 proiecte</h2>
+        <p>adaugă, editează și șterge proiectele afișate pe pagina principală.</p>
+      </a>
+    </section>
+
     <!-- ── Overview blog ── -->
     <h2 class="section-title">overview blog</h2>
     <section class="quick-grid" aria-label="Blog">
