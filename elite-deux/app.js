@@ -200,7 +200,11 @@ async function initializeState() {
       const localSavedAt = localSnapshot?.savedAt ?? 0;
       const remoteSavedAt = remoteSnapshot.savedAt ?? 0;
       if (remoteSavedAt > localSavedAt) {
+        // Server e mai nou → folosim serverul
         applyStateSnapshot(remoteSnapshot);
+      } else if (localSavedAt > remoteSavedAt) {
+        // Local e mai nou (sync eșuat anterior) → pushăm spre server
+        await pushStateToRemote(buildStateSnapshot());
       }
       persistLocalSnapshot();
     } else {
