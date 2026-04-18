@@ -181,38 +181,34 @@ async function init() {
 }
 
 async function initializeState() {
+  // localStorage = doar fallback offline, nu câștigă niciodată față de server
   const localSnapshot = readLocalSnapshot();
-  if (localSnapshot) {
-    applyStateSnapshot(localSnapshot);
-  } else {
-    persistLocalSnapshot();
-  }
 
   setStorageStatus(HAS_REMOTE_STORAGE ? "Connecting to server..." : "Storage: local only");
 
   if (!HAS_REMOTE_STORAGE) {
+    if (localSnapshot) applyStateSnapshot(localSnapshot);
+    else persistLocalSnapshot();
     return;
   }
 
   try {
     const remoteSnapshot = await fetchRemoteSnapshot();
     if (remoteSnapshot) {
-      const localSavedAt = localSnapshot?.savedAt ?? 0;
-      const remoteSavedAt = remoteSnapshot.savedAt ?? 0;
-      if (remoteSavedAt > localSavedAt) {
-        // Server e mai nou → folosim serverul
-        applyStateSnapshot(remoteSnapshot);
-      } else if (localSavedAt > remoteSavedAt) {
-        // Local e mai nou (sync eșuat anterior) → pushăm spre server
-        await pushStateToRemote(buildStateSnapshot());
-      }
-      persistLocalSnapshot();
+      // Serverul e întotdeauna sursa de adevăr când e disponibil
+      applyStateSnapshot(remoteSnapshot);
     } else {
+      // Server gol → încarcă local și pushează spre server
+      if (localSnapshot) applyStateSnapshot(localSnapshot);
       await pushStateToRemote(buildStateSnapshot());
     }
+    persistLocalSnapshot();
     remoteInitSucceeded = true;
     setStorageStatus("Storage: synced with server");
   } catch (error) {
+    // Server indisponibil → fallback pe localStorage
+    if (localSnapshot) applyStateSnapshot(localSnapshot);
+    else persistLocalSnapshot();
     console.warn("EliteDeux remote sync unavailable", error);
     setStorageStatus(localSnapshot ? "Server unavailable. Working from local backup." : "Server unavailable. Data stays local.");
   }
