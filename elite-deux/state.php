@@ -62,8 +62,34 @@ if ($json === false) {
     respond(400, ['error' => 'Could not encode state']);
 }
 
+// Backup rotativ — păstrează ultimele 10 versiuni
 if (is_file($statePath)) {
     @copy($statePath, $backupPath);
+    // Rotație: backup.9 → șters, backup.8 → backup.9, ..., backup.1 → backup.2, curent → backup.1
+    for ($i = 8; $i >= 1; $i--) {
+        $src = $dataDir . '/elite-deux-state.backup.' . $i . '.json';
+        $dst = $dataDir . '/elite-deux-state.backup.' . ($i + 1) . '.json';
+        if (is_file($src)) @rename($src, $dst);
+    }
+    @copy($statePath, $dataDir . '/elite-deux-state.backup.1.json');
+}
+
+// Nu salva niciodată o stare goală dacă serverul are deja date
+$existing = read_state_file($statePath);
+if ($existing !== null) {
+    $existingTasks = 0;
+    foreach (($existing['columns'] ?? []) as $col)
+        foreach (($col['days'] ?? []) as $day)
+            $existingTasks += count($day['tasks'] ?? []);
+
+    $newTasks = 0;
+    foreach (($state['columns'] ?? []) as $col)
+        foreach (($col['days'] ?? []) as $day)
+            $newTasks += count($day['tasks'] ?? []);
+
+    if ($existingTasks > 0 && $newTasks === 0) {
+        respond(400, ['error' => 'Refusing to overwrite non-empty state with empty state']);
+    }
 }
 
 if (file_put_contents($statePath, $json . PHP_EOL, LOCK_EX) === false) {
