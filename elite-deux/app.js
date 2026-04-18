@@ -312,8 +312,8 @@ function persistLocalSnapshot() {
 function saveState(options = {}) {
   persistLocalSnapshot();
 
-  if (!HAS_REMOTE_STORAGE || options.skipRemote || !remoteInitSucceeded) {
-    setStorageStatus(HAS_REMOTE_STORAGE ? "Storage: synced with server" : "Storage: local only");
+  if (!HAS_REMOTE_STORAGE || options.skipRemote) {
+    setStorageStatus("Storage: local only");
     return;
   }
 
