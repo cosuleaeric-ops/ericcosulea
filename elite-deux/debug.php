@@ -9,6 +9,8 @@ $serverData = $serverRaw ? json_decode($serverRaw, true) : null;
 
 function countTasks(array $state): int {
     $n = 0;
+    foreach ($state['tasksByDate'] ?? [] as $tasks)
+        $n += is_array($tasks) ? count($tasks) : 0;
     foreach ($state['columns'] ?? [] as $col)
         foreach ($col['days'] ?? [] as $day)
             $n += count($day['tasks'] ?? []);

@@ -181,8 +181,15 @@ async function init() {
 }
 
 function countTasksInSnapshot(snapshot) {
+  if (!snapshot) return 0;
   let n = 0;
-  for (const col of snapshot?.columns ?? [])
+  // format nou: tasksByDate
+  if (snapshot.tasksByDate) {
+    for (const tasks of Object.values(snapshot.tasksByDate))
+      n += Array.isArray(tasks) ? tasks.length : 0;
+  }
+  // format vechi: columns
+  for (const col of snapshot.columns ?? [])
     for (const day of col?.days ?? [])
       n += (day?.tasks ?? []).length;
   return n;
