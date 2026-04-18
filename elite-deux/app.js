@@ -180,38 +180,48 @@ async function init() {
   });
 }
 
+function countTasksInSnapshot(snapshot) {
+  let n = 0;
+  for (const col of snapshot?.columns ?? [])
+    for (const day of col?.days ?? [])
+      n += (day?.tasks ?? []).length;
+  return n;
+}
+
 async function initializeState() {
   const localSnapshot = readLocalSnapshot();
-  if (localSnapshot) {
-    applyStateSnapshot(localSnapshot);
-  } else {
-    persistLocalSnapshot();
-  }
+
+  // Arată ceva imediat din local cât timp așteptăm serverul
+  if (localSnapshot) applyStateSnapshot(localSnapshot);
 
   setStorageStatus(HAS_REMOTE_STORAGE ? "Connecting to server..." : "Storage: local only");
 
   if (!HAS_REMOTE_STORAGE) {
+    if (!localSnapshot) persistLocalSnapshot();
     return;
   }
 
   try {
     const remoteSnapshot = await fetchRemoteSnapshot();
-    if (remoteSnapshot) {
-      const localSavedAt = localSnapshot?.savedAt ?? 0;
-      const remoteSavedAt = remoteSnapshot.savedAt ?? 0;
-      if (remoteSavedAt > localSavedAt) {
-        applyStateSnapshot(remoteSnapshot);
-      } else if (localSavedAt > remoteSavedAt) {
-        await pushStateToRemote(buildStateSnapshot());
-      }
-      persistLocalSnapshot();
-    } else {
+    const remoteTasks = countTasksInSnapshot(remoteSnapshot);
+    const localTasks  = countTasksInSnapshot(localSnapshot);
+
+    if (remoteTasks > 0) {
+      // Serverul are date reale → serverul câștigă întotdeauna
+      applyStateSnapshot(remoteSnapshot);
+    } else if (localTasks > 0) {
+      // Serverul e gol dar localul are date → pushăm localul pe server
       await pushStateToRemote(buildStateSnapshot());
+    } else {
+      // Ambele goale → nimic de făcut
     }
+
+    persistLocalSnapshot();
     remoteInitSucceeded = true;
     setStorageStatus("Storage: synced with server");
   } catch (error) {
     console.warn("EliteDeux remote sync unavailable", error);
+    if (!localSnapshot) persistLocalSnapshot();
     setStorageStatus(localSnapshot ? "Server unavailable. Working from local backup." : "Server unavailable. Data stays local.");
   }
 }

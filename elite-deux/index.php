@@ -170,6 +170,6 @@ header('X-Robots-Tag: noindex, nofollow');
       <span class="trash-label">Trage aici pentru a șterge</span>
     </div>
 
-    <script defer src="./app.js?v=20260408-2"></script>
+    <script defer src="./app.js?v=20260419-2"></script>
   </body>
 </html>
