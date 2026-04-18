@@ -517,28 +517,22 @@ body.site-text-editing [data-site-text] {
 }
 
 .inspo-strip {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
   margin-top: 14px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
 }
 
 .inspo-thumb {
   display: block;
-  flex: 0 0 auto;
-  width: clamp(110px, 14vw, 150px);
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
   border: 1px solid #eee3d4;
   aspect-ratio: 1 / 1;
-  scroll-snap-align: start;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
+
+.inspo-thumb:nth-child(n + 7) { display: none; }
 
 .inspo-thumb img {
   width: 100%;
