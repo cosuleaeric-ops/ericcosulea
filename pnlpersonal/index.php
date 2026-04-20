@@ -798,7 +798,9 @@ function renderStats(s) {
 const CAT_COLORS = [
   '#4A90D9','#E8704A','#2A7D4F','#C1444A','#7B5EA7',
   '#D4A017','#E8A87C','#85C1E9','#A9DFBF','#F1948A',
-  '#B8860B',
+  '#B8860B','#5DADE2','#A569BD','#45B39D','#EC7063',
+  '#F0B27A','#82E0AA','#AED6F1','#F9E79F','#D2B4DE',
+  '#A3E4D7','#FAD7A0','#FDFEFE','#D5D8DC','#1A5276',
 ];
 
 function renderCharts(s) {
@@ -806,6 +808,8 @@ function renderCharts(s) {
   if (chartRanking) chartRanking.destroy();
   const catData = [...s.categorii_cheltuieli].sort((a, b) => b.suma - a.suma);
   if (catData.length) {
+    const rankingWrap = document.getElementById('chartRanking').parentElement;
+    rankingWrap.style.height = Math.max(200, catData.length * 35) + 'px';
     chartRanking = new Chart(document.getElementById('chartRanking'), {
       type: 'bar',
       data: {
