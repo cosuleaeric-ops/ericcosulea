@@ -58,6 +58,9 @@ $db->exec("CREATE TABLE IF NOT EXISTS portofel (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )");
 
+// Migrations
+$db->exec("UPDATE cheltuiala_categorii SET nume = 'Cadou 🎁' WHERE nume = 'Zi de nastere 🎁'");
+
 // Seed default categories
 foreach (['Salariu', 'Mama', '2Performant', 'Profitshare', 'Trading212', 'Vinted'] as $cat) {
     $s = $db->prepare("INSERT OR IGNORE INTO venit_categorii (nume) VALUES (:n)");
@@ -182,7 +185,7 @@ function requireCsrf(): void
 
 function handleCategorii(SQLite3 $db, string $table): void
 {
-    $res  = $db->query("SELECT nume FROM $table ORDER BY id ASC");
+    $res  = $db->query("SELECT nume FROM $table ORDER BY nume ASC");
     $cats = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
         $cats[] = $row['nume'];

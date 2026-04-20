@@ -173,22 +173,6 @@ header('X-Robots-Tag: noindex, nofollow');
     </div>
   </div>
 
-  <!-- Charts row -->
-  <div class="charts-row">
-    <div class="chart-card">
-      <h3 id="chartDailyTitle">Cheltuieli zilnice</h3>
-      <div class="chart-wrap">
-        <canvas id="chartMonthly"></canvas>
-      </div>
-    </div>
-    <div class="chart-card">
-      <h3>Structura cheltuielilor</h3>
-      <div class="chart-wrap-donut">
-        <canvas id="chartDonut"></canvas>
-      </div>
-    </div>
-  </div>
-
   <!-- Ranking chart -->
   <div class="chart-card cumulative-card">
     <h3>Top categorii</h3>
@@ -394,7 +378,7 @@ let currentTab    = 'toate';
 let currentCatFilter = null;
 let allVenituri   = [];
 let allCheltuieli = [];
-let chartMonthly, chartDonut, chartRanking;
+let chartRanking;
 const rowStore    = new Map();
 const lastDateKey = 'pnlpersonal_last_date';
 const getLastDate = () => localStorage.getItem(lastDateKey) || todayStr();
@@ -818,75 +802,7 @@ const CAT_COLORS = [
 ];
 
 function renderCharts(s) {
-  const labels = s.monthly.map(m => currentMonth ? m.luna.slice(8) + '.' : monthLabel(m.luna));
-
-  // Titlu dinamic: "zilnice" pt lună, "lunare" pt an
-  document.getElementById('chartDailyTitle').textContent =
-    currentMonth ? 'Cheltuieli zilnice' : 'Cheltuieli lunare';
-
-  // ── Grafic 1: Cheltuieli zilnice / lunare (bare simple, fără venituri) ────────
-  if (chartMonthly) chartMonthly.destroy();
-  chartMonthly = new Chart(document.getElementById('chartMonthly'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Cheltuieli',
-        data: s.monthly.map(m => m.cheltuieli),
-        backgroundColor: s.monthly.map(m => m.cheltuieli > 500 ? 'rgba(193,68,74,0.90)' : 'rgba(193,68,74,0.65)'),
-        borderRadius: 5,
-        borderSkipped: false,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${fmt(ctx.parsed.y)} lei`,
-          },
-        },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: '#F0EDE6' },
-          ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
-        },
-        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
-      },
-    },
-  });
-
-  // ── Grafic 2: Structura cheltuielilor (donut) ─────────────────────────────────
-  if (chartDonut) chartDonut.destroy();
-  if (s.categorii_cheltuieli.length) {
-    chartDonut = new Chart(document.getElementById('chartDonut'), {
-      type: 'doughnut',
-      data: {
-        labels: s.categorii_cheltuieli.map(c => c.categorie),
-        datasets: [{
-          data: s.categorii_cheltuieli.map(c => c.suma),
-          backgroundColor: CAT_COLORS.slice(0, s.categorii_cheltuieli.length),
-          borderWidth: 2,
-          borderColor: '#fff',
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 8 } },
-          tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed)} lei` } },
-        },
-      },
-    });
-  }
-
-  // ── Grafic 3: Top categorii (bar orizontal, ranking) ─────────────────────────
+  // ── Grafic: Top categorii (bar orizontal, ranking) ───────────────────────────
   if (chartRanking) chartRanking.destroy();
   const catData = [...s.categorii_cheltuieli].sort((a, b) => b.suma - a.suma);
   if (catData.length) {
