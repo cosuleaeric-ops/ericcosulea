@@ -496,6 +496,22 @@ body {
   margin-bottom: 28px;
 }
 
+.ranking-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.ranking-toggle:hover { color: var(--text); }
+
 .cumulative-wrap {
   position: relative;
   height: 180px;

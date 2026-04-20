@@ -179,7 +179,7 @@ header('X-Robots-Tag: noindex, nofollow');
     <div class="ranking-wrap">
       <canvas id="chartRanking"></canvas>
     </div>
-    <button id="btnToggleRanking" style="display:none" onclick="toggleRankingExpand()"></button>
+    <button id="btnToggleRanking" class="ranking-toggle" style="display:none" onclick="toggleRankingExpand()"></button>
   </div>
 
   <!-- Transactions -->
@@ -858,9 +858,7 @@ function drawRankingChart() {
   });
   if (rankingAllData.length > 5) {
     btn.style.display = 'block';
-    btn.textContent = rankingExpanded
-      ? '▲ Mai puține'
-      : `▼ Vezi toate (${rankingAllData.length})`;
+    btn.textContent = rankingExpanded ? '▲ Mai puține' : '▼ Vezi toate';
   }
 }
 
