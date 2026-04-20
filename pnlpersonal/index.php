@@ -179,6 +179,7 @@ header('X-Robots-Tag: noindex, nofollow');
     <div class="ranking-wrap">
       <canvas id="chartRanking"></canvas>
     </div>
+    <button id="btnToggleRanking" style="display:none" onclick="toggleRankingExpand()"></button>
   </div>
 
   <!-- Transactions -->
@@ -379,6 +380,8 @@ let currentCatFilter = null;
 let allVenituri   = [];
 let allCheltuieli = [];
 let chartRanking;
+let rankingExpanded = false;
+let rankingAllData  = [];
 const rowStore    = new Map();
 const lastDateKey = 'pnlpersonal_last_date';
 const getLastDate = () => localStorage.getItem(lastDateKey) || todayStr();
@@ -808,38 +811,58 @@ function renderCharts(s) {
   if (chartRanking) chartRanking.destroy();
   const catData = [...s.categorii_cheltuieli].sort((a, b) => b.suma - a.suma);
   if (catData.length) {
-    const rankingWrap = document.getElementById('chartRanking').parentElement;
-    rankingWrap.style.height = Math.max(200, catData.length * 35) + 'px';
-    chartRanking = new Chart(document.getElementById('chartRanking'), {
-      type: 'bar',
-      data: {
-        labels: catData.map(c => c.categorie),
-        datasets: [{
-          data: catData.map(c => c.suma),
-          backgroundColor: CAT_COLORS.slice(0, catData.length),
-          borderRadius: 4,
-          borderSkipped: false,
-        }],
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.x)} lei` } },
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            grid: { color: '#F0EDE6' },
-            ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
-          },
-          y: { grid: { display: false }, ticks: { font: { size: 12 } } },
-        },
-      },
-    });
+    rankingAllData = catData;
+    rankingExpanded = false;
+    drawRankingChart();
   }
+}
+
+function drawRankingChart() {
+  const data = rankingExpanded ? rankingAllData : rankingAllData.slice(0, 5);
+  const btn  = document.getElementById('btnToggleRanking');
+  const wrap = document.getElementById('chartRanking').parentElement;
+  wrap.style.height = Math.max(160, data.length * 38) + 'px';
+  if (chartRanking) chartRanking.destroy();
+  chartRanking = new Chart(document.getElementById('chartRanking'), {
+    type: 'bar',
+    data: {
+      labels: data.map(c => c.categorie),
+      datasets: [{
+        data: data.map(c => c.suma),
+        backgroundColor: CAT_COLORS.slice(0, data.length),
+        borderRadius: 4,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.x)} lei` } },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: '#F0EDE6' },
+          ticks: { callback: v => fmt(v) + ' lei', font: { size: 11 } },
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 12 } } },
+      },
+    },
+  });
+  if (rankingAllData.length > 5) {
+    btn.style.display = 'block';
+    btn.textContent = rankingExpanded
+      ? '▲ Mai puține'
+      : `▼ Vezi toate (${rankingAllData.length})`;
+  }
+}
+
+function toggleRankingExpand() {
+  rankingExpanded = !rankingExpanded;
+  drawRankingChart();
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
