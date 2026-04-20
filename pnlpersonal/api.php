@@ -541,9 +541,22 @@ function handleLatestPortofel(SQLite3 $db): void
 
 function handleListPortofel(SQLite3 $db): void
 {
-    $limit = min((int)($_GET['limit'] ?? 20), 100);
-    $stmt  = $db->prepare("SELECT * FROM portofel ORDER BY data DESC, id DESC LIMIT :limit");
-    $stmt->bindValue(':limit', $limit);
+    $year  = isset($_GET['year'])  ? (int)$_GET['year']  : null;
+    $month = isset($_GET['month']) ? (int)$_GET['month'] : null;
+
+    if ($year && $month) {
+        $prefix = sprintf('%04d-%02d', $year, $month);
+        $stmt = $db->prepare("SELECT * FROM portofel WHERE data LIKE :p ORDER BY data DESC, id DESC");
+        $stmt->bindValue(':p', $prefix . '%');
+    } elseif ($year) {
+        $stmt = $db->prepare("SELECT * FROM portofel WHERE data LIKE :p ORDER BY data DESC, id DESC");
+        $stmt->bindValue(':p', $year . '%');
+    } else {
+        $limit = min((int)($_GET['limit'] ?? 20), 500);
+        $stmt  = $db->prepare("SELECT * FROM portofel ORDER BY data DESC, id DESC LIMIT :limit");
+        $stmt->bindValue(':limit', $limit);
+    }
+
     $res  = $stmt->execute();
     $rows = [];
     while ($row = $res->fetchArray(SQLITE3_ASSOC)) $rows[] = $row;

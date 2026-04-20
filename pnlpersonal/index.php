@@ -467,9 +467,10 @@ async function resolveCategorie(selectId, inputId, addAction) {
 // ── Portofel ─────────────────────────────────────────────────────────────────
 
 async function loadPortofel() {
+  const mParam = currentMonth ? `&month=${currentMonth}` : '';
   const [latest, history] = await Promise.all([
     api('latest_portofel'),
-    api('list_portofel', 'limit=20'),
+    api('list_portofel', `year=${currentYear}${mParam}`),
   ]);
   latestPortofelRow = latest;
   renderPortofelCards(latest);
@@ -552,7 +553,8 @@ document.getElementById('portofelHistoryRows').addEventListener('click', async e
   if (editBtn) {
     const id = parseInt(editBtn.dataset.portofelEdit);
     // Find the row by id in history
-    const history = await api('list_portofel', 'limit=100');
+    const mParam  = currentMonth ? `&month=${currentMonth}` : '';
+    const history = await api('list_portofel', `year=${currentYear}${mParam}`);
     const row     = history.find(r => parseInt(r.id) === id);
     if (row) openPortofelModal(row);
   } else if (deleteBtn) {
@@ -658,6 +660,7 @@ function navigateMonth(dir) {
   currentMonth = parseInt(parts[1]);
   updateMonthNavBtns();
   refresh();
+  loadPortofel();
 }
 
 document.getElementById('btnPrevMonth').addEventListener('click', () => navigateMonth(1));
@@ -725,6 +728,7 @@ async function init() {
     currentMonth = parts[1] ? parseInt(parts[1]) : null;
     updateMonthNavBtns();
     refresh();
+    loadPortofel();
   });
 
   updateMonthNavBtns();
