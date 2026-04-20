@@ -68,7 +68,7 @@ foreach (['Salariu', 'Mama', '2Performant', 'Profitshare', 'Trading212', 'Vinted
     $s->execute();
 }
 foreach ([
-    'Groceries 🍎', 'Snacks 🍫', 'Fast-food 🍔', 'Băuturi ☕', 'Fun 🎳',
+    'Groceries 🍎', 'Snacks 🍫', 'Fast-food 🍔', 'Cafea ☕', 'Fun 🎳',
     'Igiena 🧼', 'Transport 🚌', 'Abonamente 📺', 'Proiecte 💻', 'Chirie 🏠', 'Altele 📦'
 ] as $cat) {
     $s = $db->prepare("INSERT OR IGNORE INTO cheltuiala_categorii (nume) VALUES (:n)");

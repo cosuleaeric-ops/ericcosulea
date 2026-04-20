@@ -21,7 +21,7 @@ CAT_MAP = {
     "Groceries 🍎":  "Groceries 🍎",
     "Snacks 🍫":     "Snacks 🍫",
     "Fast-food 🍔":  "Fast-food 🍔",
-    "Cafea☕":        "Băuturi ☕",
+    "Cafea☕":        "Cafea ☕",
     "Iesiri 🎳":     "Fun 🎳",
     "Igiena 🧼":     "Igiena 🧼",
     "Transport 🚌":  "Transport 🚌",
