@@ -584,7 +584,7 @@ document.getElementById('portofelEditLink').addEventListener('click', e => {
 
 // Open portofel modal
 function openPortofelModal(row) {
-  const isEdit = !!row;
+  const isEdit = !!(row && row.id);
   document.getElementById('modalPortofelTitle').textContent = isEdit ? 'Editează portofelul' : 'Actualizează portofelul';
   document.getElementById('portofelSubmit').textContent     = isEdit ? 'Salvează' : 'Adaugă';
   document.getElementById('portofelId').value     = row ? row.id   : '';
@@ -611,7 +611,10 @@ function updatePortofelModalTotal() {
 });
 
 // Open modal btn
-document.getElementById('btnActualizeaza').addEventListener('click', () => openPortofelModal(null));
+document.getElementById('btnActualizeaza').addEventListener('click', () => {
+  const prefill = latestPortofelRow ? { ...latestPortofelRow, id: '', data: todayStr() } : null;
+  openPortofelModal(prefill);
+});
 
 // Form submit: Portofel
 document.getElementById('formPortofel').addEventListener('submit', async e => {
