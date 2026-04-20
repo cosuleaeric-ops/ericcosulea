@@ -757,8 +757,8 @@ async function refresh() {
 function renderStats(s) {
   document.getElementById('statVenituri').textContent   = fmt(s.total_venituri)   + ' lei';
   document.getElementById('statCheltuieli').textContent = fmt(s.total_cheltuieli) + ' lei';
-  document.getElementById('statVenituriSub').textContent   = `${allVenituri.length} tranzacții`;
-  document.getElementById('statCheltuieliSub').textContent = `${allCheltuieli.length} tranzacții`;
+  document.getElementById('statVenituriSub').textContent   = '';
+  document.getElementById('statCheltuieliSub').textContent = '';
 
   const card3 = document.getElementById('statCard3');
   const card4 = document.getElementById('statCard4');
