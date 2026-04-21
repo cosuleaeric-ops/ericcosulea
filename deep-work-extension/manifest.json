@@ -24,7 +24,9 @@
     "*://linkedin.com/*",
     "*://*.linkedin.com/*",
     "*://ericcosulea.ro/*",
-    "*://*.ericcosulea.ro/*"
+    "*://*.ericcosulea.ro/*",
+    "*://deepwork.ro/*",
+    "*://www.deepwork.ro/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -33,7 +35,9 @@
     {
       "matches": [
         "*://ericcosulea.ro/deep-work/*",
-        "*://*.ericcosulea.ro/deep-work/*"
+        "*://*.ericcosulea.ro/deep-work/*",
+        "*://deepwork.ro/*",
+        "*://www.deepwork.ro/*"
       ],
       "js": [
         "deep-work-bridge.js"
