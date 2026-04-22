@@ -180,10 +180,16 @@ header('X-Robots-Tag: noindex, nofollow');
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs";
 
   // Etichetă per tip (regex) — căutată pe linie reconstituită vizual
+  // PDF.js poate extrage caracterele cu spatii intre ele (ex: "S um a f ac turii")
+  // spacedRe permite \s* intre fiecare caracter si \s+ pentru spatiile din cuvant
+  function spacedRe(str) {
+    const parts = [...str].map(c => c === ' ' ? '\\s+' : c.replace(/[.*+?^${}()|[\]\\]/, '\\$&'));
+    return new RegExp(parts.join('\\s*'), 'i');
+  }
   const LABELS = {
-    wolt:  /Suma\s+facturii/i,
-    glovo: /Factura\s+totala/i,
-    bolt:  /SUMA\s+DE\s+PLAT[ĂA]/i,
+    wolt:  spacedRe('Suma facturii'),
+    glovo: spacedRe('Factura totala'),
+    bolt:  spacedRe('SUMA DE PLATA'),
   };
   const AMOUNT_RE = /-?\d{1,3}(?:[.\s]\d{3})*\s*,\d{2}/g;
 
@@ -225,7 +231,6 @@ header('X-Robots-Tag: noindex, nofollow');
   async function parseFile(file, type) {
     try {
       const lines = await extractLines(file);
-      console.log('[DEBUG]', file.name, 'lines:', lines);
       const labelRe = LABELS[type];
       // 1. Caută pe aceeași linie vizuală ca eticheta
       for (const line of lines) {
@@ -249,8 +254,10 @@ header('X-Robots-Tag: noindex, nofollow');
       }
       // 3. Fallback flat: caută în tot textul paginii indiferent de ordine
       const flat = lines.join('\n');
-      const flatM = flat.match(/Suma\s+facturii[\s\S]{0,400}?(\d{1,3}(?:[.\s]\d{3})*\s*,\d{2})/i)
-                 || flat.match(/(\d{1,3}(?:[.\s]\d{3})*\s*,\d{2})[\s\S]{0,400}?Suma\s+facturii/i);
+      const flatLabelRe = LABELS[type];
+      const flatAmtRe = /(\d{1,3}(?:[.\s]\d{3})*\s*,\d{2})/;
+      const flatM = flat.match(new RegExp(flatLabelRe.source + '[\\s\\S]{0,400}?' + flatAmtRe.source, 'i'))
+                 || flat.match(new RegExp(flatAmtRe.source + '[\\s\\S]{0,400}?' + flatLabelRe.source, 'i'));
       if (flatM) return { ok: true, amount: parseRo(flatM[1]) };
       return { ok: false, error: 'nu am găsit suma' };
     } catch (e) {
