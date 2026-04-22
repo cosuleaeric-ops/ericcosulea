@@ -236,15 +236,21 @@ header('X-Robots-Tag: noindex, nofollow');
           }
         }
       }
-      // 2. Fallback: caută în următoarele 3 linii
+      // 2. Fallback: caută în ±5 linii față de etichetă
       for (let i = 0; i < lines.length; i++) {
         if (labelRe.test(lines[i])) {
-          for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          for (let j = Math.max(0, i - 5); j < Math.min(i + 6, lines.length); j++) {
+            if (j === i) continue;
             const nums = lines[j].match(AMOUNT_RE);
-            if (nums && nums.length) return { ok: true, amount: parseRo(nums[0]) };
+            if (nums && nums.length) return { ok: true, amount: parseRo(nums[nums.length - 1]) };
           }
         }
       }
+      // 3. Fallback flat: caută în tot textul paginii indiferent de ordine
+      const flat = lines.join('\n');
+      const flatM = flat.match(/Suma\s+facturii[\s\S]{0,400}?(\d{1,3}(?:[.\s]\d{3})*\s*,\d{2})/i)
+                 || flat.match(/(\d{1,3}(?:[.\s]\d{3})*\s*,\d{2})[\s\S]{0,400}?Suma\s+facturii/i);
+      if (flatM) return { ok: true, amount: parseRo(flatM[1]) };
       return { ok: false, error: 'nu am găsit suma' };
     } catch (e) {
       return { ok: false, error: 'eroare citire PDF' };
