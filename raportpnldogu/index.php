@@ -225,6 +225,7 @@ header('X-Robots-Tag: noindex, nofollow');
   async function parseFile(file, type) {
     try {
       const lines = await extractLines(file);
+      console.log('[DEBUG]', file.name, 'lines:', lines);
       const labelRe = LABELS[type];
       // 1. Caută pe aceeași linie vizuală ca eticheta
       for (const line of lines) {
