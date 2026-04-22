@@ -185,11 +185,11 @@ header('X-Robots-Tag: noindex, nofollow');
     glovo: /Factura\s+totala/i,
     bolt:  /SUMA\s+DE\s+PLAT[ĂA]/i,
   };
-  const AMOUNT_RE = /-?\d{1,3}(?:[.\s]\d{3})*,\d{2}/g;
+  const AMOUNT_RE = /-?\d{1,3}(?:[.\s]\d{3})*\s*,\d{2}/g;
 
   function parseRo(n) {
     // "1.542,74" / "1 542,74" -> 1542.74
-    return parseFloat(String(n).replace(/[.\s]/g, '').replace(',', '.'));
+    return parseFloat(String(n).replace(/\s/g, '').replace(/\./g, '').replace(',', '.'));
   }
   function fmtRo(n) {
     return n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' RON';
