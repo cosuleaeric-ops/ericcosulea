@@ -189,7 +189,7 @@ header('X-Robots-Tag: noindex, nofollow');
   const LABELS = {
     wolt:  spacedRe('Suma facturii'),
     glovo: spacedRe('Factura totala'),
-    bolt:  spacedRe('SUMA DE PLATA'),
+    bolt:  new RegExp(spacedRe('SUMA DE PLAT').source + '[ĂăA]', 'i'),
   };
   const AMOUNT_RE = /-?\d{1,3}(?:[.\s]\d{3})*\s*,\d{2}/g;
 
