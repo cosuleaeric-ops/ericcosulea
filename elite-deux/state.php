@@ -78,11 +78,15 @@ if (is_file($statePath)) {
 $existing = read_state_file($statePath);
 if ($existing !== null) {
     $existingTasks = 0;
+    foreach (($existing['tasksByDate'] ?? []) as $tasks)
+        $existingTasks += count(is_array($tasks) ? $tasks : []);
     foreach (($existing['columns'] ?? []) as $col)
         foreach (($col['days'] ?? []) as $day)
             $existingTasks += count($day['tasks'] ?? []);
 
     $newTasks = 0;
+    foreach (($state['tasksByDate'] ?? []) as $tasks)
+        $newTasks += count(is_array($tasks) ? $tasks : []);
     foreach (($state['columns'] ?? []) as $col)
         foreach (($col['days'] ?? []) as $day)
             $newTasks += count($day['tasks'] ?? []);

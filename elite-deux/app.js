@@ -175,7 +175,7 @@ async function init() {
         window.clearTimeout(remoteSaveTimer);
         remoteSaveTimer = null;
       }
-      pushStateToRemote(buildStateSnapshot()).catch(() => {});
+      pushStateToRemote(buildStateSnapshot(), { keepalive: true }).catch(() => {});
     }
   });
 }
@@ -385,7 +385,7 @@ async function fetchRemoteSnapshot() {
   return sanitizeStateSnapshot(payload.state);
 }
 
-async function pushStateToRemote(snapshot) {
+async function pushStateToRemote(snapshot, fetchOptions = {}) {
   const response = await fetch(SERVER_STATE_URL, {
     method: "POST",
     credentials: "same-origin",
@@ -395,6 +395,7 @@ async function pushStateToRemote(snapshot) {
       "X-CSRF-Token": CSRF_TOKEN,
     },
     body: JSON.stringify({ state: snapshot }),
+    ...fetchOptions,
   });
 
   if (!response.ok) {
