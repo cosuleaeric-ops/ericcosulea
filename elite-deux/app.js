@@ -213,8 +213,16 @@ async function initializeState() {
     const remoteTasks = countTasksInSnapshot(remoteSnapshot);
     const localTasks  = countTasksInSnapshot(localSnapshot);
 
-    if (remoteTasks > 0) {
-      // Serverul are date reale → serverul câștigă întotdeauna
+    if (remoteTasks > 0 && localTasks > 0) {
+      // Ambele au date → câștigă cel mai recent după savedAt
+      if ((localSnapshot.savedAt || 0) > (remoteSnapshot.savedAt || 0)) {
+        // Localul e mai nou (ex: salvarea pe server a eșuat ieri) → pushăm localul
+        await pushStateToRemote(buildStateSnapshot());
+      } else {
+        applyStateSnapshot(remoteSnapshot);
+      }
+    } else if (remoteTasks > 0) {
+      // Doar serverul are date → aplicăm serverul
       applyStateSnapshot(remoteSnapshot);
     } else if (localTasks > 0) {
       // Serverul e gol dar localul are date → pushăm localul pe server
@@ -268,6 +276,7 @@ function sanitizeStateSnapshot(source = {}) {
     tasksByDate: nextByDate,
     settings: sanitizeSettings(source.settings || {}),
     lastSeenDate: parseDateKey(source.lastSeenDate) ? source.lastSeenDate : formatDateKey(new Date()),
+    savedAt: typeof source.savedAt === "number" ? source.savedAt : 0,
   };
 }
 
