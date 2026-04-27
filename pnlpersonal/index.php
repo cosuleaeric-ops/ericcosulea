@@ -408,7 +408,8 @@ document.getElementById('bannerClose').addEventListener('click', () => {
 
 document.getElementById('bannerUpdateBtn').addEventListener('click', () => {
   document.getElementById('mondayBanner').classList.remove('visible');
-  openPortofelModal(null);
+  const prefill = latestPortofelRow ? { ...latestPortofelRow, id: '', data: todayStr() } : null;
+  openPortofelModal(prefill);
 });
 
 // ── Categories ────────────────────────────────────────────────────────────────
