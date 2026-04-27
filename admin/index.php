@@ -86,14 +86,6 @@ $latestPost = $posts[0] ?? null;
         <h2>⚡ elite deux</h2>
         <p>task grid săptămânal cu teme, coloane configurabile și export.</p>
       </a>
-      <a class="quick-card" href="/deep-work/">
-        <h2>🎯 deep work</h2>
-        <p>timer de focus cu calendar heatmap și integrare wip.co.</p>
-      </a>
-      <a class="quick-card" href="/admin/journal.php">
-        <h2>📓 journal</h2>
-        <p>reflecții săptămânale — wins, challenges și lecții învățate.</p>
-      </a>
     </section>
 
     <!-- ── Website ── -->
