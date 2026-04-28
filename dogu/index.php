@@ -122,6 +122,13 @@ header('X-Robots-Tag: noindex, nofollow');
     }
     .logout-link:hover { color: var(--text); border-color: #ccc; }
   </style>
+<!-- Privacy-friendly analytics by Plausible -->
+<script async src="https://plausible.io/js/pa-U3QUedm8aW1g2Ou0qk-1J.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
+
 </head>
 <body>
 
