@@ -49,3 +49,4 @@ jobs:
             pnlcursuri/data/*.sqlite
             pnlpersonal/data/*.sqlite
             uploads/inspo/**
+            next-app/**
