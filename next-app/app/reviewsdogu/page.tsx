@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { buildBoltReport, buildGlovoReport, fmtRon, fmtRoDate, LABELS, RESTAURANT_KEYS } from "@/lib/reviewsdogu/report";
+import ImportForm from "./ImportForm";
 
 export const metadata: Metadata = {
   title: "Reviews & Comenzi - DOGU",
@@ -35,6 +36,11 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
         <Link className="post-back" href="/dogu">← dogu</Link>
         <h1 className="page-title">reviews & comenzi</h1>
         <p className="page-lead">Raport pe interval de date din comenzile salvate (Bolt + Glovo).</p>
+
+        <details className="reviews-import">
+          <summary>+ importă comenzi noi (CSV Bolt / XLSX Glovo)</summary>
+          <ImportForm />
+        </details>
 
         <form method="get" className="reviews-form">
           <div className="form-row">

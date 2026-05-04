@@ -1437,3 +1437,12 @@ body.lightbox-open {
 @media (max-width: 720px) {
   .reviews-form .form-row { grid-template-columns: 1fr; }
 }
+
+.reviews-import {
+  margin-top: 12px; padding: 14px; background: #fffbf3;
+  border: 1px solid #E8E3D8; border-radius: 12px;
+}
+.reviews-import summary {
+  cursor: pointer; font-weight: 600; padding: 4px 0;
+}
+.reviews-success { color: #2e7d32; font-size: 14px; }
