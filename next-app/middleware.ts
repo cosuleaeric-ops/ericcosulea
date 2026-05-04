@@ -4,7 +4,7 @@ import { getIronSession } from "iron-session";
 type Session = { loggedInAt?: number };
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname === "/admin/login") return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith("/admin/login")) return NextResponse.next();
 
   const password = process.env.SESSION_SECRET;
   if (!password) {
