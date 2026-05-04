@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const RankingChart = dynamic(() => import("./RankingChart"), { ssr: false });
 
 const CAT_COLORS = [
   "#4A90D9", "#E8704A", "#2A7D4F", "#C1444A", "#7B5EA7",
@@ -11,6 +14,8 @@ const CAT_COLORS = [
   "#F0B27A", "#82E0AA", "#AED6F1", "#F9E79F", "#D2B4DE",
   "#A3E4D7", "#FAD7A0", "#FDFEFE", "#D5D8DC", "#1A5276",
 ];
+
+const LAST_DATE_KEY = "pnlpersonal_last_date";
 
 import {
   addCategorieCheltuialaAction,
@@ -30,11 +35,14 @@ type Venit = { id: number; data: string; descriere: string; suma: number };
 type Cheltuiala = { id: number; data: string; categorie: string; detalii: string; suma: number };
 type Portofel = { id: number; data: string; cash: number; ing: number; revolut: number; trading212: number };
 
+type PeriodOpt = { value: string; label: string; isYear: boolean };
+
 type Props = {
-  month: string;
+  period: string;
+  periodIsYear: boolean;
   monthLabel: string;
   prevLabel: string;
-  monthYears: { value: string; label: string }[];
+  periods: PeriodOpt[];
   daysInMonth: number;
   todayKey: string;
   isMonday: boolean;
@@ -57,11 +65,6 @@ const fmtDate = (s: string) => {
   return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
 };
 const today = () => new Date().toISOString().slice(0, 10);
-const monthShift = (yyyymm: string, delta: number) => {
-  const [y, m] = yyyymm.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
 const dayShift = (yyyymmdd: string, delta: number) => {
   const d = new Date(yyyymmdd || today());
   d.setDate(d.getDate() + delta);
@@ -73,7 +76,7 @@ type Tab = "toate" | "venituri" | "cheltuieli";
 type ModalState =
   | { kind: "none" }
   | { kind: "venit"; row: Venit | null }
-  | { kind: "cheltuiala"; row: Cheltuiala | null; prefillDate?: string }
+  | { kind: "cheltuiala"; row: Cheltuiala | null }
   | { kind: "portofel"; row: Portofel | null; prefill?: Portofel | null };
 
 export default function PnlApp(props: Props) {
@@ -93,17 +96,32 @@ export default function PnlApp(props: Props) {
   }, [hideSums]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("pnl_hide_sums");
-    if (stored === "1") setHideSums(true);
+    if (localStorage.getItem("pnl_hide_sums") === "1") setHideSums(true);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("pnl_hide_sums", hideSums ? "1" : "0");
   }, [hideSums]);
 
+  // Keyboard shortcuts: c = cheltuiala, v = venit, Esc = close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setModal({ kind: "none" }); return; }
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA")) return;
+      if (e.key === "c") setModal({ kind: "cheltuiala", row: null });
+      if (e.key === "v") setModal({ kind: "venit", row: null });
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const totalVenituri = props.venituri.reduce((s, v) => s + v.suma, 0);
   const totalCheltuieli = props.cheltuieli.reduce((s, c) => s + c.suma, 0);
-  const medieZilnica = totalCheltuieli / props.daysInMonth;
+  const profitNet = totalVenituri - totalCheltuieli;
+  const marja = totalVenituri > 0 ? Math.round((profitNet / totalVenituri) * 100) : 0;
+
+  const medieZilnica = props.daysInMonth > 0 ? totalCheltuieli / props.daysInMonth : 0;
   const prevC = props.prevMonthTotalCheltuieli;
   const diff = prevC > 0 ? ((totalCheltuieli - prevC) / prevC) * 100 : null;
   const diffTxt = diff === null ? "—" : `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
@@ -123,7 +141,6 @@ export default function PnlApp(props: Props) {
     arr.sort((a, b) => b.suma - a.suma);
     return arr;
   }, [props.cheltuieli]);
-  const maxCategorieAmount = topCategorii[0]?.suma ?? 0;
 
   const txList = useMemo(() => {
     const all: Array<{ kind: "venit" | "cheltuiala"; date: string; categorie: string; detalii: string; suma: number; id: number }> = [];
@@ -158,7 +175,13 @@ export default function PnlApp(props: Props) {
     return { when, stale: diffZ >= 3 };
   }, [props.lastEntryDate]);
 
-  const goMonth = (m: string) => {
+  // Month-only periods for arrow navigation
+  const monthOnlyPeriods = useMemo(() => props.periods.filter((p) => !p.isYear), [props.periods]);
+  const navIdx = monthOnlyPeriods.findIndex((p) => p.value === props.period);
+  const prevPeriodValue = navIdx >= 0 && navIdx < monthOnlyPeriods.length - 1 ? monthOnlyPeriods[navIdx + 1].value : null;
+  const nextPeriodValue = navIdx > 0 ? monthOnlyPeriods[navIdx - 1].value : null;
+
+  const goPeriod = (m: string) => {
     router.push(`/pnlpersonal?m=${m}`);
     router.refresh();
   };
@@ -180,19 +203,35 @@ export default function PnlApp(props: Props) {
     return { ...props.latestPortofel, id: 0, data: props.todayKey };
   };
 
+  const headerLabel = props.periodIsYear ? props.period : props.monthLabel;
+
   return (
     <>
       <header className="app-header">
         <h1>P&amp;L — Personal</h1>
         <div className="header-controls">
-          <Link href={`/pnlpersonal?m=${monthShift(props.month, -1)}`} className="month-nav-btn" title="Luna anterioară" prefetch>‹</Link>
-          <Link href={`/pnlpersonal?m=${monthShift(props.month, 1)}`} className="month-nav-btn" title="Luna următoare" prefetch>›</Link>
+          {prevPeriodValue ? (
+            <Link href={`/pnlpersonal?m=${prevPeriodValue}`} className="month-nav-btn" title="Luna anterioară" prefetch>‹</Link>
+          ) : (
+            <button className="month-nav-btn" disabled title="Luna anterioară">‹</button>
+          )}
+          {nextPeriodValue ? (
+            <Link href={`/pnlpersonal?m=${nextPeriodValue}`} className="month-nav-btn" title="Luna următoare" prefetch>›</Link>
+          ) : (
+            <button className="month-nav-btn" disabled title="Luna următoare">›</button>
+          )}
           <select
             className="year-select"
-            value={props.month}
-            onChange={(e) => goMonth(e.target.value)}
+            value={props.period}
+            onChange={(e) => goPeriod(e.target.value)}
           >
-            {props.monthYears.map((m) => <option key={m.value} value={m.value}>{"  " + m.label}</option>)}
+            {props.periods.map((p) => (
+              <option
+                key={p.value}
+                value={p.value}
+                style={!p.isYear ? { color: "var(--muted)" } : undefined}
+              >{p.isYear ? p.label : `  ${p.label}`}</option>
+            ))}
           </select>
           <button
             type="button"
@@ -319,31 +358,43 @@ export default function PnlApp(props: Props) {
             <div className="value red">{fmtRon(totalCheltuieli)}</div>
             <div className="sub"></div>
           </div>
-          <div className="stat-card accent-gold">
-            <div className="label">Medie zilnică</div>
-            <div className="value gold">{fmtRon(medieZilnica)}</div>
-            <div className="sub">din {props.daysInMonth} zile</div>
-          </div>
-          <div className="stat-card accent-purple">
-            <div className="label">Față de {props.prevLabel}</div>
-            <div className={`value ${card4ValueClass}`}>{diffTxt}</div>
-            <div className="sub">{card4SubText}</div>
-          </div>
+          {props.periodIsYear ? (
+            <>
+              <div className="stat-card accent-gold">
+                <div className="label">Profit net</div>
+                <div className={`value ${profitNet >= 0 ? "green" : "red"}`}>{`${profitNet >= 0 ? "+" : ""}${fmt(profitNet)} lei`}</div>
+                <div className="sub"></div>
+              </div>
+              <div className="stat-card accent-blue">
+                <div className="label">Marjă profit</div>
+                <div className={`value ${marja >= 0 ? "green" : "red"}`}>{`${marja >= 0 ? "+" : ""}${marja}%`}</div>
+                <div className="sub">din venituri</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="stat-card accent-gold">
+                <div className="label">Medie zilnică</div>
+                <div className="value gold">{fmtRon(medieZilnica)}</div>
+                <div className="sub">din {props.daysInMonth} zile</div>
+              </div>
+              <div className="stat-card accent-purple">
+                <div className="label">Față de {props.prevLabel}</div>
+                <div className={`value ${card4ValueClass}`}>{diffTxt}</div>
+                <div className="sub">{card4SubText}</div>
+              </div>
+            </>
+          )}
         </div>
 
         {topCategorii.length > 0 && (
           <div className="chart-card cumulative-card">
             <h3>Top categorii</h3>
-            <div className="ranking-wrap" style={{ padding: "10px 0" }}>
-              {(rankingExpanded ? topCategorii : topCategorii.slice(0, 5)).map((c, i) => (
-                <div key={c.categorie} className="ranking-row">
-                  <div className="ranking-label">{c.categorie}</div>
-                  <div className="ranking-bar-wrap">
-                    <div className="ranking-bar" style={{ width: `${(c.suma / maxCategorieAmount) * 100}%`, background: CAT_COLORS[i % CAT_COLORS.length] }} />
-                  </div>
-                  <div className="ranking-amount">{fmtRon(c.suma)}</div>
-                </div>
-              ))}
+            <div className="ranking-wrap" style={{ height: Math.max(160, (rankingExpanded ? topCategorii.length : Math.min(5, topCategorii.length)) * 38) }}>
+              <RankingChart
+                data={rankingExpanded ? topCategorii : topCategorii.slice(0, 5)}
+                colors={CAT_COLORS}
+              />
             </div>
             {topCategorii.length > 5 && (
               <button className="ranking-toggle" onClick={() => setRankingExpanded((v) => !v)}>
@@ -394,7 +445,7 @@ export default function PnlApp(props: Props) {
                 </thead>
                 <tbody>
                   {txList.length === 0 ? (
-                    <tr><td colSpan={4}><div className="empty-state">Nicio tranzacție în {props.monthLabel}</div></td></tr>
+                    <tr><td colSpan={4}><div className="empty-state">Nicio tranzacție în {headerLabel}</div></td></tr>
                   ) : txList.map((t) => (
                     <tr key={`${t.kind}-${t.id}`}>
                       <td>{fmtDate(t.date)}</td>
@@ -431,11 +482,34 @@ export default function PnlApp(props: Props) {
         </div>
       </main>
 
-      {modal.kind !== "none" && (
-        <ModalDialog
-          modal={modal}
+      {modal.kind === "venit" && (
+        <VenitModal
+          row={modal.row}
           catVenit={props.catVenit}
+          onClose={() => setModal({ kind: "none" })}
+          onSaved={(savedDate) => {
+            if (!modal.row && savedDate) localStorage.setItem(LAST_DATE_KEY, savedDate);
+            setModal({ kind: "none" });
+            router.refresh();
+          }}
+        />
+      )}
+      {modal.kind === "cheltuiala" && (
+        <CheltuialaModal
+          row={modal.row}
           catChelt={props.catChelt}
+          onClose={() => setModal({ kind: "none" })}
+          onSavedEdit={() => { setModal({ kind: "none" }); router.refresh(); }}
+          onSavedAdd={(savedDate) => {
+            if (savedDate) localStorage.setItem(LAST_DATE_KEY, savedDate);
+            router.refresh();
+          }}
+        />
+      )}
+      {modal.kind === "portofel" && (
+        <PortofelModal
+          row={modal.row}
+          prefill={modal.prefill ?? null}
           onClose={() => setModal({ kind: "none" })}
           onSaved={() => { setModal({ kind: "none" }); router.refresh(); }}
         />
@@ -444,109 +518,45 @@ export default function PnlApp(props: Props) {
   );
 }
 
-function ModalDialog({
-  modal, catVenit, catChelt, onClose, onSaved,
-}: {
-  modal: Exclude<ModalState, { kind: "none" }>;
-  catVenit: string[];
-  catChelt: string[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  type AnyAction = (prev: { error?: string } | undefined, fd: FormData) => Promise<{ error?: string } | undefined>;
-  const submitWithAction = (formAction: AnyAction, fd: FormData) => {
-    setError(null);
-    startTransition(async () => {
-      const res = await formAction(undefined, fd);
-      if (res?.error) setError(res.error);
-      else onSaved();
-    });
-  };
-
-  if (modal.kind === "venit") {
-    const isEdit = modal.row != null;
-    const initialCat = modal.row?.descriere ?? (catVenit[0] ?? "__new__");
-    return (
-      <VenitModal
-        isEdit={isEdit}
-        row={modal.row}
-        catVenit={catVenit}
-        initialCat={initialCat}
-        error={error}
-        pending={pending}
-        onClose={onClose}
-        onSubmit={(fd) => submitWithAction(isEdit ? editVenitAction : addVenitAction, fd)}
-      />
-    );
-  }
-
-  if (modal.kind === "cheltuiala") {
-    const isEdit = modal.row != null;
-    const initialCat = modal.row?.categorie ?? (catChelt[0] ?? "__new__");
-    return (
-      <CheltuialaModal
-        isEdit={isEdit}
-        row={modal.row}
-        catChelt={catChelt}
-        initialCat={initialCat}
-        error={error}
-        pending={pending}
-        onClose={onClose}
-        onSubmit={(fd) => submitWithAction(isEdit ? editCheltuialaAction : addCheltuialaAction, fd)}
-      />
-    );
-  }
-
-  // portofel
-  const isEdit = modal.row != null;
-  const initial = modal.row ?? modal.prefill ?? null;
-  return (
-    <PortofelModal
-      isEdit={isEdit}
-      initial={initial}
-      rowId={modal.row?.id ?? null}
-      error={error}
-      pending={pending}
-      onClose={onClose}
-      onSubmit={(fd) => submitWithAction(isEdit ? editPortofelAction : addPortofelAction, fd)}
-    />
-  );
+function getInitialAddDate(): string {
+  if (typeof window === "undefined") return today();
+  return localStorage.getItem(LAST_DATE_KEY) || today();
 }
 
 function VenitModal({
-  isEdit, row, catVenit, initialCat, error, pending, onClose, onSubmit,
+  row, catVenit, onClose, onSaved,
 }: {
-  isEdit: boolean;
   row: Venit | null;
   catVenit: string[];
-  initialCat: string;
-  error: string | null;
-  pending: boolean;
   onClose: () => void;
-  onSubmit: (fd: FormData) => void;
+  onSaved: (savedDate: string | null) => void;
 }) {
-  const [data, setData] = useState(row?.data ?? today());
-  const [cat, setCat] = useState(initialCat);
+  const isEdit = row != null;
+  const [data, setData] = useState(row?.data ?? getInitialAddDate());
+  const [cat, setCat] = useState(row?.descriere ?? (catVenit[0] ?? "__new__"));
   const [catNoua, setCatNoua] = useState("");
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
-  const [localErr, setLocalErr] = useState<string | null>(null);
+  const sumaRef = useRef<HTMLInputElement>(null);
+  const catNouaRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { sumaRef.current?.focus(); }, []);
+  useEffect(() => { if (cat === "__new__") catNouaRef.current?.focus(); }, [cat]);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLocalErr(null);
+    setError(null);
     let descriere = cat;
     if (cat === "__new__") {
       const nume = catNoua.trim();
-      if (!nume) { setLocalErr("Nume categorie obligatoriu."); return; }
+      if (!nume) { setError("Selectează sau creează o categorie."); return; }
       setCreating(true);
       const fd = new FormData(); fd.set("nume", nume);
       const res = await addCategorieVenitAction(undefined, fd);
       setCreating(false);
-      if (res?.error) { setLocalErr(res.error); return; }
+      if (res?.error) { setError(res.error); return; }
       descriere = nume;
     }
     const fd = new FormData();
@@ -554,17 +564,19 @@ function VenitModal({
     fd.set("data", data);
     fd.set("descriere", descriere);
     fd.set("suma", suma);
-    onSubmit(fd);
+    startTransition(async () => {
+      const res = await (isEdit ? editVenitAction : addVenitAction)(undefined, fd);
+      if (res?.error) setError(res.error);
+      else onSaved(data);
+    });
   };
-
-  const errMsg = localErr || error;
 
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <button className="modal-close" onClick={onClose}>×</button>
         <h2>{isEdit ? "Editează venit" : "Adaugă venit"}</h2>
-        {errMsg && <div className="error-msg" style={{ display: "block" }}>{errMsg}</div>}
+        {error && <div className="error-msg" style={{ display: "block" }}>{error}</div>}
         <form onSubmit={submit}>
           <div className="form-group">
             <label>Data</label>
@@ -582,18 +594,18 @@ function VenitModal({
             </select>
             {cat === "__new__" && (
               <input
+                ref={catNouaRef}
                 type="text"
                 placeholder="Nume categorie nouă"
                 value={catNoua}
                 onChange={(e) => setCatNoua(e.target.value)}
                 style={{ marginTop: 8, width: "100%", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, background: "var(--bg)" }}
-                autoFocus
               />
             )}
           </div>
           <div className="form-group">
             <label>Sumă (lei)</label>
-            <input type="number" step="0.01" min="0.01" value={suma} onChange={(e) => setSuma(e.target.value)} required />
+            <input ref={sumaRef} type="number" step="0.01" min="0.01" value={suma} onChange={(e) => setSuma(e.target.value)} required />
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Anulează</button>
@@ -606,37 +618,41 @@ function VenitModal({
 }
 
 function CheltuialaModal({
-  isEdit, row, catChelt, initialCat, error, pending, onClose, onSubmit,
+  row, catChelt, onClose, onSavedEdit, onSavedAdd,
 }: {
-  isEdit: boolean;
   row: Cheltuiala | null;
   catChelt: string[];
-  initialCat: string;
-  error: string | null;
-  pending: boolean;
   onClose: () => void;
-  onSubmit: (fd: FormData) => void;
+  onSavedEdit: () => void;
+  onSavedAdd: (savedDate: string) => void;
 }) {
-  const [data, setData] = useState(row?.data ?? today());
-  const [cat, setCat] = useState(initialCat);
+  const isEdit = row != null;
+  const [data, setData] = useState(row?.data ?? getInitialAddDate());
+  const [cat, setCat] = useState(row?.categorie ?? (catChelt[0] ?? "__new__"));
   const [catNoua, setCatNoua] = useState("");
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
   const [detalii, setDetalii] = useState(row?.detalii ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
-  const [localErr, setLocalErr] = useState<string | null>(null);
+  const sumaRef = useRef<HTMLInputElement>(null);
+  const catNouaRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { sumaRef.current?.focus(); }, []);
+  useEffect(() => { if (cat === "__new__") catNouaRef.current?.focus(); }, [cat]);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLocalErr(null);
+    setError(null);
     let categorie = cat;
     if (cat === "__new__") {
       const nume = catNoua.trim();
-      if (!nume) { setLocalErr("Nume categorie obligatoriu."); return; }
+      if (!nume) { setError("Selectează sau creează o categorie."); return; }
       setCreating(true);
       const fd = new FormData(); fd.set("nume", nume);
       const res = await addCategorieCheltuialaAction(undefined, fd);
       setCreating(false);
-      if (res?.error) { setLocalErr(res.error); return; }
+      if (res?.error) { setError(res.error); return; }
       categorie = nume;
     }
     const fd = new FormData();
@@ -645,17 +661,27 @@ function CheltuialaModal({
     fd.set("categorie", categorie);
     fd.set("detalii", detalii);
     fd.set("suma", suma);
-    onSubmit(fd);
+    startTransition(async () => {
+      const res = await (isEdit ? editCheltuialaAction : addCheltuialaAction)(undefined, fd);
+      if (res?.error) { setError(res.error); return; }
+      if (isEdit) {
+        onSavedEdit();
+      } else {
+        // Rapid entry: keep modal open, reset suma + detalii, focus suma
+        onSavedAdd(data);
+        setSuma("");
+        setDetalii("");
+        sumaRef.current?.focus();
+      }
+    });
   };
-
-  const errMsg = localErr || error;
 
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <button className="modal-close" onClick={onClose}>×</button>
         <h2>{isEdit ? "Editează cheltuiala" : "Adaugă cheltuiala"}</h2>
-        {errMsg && <div className="error-msg" style={{ display: "block" }}>{errMsg}</div>}
+        {error && <div className="error-msg" style={{ display: "block" }}>{error}</div>}
         <form onSubmit={submit}>
           <div className="form-group">
             <label>Data</label>
@@ -673,18 +699,18 @@ function CheltuialaModal({
             </select>
             {cat === "__new__" && (
               <input
+                ref={catNouaRef}
                 type="text"
                 placeholder="Nume categorie nouă"
                 value={catNoua}
                 onChange={(e) => setCatNoua(e.target.value)}
                 style={{ marginTop: 8, width: "100%", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, background: "var(--bg)" }}
-                autoFocus
               />
             )}
           </div>
           <div className="form-group">
             <label>Sumă (lei)</label>
-            <input type="number" step="0.01" min="0.01" value={suma} onChange={(e) => setSuma(e.target.value)} required />
+            <input ref={sumaRef} type="number" step="0.01" min="0.01" value={suma} onChange={(e) => setSuma(e.target.value)} required />
           </div>
           <div className="form-group">
             <label>Detalii</label>
@@ -701,34 +727,40 @@ function CheltuialaModal({
 }
 
 function PortofelModal({
-  isEdit, initial, rowId, error, pending, onClose, onSubmit,
+  row, prefill, onClose, onSaved,
 }: {
-  isEdit: boolean;
-  initial: Portofel | null;
-  rowId: number | null;
-  error: string | null;
-  pending: boolean;
+  row: Portofel | null;
+  prefill: Portofel | null;
   onClose: () => void;
-  onSubmit: (fd: FormData) => void;
+  onSaved: () => void;
 }) {
+  const isEdit = row != null;
+  const initial = row ?? prefill;
   const [data, setData] = useState(initial?.data ?? today());
   const [cash, setCash] = useState(initial ? String(initial.cash) : "");
   const [ing, setIng] = useState(initial ? String(initial.ing) : "");
   const [revolut, setRevolut] = useState(initial ? String(initial.revolut) : "");
   const [trading212, setTrading212] = useState(initial ? String(initial.trading212) : "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const total = (parseFloat(cash) || 0) + (parseFloat(ing) || 0) + (parseFloat(revolut) || 0);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     const fd = new FormData();
-    if (isEdit && rowId) fd.set("id", String(rowId));
+    if (isEdit && row) fd.set("id", String(row.id));
     fd.set("data", data);
     fd.set("cash", cash || "0");
     fd.set("ing", ing || "0");
     fd.set("revolut", revolut || "0");
     fd.set("trading212", trading212 || "0");
-    onSubmit(fd);
+    startTransition(async () => {
+      const res = await (isEdit ? editPortofelAction : addPortofelAction)(undefined, fd);
+      if (res?.error) setError(res.error);
+      else onSaved();
+    });
   };
 
   return (
