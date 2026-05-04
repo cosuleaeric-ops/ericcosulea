@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Avatar placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c7b8a4"/>
+      <stop offset="1" stop-color="#e7dccb"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="100" fill="url(#bg)"/>
+  <text x="50%" y="55%" text-anchor="middle" font-family="Crimson Pro, serif" font-size="64" fill="#3c352d">EC</text>
+</svg>

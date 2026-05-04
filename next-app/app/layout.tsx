@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import { Crimson_Pro } from "next/font/google";
 import "./globals.css";
+import "./site.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const crimsonPro = Crimson_Pro({
+  variable: "--font-crimson-pro",
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
   title: "Eric Cosulea",
-  description: "Site personal Eric Cosulea",
+  description: "speedrunning failures.",
+  icons: { icon: "/assets/Logo3.png" },
 };
 
 export default function RootLayout({
@@ -23,11 +22,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ro"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ro" className={crimsonPro.variable}>
+      <head>
+        <Script
+          src="https://plausible.io/js/pa-U3QUedm8aW1g2Ou0qk-1J.js"
+          strategy="afterInteractive"
+          async
+        />
+        <Script id="plausible-init" strategy="afterInteractive">{`
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init();
+        `}</Script>
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

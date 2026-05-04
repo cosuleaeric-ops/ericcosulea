@@ -1,16 +1,87 @@
-export default function Home() {
+import Link from "next/link";
+import { getProjectsForHome, getLatestImages } from "@/lib/db/queries";
+import { blobUrl } from "@/lib/blob";
+
+export default async function Home() {
+  const [projects, latestImages] = await Promise.all([
+    getProjectsForHome(),
+    getLatestImages(8),
+  ]);
+
   return (
-    <div className="hero min-h-screen bg-base-200">
-      <div className="hero-content text-center">
-        <div className="max-w-md">
-          <h1 className="text-5xl font-bold">Eric Cosulea</h1>
-          <p className="py-6">
-            Site nou în construcție pe Next.js + Vercel. Versiunea curentă rulează la{" "}
-            <a className="link" href="https://ericcosulea.ro">ericcosulea.ro</a>.
-          </p>
-          <div className="badge badge-primary">Etapa 0 — scaffold</div>
+    <main className="page">
+      <header className="hero">
+        <div className="hero-avatar">
+          <img src="/assets/avatar.jpeg" alt="Eric Cosulea" />
         </div>
-      </div>
-    </div>
+        <div className="hero-text">
+          <div className="hero-title">
+            <h1>eric coșulea</h1>
+            <nav className="hero-social" aria-label="social">
+              <a href="https://www.linkedin.com/in/eric-cosulea/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn">
+                <img src="/assets/linkedin.svg" alt="" />
+              </a>
+              <a href="https://www.instagram.com/ericcosulea" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram">
+                <img src="/assets/instagram.svg" alt="" />
+              </a>
+              <a href="https://www.facebook.com/eric.cosulea/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook">
+                <img src="/assets/facebook.svg" alt="" />
+              </a>
+            </nav>
+          </div>
+          <p className="hero-sub">speedrunning failures.</p>
+        </div>
+      </header>
+
+      <section className="section">
+        <h2>proiectele mele</h2>
+        <div className="projects">
+          {projects.map((proj) => (
+            <a key={proj.id} className="project" href={proj.url} target="_blank" rel="noopener noreferrer">
+              <img className="project-icon-img" src={proj.logo} alt="" />
+              <span className="project-text">
+                <span className="project-name">{proj.name}</span>
+                {proj.description && <span className="project-meta">({proj.description})</span>}
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="section">
+        <h2>interesante</h2>
+        <div className="topic-list">
+          <Link className="topic-item" href="/tools">
+            <img className="project-icon-img" src="/assets/tools.webp" alt="" />
+            <div className="topic-text">
+              <span className="topic-title">tools</span>
+              <span className="topic-sub">(colecție de aplicații pe care le folosesc în proiecte)</span>
+            </div>
+          </Link>
+          <Link className="topic-item" href="/blog">
+            <img className="project-icon-img" src="/assets/paper.png" alt="" />
+            <div className="topic-text">
+              <span className="topic-title">blog</span>
+              <span className="topic-sub">(mozaic de gânduri pentru Eric din viitor)</span>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className="section">
+        <h2>inspo</h2>
+        <p className="page-lead">imagini salvate pentru zilele alea naspa</p>
+        <div className="inspo-strip">
+          {latestImages.map((img) => (
+            <Link key={img.id} className="inspo-thumb" href="/inspo">
+              <img src={blobUrl(`inspo/${img.filename}`)} alt="" />
+            </Link>
+          ))}
+        </div>
+        <Link className="inspo-link" href="/inspo">
+          vezi toate imaginile →
+        </Link>
+      </section>
+    </main>
   );
 }
