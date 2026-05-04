@@ -1446,3 +1446,45 @@ body.lightbox-open {
   cursor: pointer; font-weight: 600; padding: 4px 0;
 }
 .reviews-success { color: #2e7d32; font-size: 14px; }
+
+.pnl-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.pnl-month-nav { display: inline-flex; gap: 6px; }
+.pnl-month-nav .btn { padding: 4px 12px; font-size: 16px; }
+
+.pnl-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;
+}
+.pnl-stat-card {
+  background: #fff; border: 1px solid #E8E3D8; border-radius: 12px; padding: 14px;
+}
+.pnl-stat-label { font-size: 13px; color: var(--muted); }
+.pnl-stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.pnl-stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pnl-stat-green .pnl-stat-value { color: #2e7d32; }
+.pnl-stat-red .pnl-stat-value { color: #b3271c; }
+.pnl-stat-blue .pnl-stat-value { color: #1976d2; }
+.pnl-stat-gold .pnl-stat-value { color: #b08800; }
+.pnl-stat-purple .pnl-stat-value { color: #6a1b9a; }
+
+.pnl-portofel-block, .pnl-section { margin-top: 36px; }
+.pnl-portofel-block h2, .pnl-section h2 { margin-bottom: 12px; }
+.pnl-portofel-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
+}
+
+.pnl-add-form {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin: 12px 0; padding: 12px; background: #fffbf3;
+  border: 1px solid #E8E3D8; border-radius: 12px;
+}
+.pnl-add-form .form-input { flex: 1; min-width: 100px; width: auto; padding: 6px 10px; font-size: 14px; }
+.pnl-add-form .btn { font-size: 14px; padding: 6px 12px; }
+.pnl-portofel-form .form-input { min-width: 80px; }
+.pnl-cat-form { background: transparent; padding: 8px 0; }
+
+.pnl-section details { margin-top: 12px; }
+.pnl-section summary, .pnl-portofel-block summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+
+@media (max-width: 720px) {
+  .pnl-stats { grid-template-columns: 1fr; }
+}
