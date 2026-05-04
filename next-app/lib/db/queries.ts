@@ -1,6 +1,6 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db } from "./index";
-import { images, posts, projects } from "./schema";
+import { images, pages, posts, projects } from "./schema";
 
 export async function getProjectsForHome() {
   return db.select().from(projects).orderBy(asc(projects.sort), asc(projects.id));
@@ -25,5 +25,10 @@ export async function getAllPosts() {
 
 export async function getPostBySlug(slug: string) {
   const rows = await db.select().from(posts).where(eq(posts.slug, slug)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPageBySlug(slug: string) {
+  const rows = await db.select().from(pages).where(eq(pages.slug, slug)).limit(1);
   return rows[0] ?? null;
 }

@@ -25,3 +25,19 @@ export const projects = pgTable("projects", {
   logo: text("logo").notNull(),
   sort: integer("sort").notNull(),
 });
+
+export const pages = pgTable("pages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  contentHtml: text("content_html").notNull(),
+  contentMd: text("content_md"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export const siteTexts = pgTable("site_texts", {
+  id: serial("id").primaryKey(),
+  textKey: text("text_key").notNull().unique(),
+  textValue: text("text_value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
