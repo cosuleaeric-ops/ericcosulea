@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Crimson_Pro } from "next/font/google";
 import "./globals.css";
 import "./site.css";
+import AdminBar from "./AdminBar";
 
 const crimsonPro = Crimson_Pro({
   variable: "--font-crimson-pro",
@@ -34,7 +35,10 @@ export default function RootLayout({
           plausible.init();
         `}</Script>
       </head>
-      <body>{children}</body>
+      <body>
+        <AdminBar />
+        {children}
+      </body>
     </html>
   );
 }
