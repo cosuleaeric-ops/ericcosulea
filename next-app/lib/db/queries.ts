@@ -52,6 +52,14 @@ export async function getProjectById(id: number) {
   return rows[0] ?? null;
 }
 
+export async function getAllVenituri() {
+  return db.select().from(venituri).orderBy(asc(venituri.data), asc(venituri.id));
+}
+
+export async function getAllCheltuieli() {
+  return db.select().from(cheltuieli).orderBy(asc(cheltuieli.data), asc(cheltuieli.id));
+}
+
 export async function getVenituriByMonth(yyyymm: string) {
   const start = `${yyyymm}-01`;
   const end = `${yyyymm}-31`;
