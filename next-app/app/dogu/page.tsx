@@ -7,9 +7,9 @@ export const metadata: Metadata = {
 };
 
 const TILES = [
-  { href: "/admin/reviewsdogu", icon: "⭐", label: "Reviews & Comenzi", desc: "Rapoarte Bolt & Glovo — comenzi, reviews, taxe, rambursări", bg: "#FFF3E0" },
-  { href: "/admin/vanzaridogu", icon: "📊", label: "Vânzări Restaurant", desc: "Rapoarte Breeze — vânzări per restaurant din secțiunea Restaurant", bg: "#E8F5E9" },
-  { href: "/admin/raportpnldogu", icon: "📑", label: "Raport P&L lunar", desc: "Încarcă PDF-urile Wolt, Glovo și Bolt — extragem automat sumele facturilor", bg: "#E3F2FD" },
+  { href: "/reviewsdogu", icon: "⭐", label: "Reviews & Comenzi", desc: "Rapoarte Bolt & Glovo — comenzi, reviews, taxe, rambursări", bg: "#FFF3E0" },
+  { href: "/vanzaridogu", icon: "📊", label: "Vânzări Restaurant", desc: "Rapoarte Breeze — vânzări per restaurant din secțiunea Restaurant", bg: "#E8F5E9" },
+  { href: "/raportpnldogu", icon: "📑", label: "Raport P&L lunar", desc: "Încarcă PDF-urile Wolt, Glovo și Bolt — extragem automat sumele facturilor", bg: "#E3F2FD" },
 ];
 
 export default function DoguHub() {

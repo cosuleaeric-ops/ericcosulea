@@ -11,7 +11,7 @@ export default function VanzariPage() {
   return (
     <main className="page page-narrow">
       <section className="page-section">
-        <Link className="post-back" href="/admin/dogu">← dogu</Link>
+        <Link className="post-back" href="/dogu">← dogu</Link>
         <h1 className="page-title">vânzări — restaurant</h1>
         <VanzariApp />
       </section>

@@ -11,7 +11,7 @@ export default function RaportPage() {
   return (
     <main className="page page-narrow">
       <section className="page-section">
-        <Link className="post-back" href="/admin/dogu">← dogu</Link>
+        <Link className="post-back" href="/dogu">← dogu</Link>
         <h1 className="page-title">raport p&l lunar</h1>
         <p className="page-lead">Încarcă PDF-urile Wolt, Glovo și Bolt — extragem automat sumele facturilor.</p>
         <RaportApp />
