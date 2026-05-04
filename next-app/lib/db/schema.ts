@@ -65,6 +65,43 @@ export const orders = pgTable("orders", {
   uniqueIndex("orders_platform_order_id_unique").on(t.platform, t.orderId),
 ]);
 
+export const venituri = pgTable("venituri", {
+  id: serial("id").primaryKey(),
+  data: text("data").notNull(),
+  descriere: text("descriere").notNull(),
+  suma: real("suma").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cheltuieli = pgTable("cheltuieli", {
+  id: serial("id").primaryKey(),
+  data: text("data").notNull(),
+  categorie: text("categorie").notNull(),
+  detalii: text("detalii").notNull().default(""),
+  suma: real("suma").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const venitCategorii = pgTable("venit_categorii", {
+  id: serial("id").primaryKey(),
+  nume: text("nume").notNull().unique(),
+});
+
+export const cheltuialaCategorii = pgTable("cheltuiala_categorii", {
+  id: serial("id").primaryKey(),
+  nume: text("nume").notNull().unique(),
+});
+
+export const portofel = pgTable("portofel", {
+  id: serial("id").primaryKey(),
+  data: text("data").notNull(),
+  cash: real("cash").notNull().default(0),
+  ing: real("ing").notNull().default(0),
+  revolut: real("revolut").notNull().default(0),
+  trading212: real("trading212").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const verificationTokens = pgTable("verification_tokens", {
   id: serial("id").primaryKey(),
   tokenHash: text("token_hash").notNull().unique(),
