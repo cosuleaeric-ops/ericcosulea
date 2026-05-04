@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
+const HIDDEN_ON = ["/pnlpersonal"];
+
 export default function AdminBar() {
+  const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -15,6 +19,7 @@ export default function AdminBar() {
   }, []);
 
   if (!loggedIn) return null;
+  if (pathname && HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(p + "/"))) return null;
 
   const handleLogout = () => {
     startTransition(async () => {
