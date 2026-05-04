@@ -157,7 +157,15 @@ export default function PnlApp(props: Props) {
           >
             {props.monthYears.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          <a href="/admin" className="logout-link">← Admin</a>
+          <button
+            type="button"
+            className="logout-link"
+            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "inherit" }}
+            onClick={async () => {
+              await fetch("/api/logout", { method: "POST" });
+              window.location.href = "/admin/login";
+            }}
+          >Ieși</button>
         </div>
       </header>
 
@@ -172,16 +180,22 @@ export default function PnlApp(props: Props) {
 
       <main className="container">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}></span>
+          <a href="/admin" style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>← Dashboard</a>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               onClick={() => setHideSums((v) => !v)}
               title="Ascunde/Arată sumele"
               style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 14, lineHeight: 1, color: "var(--muted)" }}
             >👁</button>
-            {props.lastEntryDate && (
-              <span className="last-entry-badge">Ultima cheltuială: {fmtDate(props.lastEntryDate)}</span>
-            )}
+            {props.lastEntryDate && (() => {
+              const days = Math.floor((Date.now() - new Date(props.lastEntryDate).getTime()) / (1000 * 60 * 60 * 24));
+              const label = days === 0 ? "azi" : days === 1 ? "ieri" : `acum ${days} zile`;
+              return (
+                <span className={`last-entry-badge ${days > 7 ? "stale" : ""}`}>
+                  Ultima cheltuială: {fmtDate(props.lastEntryDate)} ({label})
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -243,9 +257,11 @@ export default function PnlApp(props: Props) {
                           <td className="right">{fmtRon(p.revolut)}</td>
                           <td className="right">{fmtRon(p.cash + p.ing + p.revolut)}</td>
                           <td className="right">{fmtRon(p.trading212)}</td>
-                          <td className="right">
-                            <button className="link-btn" onClick={() => setModal({ kind: "portofel", row: p })}>✎</button>
-                            <button className="link-btn delete-btn" onClick={() => onDelete("portofel", p.id, "Ștergi snapshot-ul?")} disabled={pending}>×</button>
+                          <td>
+                            <div className="actions-cell">
+                              <button className="icon-btn" title="Editează" onClick={() => setModal({ kind: "portofel", row: p })}>✎</button>
+                              <button className="icon-btn danger" title="Șterge" onClick={() => onDelete("portofel", p.id, "Ștergi snapshot-ul?")} disabled={pending}>✕</button>
+                            </div>
                           </td>
                         </tr>
                       ))}

@@ -183,7 +183,7 @@ body {
 }
 
 .app-header h1 {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: var(--font-crimson-pro), Georgia, serif;
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.3px;
@@ -236,7 +236,7 @@ body {
 }
 
 .section-title-bar h2 {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: var(--font-crimson-pro), Georgia, serif;
   font-size: 19px;
   font-weight: 600;
   flex: 1;
@@ -472,7 +472,7 @@ body {
 }
 
 .chart-card h3 {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: var(--font-crimson-pro), Georgia, serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
@@ -530,7 +530,7 @@ body {
 }
 
 .section-header h2 {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: var(--font-crimson-pro), Georgia, serif;
   font-size: 19px;
   font-weight: 600;
   flex: 1;
@@ -752,7 +752,7 @@ td.suma-red    { color: var(--red);    font-weight: 600; font-variant-numeric: t
 }
 
 .modal h2 {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: var(--font-crimson-pro), Georgia, serif;
   font-size: 21px;
   font-weight: 600;
   margin-bottom: 24px;
