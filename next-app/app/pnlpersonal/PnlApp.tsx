@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+const CAT_COLORS = [
+  "#4A90D9", "#E8704A", "#2A7D4F", "#C1444A", "#7B5EA7",
+  "#D4A017", "#E8A87C", "#85C1E9", "#A9DFBF", "#F1948A",
+  "#B8860B", "#5DADE2", "#A569BD", "#45B39D", "#EC7063",
+  "#F0B27A", "#82E0AA", "#AED6F1", "#F9E79F", "#D2B4DE",
+  "#A3E4D7", "#FAD7A0", "#FDFEFE", "#D5D8DC", "#1A5276",
+];
 import {
   addCheltuialaAction,
   addVenitAction,
@@ -67,6 +76,7 @@ export default function PnlApp(props: Props) {
   const [hideSums, setHideSums] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [bannerClosed, setBannerClosed] = useState(false);
+  const [rankingExpanded, setRankingExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -96,18 +106,16 @@ export default function PnlApp(props: Props) {
   }, [props.cheltuieli]);
   const maxCategorieAmount = topCategorii[0]?.suma ?? 0;
 
-  const filteredCategorii = filterCategorie ? new Set([filterCategorie]) : null;
   const txList = useMemo(() => {
     const all: Array<{ kind: "venit" | "cheltuiala"; date: string; categorie: string; detalii: string; suma: number; id: number }> = [];
-    if (tab !== "cheltuieli") {
+    if (tab === "toate" || tab === "venituri") {
       for (const v of props.venituri) {
-        if (filteredCategorii && !filteredCategorii.has(v.descriere)) continue;
         all.push({ kind: "venit", date: v.data, categorie: v.descriere, detalii: "", suma: v.suma, id: v.id });
       }
     }
-    if (tab !== "venituri") {
+    if (tab === "toate" || tab === "cheltuieli") {
       for (const c of props.cheltuieli) {
-        if (filteredCategorii && !filteredCategorii.has(c.categorie)) continue;
+        if (tab === "cheltuieli" && filterCategorie && c.categorie !== filterCategorie) continue;
         all.push({ kind: "cheltuiala", date: c.data, categorie: c.categorie, detalii: c.detalii, suma: c.suma, id: c.id });
       }
     }
@@ -115,12 +123,11 @@ export default function PnlApp(props: Props) {
     return all;
   }, [props.venituri, props.cheltuieli, tab, filterCategorie]);
 
-  const txCategoryOptions = useMemo(() => {
-    const set = new Set<string>();
-    if (tab !== "cheltuieli") for (const v of props.venituri) set.add(v.descriere);
-    if (tab !== "venituri") for (const c of props.cheltuieli) set.add(c.categorie);
-    return Array.from(set).sort();
-  }, [props.venituri, props.cheltuieli, tab]);
+  const cheltuieliCategoriiSorted = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const c of props.cheltuieli) totals.set(c.categorie, (totals.get(c.categorie) ?? 0) + c.suma);
+    return Array.from(totals, ([cat, suma]) => ({ cat, suma })).sort((a, b) => b.suma - a.suma).map((x) => x.cat);
+  }, [props.cheltuieli]);
 
   const goMonth = (m: string) => router.push(`/pnlpersonal?m=${m}`);
 
@@ -141,8 +148,8 @@ export default function PnlApp(props: Props) {
       <header className="app-header">
         <h1>P&amp;L — Personal</h1>
         <div className="header-controls">
-          <button className="month-nav-btn" onClick={() => goMonth(monthShift(props.month, -1))} title="Luna anterioară">‹</button>
-          <button className="month-nav-btn" onClick={() => goMonth(monthShift(props.month, 1))} title="Luna următoare">›</button>
+          <Link href={`/pnlpersonal?m=${monthShift(props.month, -1)}`} className="month-nav-btn" title="Luna anterioară">‹</Link>
+          <Link href={`/pnlpersonal?m=${monthShift(props.month, 1)}`} className="month-nav-btn" title="Luna următoare">›</Link>
           <select
             className="year-select"
             value={props.month}
@@ -281,16 +288,21 @@ export default function PnlApp(props: Props) {
           <div className="chart-card cumulative-card">
             <h3>Top categorii</h3>
             <div className="ranking-wrap" style={{ padding: "10px 0" }}>
-              {topCategorii.slice(0, 8).map((c) => (
+              {(rankingExpanded ? topCategorii : topCategorii.slice(0, 5)).map((c, i) => (
                 <div key={c.categorie} className="ranking-row">
                   <div className="ranking-label">{c.categorie}</div>
                   <div className="ranking-bar-wrap">
-                    <div className="ranking-bar" style={{ width: `${(c.suma / maxCategorieAmount) * 100}%` }} />
+                    <div className="ranking-bar" style={{ width: `${(c.suma / maxCategorieAmount) * 100}%`, background: CAT_COLORS[i % CAT_COLORS.length] }} />
                   </div>
                   <div className="ranking-amount">{fmtRon(c.suma)}</div>
                 </div>
               ))}
             </div>
+            {topCategorii.length > 5 && (
+              <button className="ranking-toggle" onClick={() => setRankingExpanded((v) => !v)}>
+                {rankingExpanded ? "▲ Mai puține" : "▼ Vezi toate"}
+              </button>
+            )}
           </div>
         )}
 
@@ -310,13 +322,14 @@ export default function PnlApp(props: Props) {
             </div>
           </div>
 
-          {txCategoryOptions.length > 0 && (
+          {tab === "cheltuieli" && cheltuieliCategoriiSorted.length > 0 && (
             <div className="cat-filter-bar">
-              {filterCategorie && (
-                <button className="cat-chip active" onClick={() => setFilterCategorie(null)}>× {filterCategorie}</button>
-              )}
-              {!filterCategorie && txCategoryOptions.map((c) => (
-                <button key={c} className="cat-chip" onClick={() => setFilterCategorie(c)}>{c}</button>
+              {cheltuieliCategoriiSorted.map((c) => (
+                <button
+                  key={c}
+                  className={`cat-pill ${filterCategorie === c ? "active" : ""}`}
+                  onClick={() => setFilterCategorie(filterCategorie === c ? null : c)}
+                >{c}</button>
               ))}
             </div>
           )}
@@ -334,28 +347,33 @@ export default function PnlApp(props: Props) {
                 </thead>
                 <tbody>
                   {txList.length === 0 ? (
-                    <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>Nicio tranzacție.</td></tr>
+                    <tr><td colSpan={4}><div className="empty-state">Nicio tranzacție în {props.monthLabel}</div></td></tr>
                   ) : txList.map((t) => (
                     <tr key={`${t.kind}-${t.id}`}>
                       <td>{fmtDate(t.date)}</td>
                       <td>
+                        {tab === "toate" && (
+                          <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: t.kind === "venit" ? "#2A7D4F" : "#C1444A", marginRight: 7, verticalAlign: "middle" }} />
+                        )}
                         {t.categorie}
-                        {t.detalii && <span style={{ color: "var(--muted)", marginLeft: 6, fontSize: 12 }}>{t.detalii}</span>}
+                        {t.detalii && <div className="tx-detalii">{t.detalii}</div>}
                       </td>
-                      <td className={`right ${t.kind === "venit" ? "green" : "red"}`}>
+                      <td className={`right ${t.kind === "venit" ? "suma-green" : "suma-red"}`}>
                         {t.kind === "venit" ? "+" : "−"} {fmt(t.suma)}
                       </td>
-                      <td className="right">
-                        <button className="link-btn" onClick={() => {
-                          if (t.kind === "venit") {
-                            const row = props.venituri.find((v) => v.id === t.id);
-                            if (row) setModal({ kind: "venit", row });
-                          } else {
-                            const row = props.cheltuieli.find((c) => c.id === t.id);
-                            if (row) setModal({ kind: "cheltuiala", row });
-                          }
-                        }}>✎</button>
-                        <button className="link-btn delete-btn" disabled={pending} onClick={() => onDelete(t.kind, t.id, `Ștergi această ${t.kind}?`)}>×</button>
+                      <td>
+                        <div className="actions-cell">
+                          <button className="icon-btn" title="Editează" onClick={() => {
+                            if (t.kind === "venit") {
+                              const row = props.venituri.find((v) => v.id === t.id);
+                              if (row) setModal({ kind: "venit", row });
+                            } else {
+                              const row = props.cheltuieli.find((c) => c.id === t.id);
+                              if (row) setModal({ kind: "cheltuiala", row });
+                            }
+                          }}>✎</button>
+                          <button className="icon-btn danger" title="Șterge" disabled={pending} onClick={() => onDelete(t.kind, t.id, `Ștergi această ${t.kind}?`)}>✕</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
