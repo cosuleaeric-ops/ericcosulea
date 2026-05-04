@@ -158,7 +158,10 @@ export default function PnlApp(props: Props) {
     return { when, stale: diffZ >= 3 };
   }, [props.lastEntryDate]);
 
-  const goMonth = (m: string) => router.push(`/pnlpersonal?m=${m}`);
+  const goMonth = (m: string) => {
+    router.push(`/pnlpersonal?m=${m}`);
+    router.refresh();
+  };
 
   const onDelete = (kind: "venit" | "cheltuiala" | "portofel", id: number, label: string) => {
     if (!confirm(label)) return;

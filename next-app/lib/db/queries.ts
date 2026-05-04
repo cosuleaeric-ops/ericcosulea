@@ -99,3 +99,9 @@ export async function getLatestPortofel() {
 export async function getAllPortofel() {
   return db.select().from(portofel).orderBy(desc(portofel.data), desc(portofel.id));
 }
+
+export async function getPortofelByMonth(yyyymm: string) {
+  const start = `${yyyymm}-01`;
+  const end = `${yyyymm}-31`;
+  return db.select().from(portofel).where(and(gte(portofel.data, start), lte(portofel.data, end))).orderBy(desc(portofel.data), desc(portofel.id));
+}

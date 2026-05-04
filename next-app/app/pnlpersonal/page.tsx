@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  getAllPortofel,
   getCategoriiCheltuiala,
   getCategoriiVenit,
   getCheltuieliByMonth,
@@ -8,10 +7,13 @@ import {
   getDistinctMonthsWithEntries,
   getLastCheltuialaDate,
   getLatestPortofel,
+  getPortofelByMonth,
   getVenituriByMonth,
 } from "@/lib/db/queries";
 import "./style.css";
 import PnlApp from "./PnlApp";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "P&L — Personal",
@@ -42,13 +44,13 @@ export default async function PnlPage({ searchParams }: { searchParams: SP }) {
   const month = sp.m && /^\d{4}-\d{2}$/.test(sp.m) ? sp.m : currentMonth();
   const prevMonth = monthShift(month, -1);
 
-  const [venituriList, cheltList, catVenit, catChelt, latest, allPortofel, prevTotal, monthsList, lastEntryDate] = await Promise.all([
+  const [venituriList, cheltList, catVenit, catChelt, latest, monthPortofel, prevTotal, monthsList, lastEntryDate] = await Promise.all([
     getVenituriByMonth(month),
     getCheltuieliByMonth(month),
     getCategoriiVenit(),
     getCategoriiCheltuiala(),
     getLatestPortofel(),
-    getAllPortofel(),
+    getPortofelByMonth(month),
     getCheltuieliTotalByMonth(prevMonth),
     getDistinctMonthsWithEntries(),
     getLastCheltuialaDate(),
@@ -72,7 +74,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SP }) {
       catVenit={catVenit.map((c) => c.nume)}
       catChelt={catChelt.map((c) => c.nume)}
       latestPortofel={latest ? { id: latest.id, data: latest.data, cash: latest.cash, ing: latest.ing, revolut: latest.revolut, trading212: latest.trading212 } : null}
-      allPortofel={allPortofel.map((p) => ({ id: p.id, data: p.data, cash: p.cash, ing: p.ing, revolut: p.revolut, trading212: p.trading212 }))}
+      allPortofel={monthPortofel.map((p) => ({ id: p.id, data: p.data, cash: p.cash, ing: p.ing, revolut: p.revolut, trading212: p.trading212 }))}
       prevMonthTotalCheltuieli={prevTotal}
       lastEntryDate={lastEntryDate}
     />
