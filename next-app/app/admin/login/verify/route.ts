@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getIronSession } from "iron-session";
 import { consumeMagicToken } from "@/lib/auth";
-import { getSession } from "@/lib/session";
+import { sessionOptions, type Session } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -18,8 +19,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin/login?error=denied", request.url));
   }
 
-  const session = await getSession();
+  const response = NextResponse.redirect(new URL("/admin", request.url));
+  const session = await getIronSession<Session>(request, response, sessionOptions);
   session.loggedInAt = Date.now();
   await session.save();
-  return NextResponse.redirect(new URL("/admin", request.url));
+  return response;
 }

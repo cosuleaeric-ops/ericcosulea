@@ -5,7 +5,7 @@ export type Session = {
   loggedInAt?: number;
 };
 
-const sessionOptions: SessionOptions = {
+export const sessionOptions: SessionOptions = {
   password: process.env.SESSION_SECRET ?? "",
   cookieName: "ericcosulea_admin",
   cookieOptions: {
