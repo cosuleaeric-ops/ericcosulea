@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { uploadInspoAction, deleteInspoAction } from "./actions";
 
 type Image = {
   id: number;
@@ -9,6 +10,17 @@ type Image = {
 
 export default function InspoGallery({ images, baseUrl }: { images: Image[]; baseUrl: string }) {
   const [activeSrc, setActiveSrc] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingUpload, startUpload] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/auth-status")
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(Boolean(d.loggedIn)))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   useEffect(() => {
     if (activeSrc) document.body.classList.add("lightbox-open");
@@ -25,8 +37,44 @@ export default function InspoGallery({ images, baseUrl }: { images: Image[]; bas
     return () => document.removeEventListener("keydown", onKey);
   }, [activeSrc]);
 
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    const fd = new FormData();
+    fd.set("image", file);
+    startUpload(async () => {
+      const result = await uploadInspoAction(fd);
+      if (result?.error) setUploadError(result.error);
+      else if (fileInputRef.current) fileInputRef.current.value = "";
+    });
+  };
+
+  const onDelete = (id: number) => {
+    if (!confirm("Ștergi imaginea?")) return;
+    const fd = new FormData();
+    fd.set("id", String(id));
+    startUpload(() => deleteInspoAction(fd));
+  };
+
   return (
     <>
+      {isAdmin && (
+        <div className="inspo-upload">
+          <label className="inspo-upload-label">
+            <span>{pendingUpload ? "se încarcă..." : "adaugă imagine"}</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              name="image"
+              accept="image/*"
+              onChange={onFileChange}
+              disabled={pendingUpload}
+            />
+          </label>
+          {uploadError && <span className="login-error">{uploadError}</span>}
+        </div>
+      )}
       <div className="inspo-grid">
         {images.map((img) => {
           const src = `${baseUrl}/inspo/${img.filename}`;
@@ -35,6 +83,13 @@ export default function InspoGallery({ images, baseUrl }: { images: Image[]; bas
               <button className="inspo-card-open" type="button" onClick={() => setActiveSrc(src)}>
                 <img src={src} alt="" />
               </button>
+              {isAdmin && (
+                <div className="inspo-card-delete">
+                  <button type="button" aria-label="șterge imaginea" onClick={() => onDelete(img.id)}>
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
