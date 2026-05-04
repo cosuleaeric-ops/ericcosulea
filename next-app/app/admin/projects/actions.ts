@@ -51,22 +51,27 @@ export async function saveProjectAction(formData: FormData): Promise<{ error?: s
   }
   if (!logo) return { error: "Logo-ul e obligatoriu." };
 
-  if (id != null) {
-    await db.update(projects).set({
-      name,
-      description: description || null,
-      url,
-      logo,
-      sort,
-    }).where(eq(projects.id, id));
-  } else {
-    await db.insert(projects).values({
-      name,
-      description: description || null,
-      url,
-      logo,
-      sort,
-    });
+  try {
+    if (id != null) {
+      await db.update(projects).set({
+        name,
+        description: description || null,
+        url,
+        logo,
+        sort,
+      }).where(eq(projects.id, id));
+    } else {
+      await db.insert(projects).values({
+        name,
+        description: description || null,
+        url,
+        logo,
+        sort,
+      });
+    }
+  } catch (err) {
+    console.error("saveProjectAction DB error", err);
+    return { error: err instanceof Error ? err.message : "Eroare la salvare." };
   }
 
   revalidatePath("/");
