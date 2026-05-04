@@ -64,6 +64,25 @@ export async function getCheltuieliByMonth(yyyymm: string) {
   return db.select().from(cheltuieli).where(and(gte(cheltuieli.data, start), lte(cheltuieli.data, end))).orderBy(asc(cheltuieli.data), asc(cheltuieli.id));
 }
 
+export async function getCheltuieliTotalByMonth(yyyymm: string): Promise<number> {
+  const rows = await getCheltuieliByMonth(yyyymm);
+  return rows.reduce((s, c) => s + c.suma, 0);
+}
+
+export async function getDistinctMonthsWithEntries(): Promise<string[]> {
+  const v = await db.select({ data: venituri.data }).from(venituri);
+  const c = await db.select({ data: cheltuieli.data }).from(cheltuieli);
+  const set = new Set<string>();
+  for (const r of v) set.add(r.data.slice(0, 7));
+  for (const r of c) set.add(r.data.slice(0, 7));
+  return Array.from(set).sort().reverse();
+}
+
+export async function getLastCheltuialaDate(): Promise<string | null> {
+  const rows = await db.select({ data: cheltuieli.data }).from(cheltuieli).orderBy(desc(cheltuieli.data), desc(cheltuieli.id)).limit(1);
+  return rows[0]?.data ?? null;
+}
+
 export async function getCategoriiVenit() {
   return db.select().from(venitCategorii).orderBy(asc(venitCategorii.nume));
 }

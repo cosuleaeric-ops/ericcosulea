@@ -102,3 +102,42 @@ export async function addCategorieCheltuialaAction(_prev: ActionState, fd: FormD
   revalidatePath("/pnlpersonal");
   return undefined;
 }
+
+export async function editVenitAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const err = await ensureAuth(); if (err) return { error: err };
+  const id = Number(fd.get("id"));
+  const data = String(fd.get("data") ?? "").trim();
+  const descriere = String(fd.get("descriere") ?? "").trim();
+  const suma = parseAmount(String(fd.get("suma") ?? ""));
+  if (!id || !data || !descriere || suma == null) return { error: "Date / descriere / sumă obligatorii." };
+  await db.update(venituri).set({ data, descriere, suma }).where(eq(venituri.id, id));
+  revalidatePath("/pnlpersonal");
+  return undefined;
+}
+
+export async function editCheltuialaAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const err = await ensureAuth(); if (err) return { error: err };
+  const id = Number(fd.get("id"));
+  const data = String(fd.get("data") ?? "").trim();
+  const categorie = String(fd.get("categorie") ?? "").trim();
+  const detalii = String(fd.get("detalii") ?? "").trim();
+  const suma = parseAmount(String(fd.get("suma") ?? ""));
+  if (!id || !data || !categorie || suma == null) return { error: "Date / categorie / sumă obligatorii." };
+  await db.update(cheltuieli).set({ data, categorie, detalii, suma }).where(eq(cheltuieli.id, id));
+  revalidatePath("/pnlpersonal");
+  return undefined;
+}
+
+export async function editPortofelAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const err = await ensureAuth(); if (err) return { error: err };
+  const id = Number(fd.get("id"));
+  const data = String(fd.get("data") ?? "").trim();
+  const cash = parseAmount(String(fd.get("cash") ?? "0")) ?? 0;
+  const ing = parseAmount(String(fd.get("ing") ?? "0")) ?? 0;
+  const revolut = parseAmount(String(fd.get("revolut") ?? "0")) ?? 0;
+  const trading212 = parseAmount(String(fd.get("trading212") ?? "0")) ?? 0;
+  if (!id || !data) return { error: "Id / dată obligatorii." };
+  await db.update(portofel).set({ data, cash, ing, revolut, trading212 }).where(eq(portofel.id, id));
+  revalidatePath("/pnlpersonal");
+  return undefined;
+}
