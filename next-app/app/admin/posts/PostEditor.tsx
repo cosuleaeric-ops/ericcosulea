@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -24,11 +24,12 @@ const DEFAULT_PUBLISHED_AT = () => {
 export default function PostEditor({ initial, saveAction }: Props) {
   const router = useRouter();
   const editorRef = useRef<HTMLDivElement>(null);
+  const [contentHtml, setContentHtml] = useState(initial?.contentHtml ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (editorRef.current && initial?.contentHtml !== undefined) {
+    if (editorRef.current && initial?.contentHtml) {
       editorRef.current.innerHTML = initial.contentHtml;
     }
   }, [initial?.contentHtml]);
@@ -36,38 +37,36 @@ export default function PostEditor({ initial, saveAction }: Props) {
   const exec = (cmd: string, value?: string) => {
     if (editorRef.current) editorRef.current.focus();
     document.execCommand(cmd, false, value);
+    if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
   };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    fd.set("content_html", editorRef.current?.innerHTML.trim() ?? "");
-    if (initial?.id != null) fd.set("id", String(initial.id));
+  const onEditorInput = () => {
+    if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
+  };
+
+  const handleAction = async (formData: FormData) => {
     setError(null);
-    startTransition(async () => {
-      const result = await saveAction(fd);
-      if (result?.error) {
-        setError(result.error);
-      } else if (result?.redirectTo) {
-        router.push(result.redirectTo);
-      }
-    });
+    setPending(true);
+    try {
+      const result = await saveAction(formData);
+      if (result?.error) setError(result.error);
+      else if (result?.redirectTo) router.push(result.redirectTo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eroare necunoscută.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
-    <form className="post-editor" onSubmit={onSubmit}>
+    <form className="post-editor" action={handleAction}>
+      {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
+      <input type="hidden" name="content_html" value={contentHtml} />
+
       {error && <p className="login-error">{error}</p>}
 
       <label className="form-label" htmlFor="title">Titlu</label>
-      <input
-        className="form-input"
-        type="text"
-        id="title"
-        name="title"
-        defaultValue={initial?.title ?? ""}
-        required
-      />
+      <input className="form-input" type="text" id="title" name="title" defaultValue={initial?.title ?? ""} required />
 
       <div className="form-row">
         <div>
@@ -97,13 +96,7 @@ export default function PostEditor({ initial, saveAction }: Props) {
       </div>
 
       <label className="form-label" htmlFor="excerpt">Excerpt (opțional)</label>
-      <textarea
-        className="form-input"
-        id="excerpt"
-        name="excerpt"
-        rows={2}
-        defaultValue={initial?.excerpt ?? ""}
-      />
+      <textarea className="form-input" id="excerpt" name="excerpt" rows={2} defaultValue={initial?.excerpt ?? ""} />
 
       <label className="form-label">Conținut</label>
       <div className="editor-toolbar">
@@ -128,6 +121,7 @@ export default function PostEditor({ initial, saveAction }: Props) {
         className="editor"
         contentEditable
         suppressContentEditableWarning
+        onInput={onEditorInput}
       />
 
       <div className="form-actions">

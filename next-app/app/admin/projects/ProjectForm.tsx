@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -18,25 +18,27 @@ type Props = {
 export default function ProjectForm({ initial, saveAction }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    if (initial?.id != null) {
-      fd.set("id", String(initial.id));
-      fd.set("existing_logo", initial.logo);
-    }
+  const handleAction = async (formData: FormData) => {
     setError(null);
-    startTransition(async () => {
-      const result = await saveAction(fd);
+    setPending(true);
+    try {
+      const result = await saveAction(formData);
       if (result?.error) setError(result.error);
       else if (result?.redirectTo) router.push(result.redirectTo);
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eroare necunoscută.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
-    <form className="post-editor" onSubmit={onSubmit}>
+    <form className="post-editor" action={handleAction}>
+      {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
+      {initial?.logo && <input type="hidden" name="existing_logo" value={initial.logo} />}
+
       {error && <p className="login-error">{error}</p>}
 
       <label className="form-label" htmlFor="name">Nume</label>
