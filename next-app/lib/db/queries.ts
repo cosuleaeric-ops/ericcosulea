@@ -46,3 +46,8 @@ export async function getPostById(id: number) {
   const rows = await db.select().from(posts).where(eq(posts.id, id)).limit(1);
   return rows[0] ?? null;
 }
+
+export async function getProjectById(id: number) {
+  const rows = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  return rows[0] ?? null;
+}
