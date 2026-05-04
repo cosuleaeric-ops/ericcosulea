@@ -131,6 +131,11 @@ async function main() {
     })));
   }
 
+  for (const table of ["posts", "images", "projects", "pages", "site_texts"]) {
+    await sql.query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 0))`);
+  }
+  console.log("Sequences reset to MAX(id) for all migrated tables.");
+
   const [{ count: postCount }] = (await sql`SELECT COUNT(*)::int AS count FROM posts`) as Array<{ count: number }>;
   const [{ count: imageCount }] = (await sql`SELECT COUNT(*)::int AS count FROM images`) as Array<{ count: number }>;
   const [{ count: projectCount }] = (await sql`SELECT COUNT(*)::int AS count FROM projects`) as Array<{ count: number }>;
