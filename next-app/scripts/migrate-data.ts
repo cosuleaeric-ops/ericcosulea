@@ -34,6 +34,27 @@ type SqlitePage = {
   updated_at: string;
 };
 
+type SqliteOrder = {
+  id: number;
+  platform: string;
+  order_id: string;
+  restaurant_key: string;
+  restaurant_name: string;
+  order_date: string;
+  order_time: string;
+  status: string;
+  order_amount: number;
+  rating: number | null;
+  rating_comment: string;
+  waiting_tax: number;
+  refund_amount: number;
+  cancel_reason: string;
+  cancel_responsible: string;
+  has_complaint: number;
+  complaint_reason: string;
+  imported_at: string;
+};
+
 type SqliteSiteText = {
   id: number;
   text_key: string;
@@ -61,6 +82,7 @@ async function main() {
 
   const sqlitePath = resolve(__dirname, "../../data/blog.sqlite");
   const projectsPath = resolve(__dirname, "../../data/projects.json");
+  const reviewsdoguPath = resolve(__dirname, "../../reviewsdogu/data/reviewsdogu.sqlite");
 
   const sqlite = new Database(sqlitePath, { readonly: true });
   const sqlitePosts = sqlite.prepare("SELECT * FROM posts").all() as SqlitePost[];
@@ -69,15 +91,20 @@ async function main() {
   const sqliteSiteTexts = sqlite.prepare("SELECT * FROM site_texts").all() as SqliteSiteText[];
   sqlite.close();
 
+  const reviewsDb = new Database(reviewsdoguPath, { readonly: true });
+  const sqliteOrders = reviewsDb.prepare("SELECT * FROM orders").all() as SqliteOrder[];
+  reviewsDb.close();
+
   const projectsRaw = JSON.parse(readFileSync(projectsPath, "utf-8")) as ProjectJson[];
 
-  console.log(`Found ${sqlitePosts.length} posts, ${sqliteImages.length} images, ${projectsRaw.length} projects, ${sqlitePages.length} pages, ${sqliteSiteTexts.length} site_texts.`);
+  console.log(`Found ${sqlitePosts.length} posts, ${sqliteImages.length} images, ${projectsRaw.length} projects, ${sqlitePages.length} pages, ${sqliteSiteTexts.length} site_texts, ${sqliteOrders.length} orders.`);
 
   await db.delete(schema.posts);
   await db.delete(schema.images);
   await db.delete(schema.projects);
   await db.delete(schema.pages);
   await db.delete(schema.siteTexts);
+  await db.delete(schema.orders);
 
   if (sqlitePosts.length) {
     await db.insert(schema.posts).values(sqlitePosts.map((p) => ({
@@ -131,7 +158,34 @@ async function main() {
     })));
   }
 
-  for (const table of ["posts", "images", "projects", "pages", "site_texts"]) {
+  if (sqliteOrders.length) {
+    const batchSize = 200;
+    for (let i = 0; i < sqliteOrders.length; i += batchSize) {
+      const batch = sqliteOrders.slice(i, i + batchSize);
+      await db.insert(schema.orders).values(batch.map((o) => ({
+        id: o.id,
+        platform: o.platform,
+        orderId: o.order_id,
+        restaurantKey: o.restaurant_key,
+        restaurantName: o.restaurant_name,
+        orderDate: o.order_date,
+        orderTime: o.order_time,
+        status: o.status,
+        orderAmount: o.order_amount,
+        rating: o.rating,
+        ratingComment: o.rating_comment,
+        waitingTax: o.waiting_tax,
+        refundAmount: o.refund_amount,
+        cancelReason: o.cancel_reason,
+        cancelResponsible: o.cancel_responsible,
+        hasComplaint: o.has_complaint === 1,
+        complaintReason: o.complaint_reason,
+        importedAt: sqliteDateToUtc(o.imported_at),
+      })));
+    }
+  }
+
+  for (const table of ["posts", "images", "projects", "pages", "site_texts", "orders"]) {
     await sql.query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 0))`);
   }
   console.log("Sequences reset to MAX(id) for all migrated tables.");
@@ -141,8 +195,9 @@ async function main() {
   const [{ count: projectCount }] = (await sql`SELECT COUNT(*)::int AS count FROM projects`) as Array<{ count: number }>;
   const [{ count: pageCount }] = (await sql`SELECT COUNT(*)::int AS count FROM pages`) as Array<{ count: number }>;
   const [{ count: siteTextCount }] = (await sql`SELECT COUNT(*)::int AS count FROM site_texts`) as Array<{ count: number }>;
+  const [{ count: orderCount }] = (await sql`SELECT COUNT(*)::int AS count FROM orders`) as Array<{ count: number }>;
 
-  console.log(`Migrated to Neon: ${postCount} posts, ${imageCount} images, ${projectCount} projects, ${pageCount} pages, ${siteTextCount} site_texts.`);
+  console.log(`Migrated to Neon: ${postCount} posts, ${imageCount} images, ${projectCount} projects, ${pageCount} pages, ${siteTextCount} site_texts, ${orderCount} orders.`);
 }
 
 main().catch((err) => {
