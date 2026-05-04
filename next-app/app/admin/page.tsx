@@ -12,8 +12,10 @@ export default function AdminDashboard() {
     <main className="page page-narrow">
       <section className="page-section">
         <h1 className="page-title">admin</h1>
-        <p className="page-lead">dashboard în construcție — vor veni curând: posts, projects, inspo.</p>
         <ul className="tool-list">
+          <li className="tool-item"><Link href="/admin/posts">→ posts</Link></li>
+          <li className="tool-item"><Link href="/admin/inspo">→ inspo</Link> <span className="post-item-date">(curând)</span></li>
+          <li className="tool-item"><Link href="/admin/projects">→ projects</Link> <span className="post-item-date">(curând)</span></li>
           <li className="tool-item"><Link href="/">→ înapoi pe site</Link></li>
           <li className="tool-item">
             <form action={logoutAction} style={{ display: "inline" }}>

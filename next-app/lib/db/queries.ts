@@ -32,3 +32,17 @@ export async function getPageBySlug(slug: string) {
   const rows = await db.select().from(pages).where(eq(pages.slug, slug)).limit(1);
   return rows[0] ?? null;
 }
+
+export async function getAllPostsForAdmin() {
+  return db.select({
+    id: posts.id,
+    slug: posts.slug,
+    title: posts.title,
+    publishedAt: posts.publishedAt,
+  }).from(posts).orderBy(desc(posts.publishedAt));
+}
+
+export async function getPostById(id: number) {
+  const rows = await db.select().from(posts).where(eq(posts.id, id)).limit(1);
+  return rows[0] ?? null;
+}

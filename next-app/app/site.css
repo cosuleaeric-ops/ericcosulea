@@ -1210,3 +1210,85 @@ body.lightbox-open {
   font-size: 16px;
   margin: 0;
 }
+
+.admin-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+.admin-row { gap: 14px; }
+.admin-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.admin-delete-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(108, 82, 51, 0.08);
+  color: #b3271c;
+  font-family: var(--font-crimson-pro), serif;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.admin-delete-btn:hover { background: rgba(179, 39, 28, 0.14); }
+
+.post-editor { display: flex; flex-direction: column; gap: 8px; max-width: 760px; margin-top: 18px; }
+.form-label { margin-top: 12px; font-weight: 600; }
+.form-input {
+  font-family: var(--font-crimson-pro), serif;
+  font-size: 17px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(108, 82, 51, 0.18);
+  background: rgba(255, 248, 239, 0.8);
+  color: var(--text);
+  width: 100%;
+}
+.form-input:focus { outline: none; border-color: rgba(108, 82, 51, 0.4); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.editor-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 8px;
+  background: #fffbf3;
+  border: 1px solid rgba(108, 82, 51, 0.18);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+}
+.editor-toolbar button, .editor-toolbar select {
+  font-family: var(--font-crimson-pro), serif;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(108, 82, 51, 0.18);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+.editor-toolbar button:hover { background: #faf3e3; }
+
+.editor {
+  min-height: 320px;
+  padding: 18px;
+  border: 1px solid rgba(108, 82, 51, 0.18);
+  border-radius: 0 0 12px 12px;
+  background: #fffefb;
+  font-size: 17px;
+  line-height: 1.6;
+  outline: none;
+}
+.editor:focus { border-color: rgba(108, 82, 51, 0.4); }
+
+.form-actions { margin-top: 14px; }
+
+@media (max-width: 720px) {
+  .form-row { grid-template-columns: 1fr; }
+}
