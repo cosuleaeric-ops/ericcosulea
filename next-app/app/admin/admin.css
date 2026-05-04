@@ -1,0 +1,54 @@
+.admin-wrap { max-width: 820px; margin: 0 auto; padding: 24px; }
+.admin-top h1 { margin: 0; }
+.admin-intro { margin-top: 18px; color: #6d6a64; font-size: 18px; }
+
+.admin-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.admin-quick-card {
+  display: block;
+  padding: 20px;
+  background: #fffaf2;
+  border: 1px solid #efe6d6;
+  border-radius: 18px;
+  text-decoration: none;
+  color: #1c1c1c;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-quick-card:hover {
+  transform: translateY(-2px);
+  border-color: #dcc9aa;
+  box-shadow: 0 12px 28px rgba(90, 67, 39, 0.08);
+}
+
+.admin-quick-card h2 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 0.95;
+  text-transform: lowercase;
+}
+
+.admin-quick-card p {
+  margin: 10px 0 0;
+  color: #6d6a64;
+  font-size: 16px;
+}
+
+.admin-section-title {
+  margin: 36px 0 0;
+  font-size: 28px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+@media (max-width: 720px) {
+  .admin-wrap { margin: 28px auto; padding: 18px; }
+  .admin-quick-grid { grid-template-columns: 1fr; }
+  .admin-quick-card h2 { font-size: 28px; }
+}
