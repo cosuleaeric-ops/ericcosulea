@@ -10,15 +10,18 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate-data": "tsx scripts/migrate-data.ts",
-    "blob:upload": "tsx scripts/upload-blob.ts"
+    "blob:upload": "tsx scripts/upload-blob.ts",
+    "admin:secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.3.3",
     "drizzle-orm": "^0.45.2",
+    "iron-session": "^8.0.4",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

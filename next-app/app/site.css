@@ -1181,3 +1181,32 @@ body.lightbox-open {
   .journal-form { padding: 0 16px 16px; }
   .journal-actions { flex-direction: column; }
 }
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  margin-top: 24px;
+}
+
+.login-input {
+  font-family: var(--font-crimson-pro), serif;
+  font-size: 18px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(108, 82, 51, 0.18);
+  background: rgba(255, 248, 239, 0.8);
+  color: var(--text);
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: rgba(108, 82, 51, 0.4);
+}
+
+.login-error {
+  color: #b3271c;
+  font-size: 16px;
+  margin: 0;
+}
