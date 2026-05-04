@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+
+type ActionState = { error?: string } | undefined;
 
 type Props = {
   initial?: {
@@ -12,34 +14,27 @@ type Props = {
     logo: string;
     sort: number;
   };
-  saveAction: (formData: FormData) => Promise<{ error?: string; redirectTo?: string }>;
+  saveAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 };
 
-export default function ProjectForm({ initial, saveAction }: Props) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn" disabled={pending}>
+      {pending ? "..." : "salvează"}
+    </button>
+  );
+}
 
-  const handleAction = async (formData: FormData) => {
-    setError(null);
-    setPending(true);
-    try {
-      const result = await saveAction(formData);
-      if (result?.error) setError(result.error);
-      else if (result?.redirectTo) router.push(result.redirectTo);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Eroare necunoscută.");
-    } finally {
-      setPending(false);
-    }
-  };
+export default function ProjectForm({ initial, saveAction }: Props) {
+  const [state, formAction] = useActionState(saveAction, undefined);
 
   return (
-    <form className="post-editor" action={handleAction}>
+    <form className="post-editor" action={formAction}>
       {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
       {initial?.logo && <input type="hidden" name="existing_logo" value={initial.logo} />}
 
-      {error && <p className="login-error">{error}</p>}
+      {state?.error && <p className="login-error">{state.error}</p>}
 
       <label className="form-label" htmlFor="name">Nume</label>
       <input className="form-input" type="text" id="name" name="name" defaultValue={initial?.name ?? ""} required />
@@ -64,9 +59,7 @@ export default function ProjectForm({ initial, saveAction }: Props) {
       {!initial?.logo && <p className="post-item-date">Acceptă jpg, png, webp, gif, svg.</p>}
 
       <div className="form-actions">
-        <button type="submit" className="btn" disabled={pending}>
-          {pending ? "..." : "salvează"}
-        </button>
+        <SubmitButton />
       </div>
     </form>
   );

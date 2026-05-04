@@ -4,9 +4,12 @@ import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { isAuthenticated } from "@/lib/session";
+
+type ActionState = { error?: string } | undefined;
 
 const ALLOWED_LOGO_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif", "svg"]);
 
@@ -26,8 +29,8 @@ async function uploadLogo(file: File): Promise<string> {
   return blob.url;
 }
 
-export async function saveProjectAction(formData: FormData): Promise<{ error?: string; redirectTo?: string }> {
-  if (!(await isAuthenticated())) return { error: "unauth" };
+export async function saveProjectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
 
   const idRaw = formData.get("id");
   const id = idRaw ? Number(idRaw) : undefined;
@@ -76,7 +79,7 @@ export async function saveProjectAction(formData: FormData): Promise<{ error?: s
 
   revalidatePath("/");
   revalidatePath("/admin/projects");
-  return { redirectTo: "/admin/projects" };
+  redirect("/admin/projects");
 }
 
 export async function deleteProjectAction(formData: FormData) {

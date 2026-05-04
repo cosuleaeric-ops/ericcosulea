@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
+
+type ActionState = { error?: string } | undefined;
 
 type Props = {
   initial?: {
@@ -12,7 +14,7 @@ type Props = {
     excerpt: string;
     publishedAt: string;
   };
-  saveAction: (formData: FormData) => Promise<{ error?: string; redirectTo?: string }>;
+  saveAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 };
 
 const DEFAULT_PUBLISHED_AT = () => {
@@ -21,12 +23,19 @@ const DEFAULT_PUBLISHED_AT = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn" disabled={pending}>
+      {pending ? "..." : "salvează"}
+    </button>
+  );
+}
+
 export default function PostEditor({ initial, saveAction }: Props) {
-  const router = useRouter();
+  const [state, formAction] = useActionState(saveAction, undefined);
   const editorRef = useRef<HTMLDivElement>(null);
   const [contentHtml, setContentHtml] = useState(initial?.contentHtml ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (editorRef.current && initial?.contentHtml) {
@@ -44,26 +53,12 @@ export default function PostEditor({ initial, saveAction }: Props) {
     if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
   };
 
-  const handleAction = async (formData: FormData) => {
-    setError(null);
-    setPending(true);
-    try {
-      const result = await saveAction(formData);
-      if (result?.error) setError(result.error);
-      else if (result?.redirectTo) router.push(result.redirectTo);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Eroare necunoscută.");
-    } finally {
-      setPending(false);
-    }
-  };
-
   return (
-    <form className="post-editor" action={handleAction}>
+    <form className="post-editor" action={formAction}>
       {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="content_html" value={contentHtml} />
 
-      {error && <p className="login-error">{error}</p>}
+      {state?.error && <p className="login-error">{state.error}</p>}
 
       <label className="form-label" htmlFor="title">Titlu</label>
       <input className="form-input" type="text" id="title" name="title" defaultValue={initial?.title ?? ""} required />
@@ -125,9 +120,7 @@ export default function PostEditor({ initial, saveAction }: Props) {
       />
 
       <div className="form-actions">
-        <button type="submit" className="btn" disabled={pending}>
-          {pending ? "..." : "salvează"}
-        </button>
+        <SubmitButton />
       </div>
     </form>
   );

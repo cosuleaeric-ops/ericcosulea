@@ -2,9 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { isAuthenticated } from "@/lib/session";
+
+type ActionState = { error?: string } | undefined;
 
 function parseInput(formData: FormData) {
   const idRaw = formData.get("id");
@@ -24,7 +27,7 @@ function parseInput(formData: FormData) {
   };
 }
 
-export async function savePostAction(formData: FormData): Promise<{ error?: string; redirectTo?: string }> {
+export async function savePostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
 
   const data = parseInput(formData);
@@ -60,15 +63,10 @@ export async function savePostAction(formData: FormData): Promise<{ error?: stri
     return { error: `Eroare la salvare: ${message}` };
   }
 
-  try {
-    revalidatePath("/blog");
-    revalidatePath(`/${data.slug}`);
-    revalidatePath("/admin/posts");
-  } catch (err) {
-    console.error("revalidatePath failed", err);
-  }
-
-  return { redirectTo: "/admin/posts" };
+  revalidatePath("/blog");
+  revalidatePath(`/${data.slug}`);
+  revalidatePath("/admin/posts");
+  redirect("/admin/posts");
 }
 
 export async function deletePostAction(formData: FormData) {
