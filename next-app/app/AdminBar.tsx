@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
-const HIDDEN_ON = ["/pnlpersonal"];
+const HIDDEN_ON = ["/pnlpersonal", "/elite-deux"];
 
 export default function AdminBar() {
   const pathname = usePathname();

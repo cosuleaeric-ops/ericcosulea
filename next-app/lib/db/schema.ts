@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -100,6 +100,12 @@ export const portofel = pgTable("portofel", {
   revolut: real("revolut").notNull().default(0),
   trading212: real("trading212").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const eliteDeuxState = pgTable("elite_deux_state", {
+  id: integer("id").primaryKey(),
+  state: jsonb("state").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const verificationTokens = pgTable("verification_tokens", {
