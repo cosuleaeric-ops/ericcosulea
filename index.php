@@ -292,7 +292,6 @@ if ($uri === '/blog') {
     <div class="admin-bar-inner">
       <a href="/admin/">dashboard</a>
       <a href="/">website</a>
-      <button type="button" class="admin-bar-button" data-site-text-toggle>edit text</button>
     </div>
   </div>
 <?php endif; ?>
@@ -519,67 +518,6 @@ if ($uri === '/blog') {
         });
       });
 
-      (() => {
-        const toggle = document.querySelector('[data-site-text-toggle]');
-        const editableNodes = Array.from(document.querySelectorAll('[data-site-text]'));
-        if (!toggle || editableNodes.length === 0) return;
-
-        const csrfToken = <?php echo json_encode(csrf_token()); ?>;
-        let editMode = false;
-        let originalValues = new Map();
-
-        const setEditMode = (enabled) => {
-          editMode = enabled;
-          document.body.classList.toggle('site-text-editing', enabled);
-          toggle.textContent = enabled ? 'salveaza text' : 'edit text';
-          editableNodes.forEach((node) => {
-            if (enabled) {
-              originalValues.set(node.dataset.siteText, node.textContent.trim());
-              node.setAttribute('contenteditable', 'true');
-            } else {
-              node.removeAttribute('contenteditable');
-            }
-          });
-        };
-
-        toggle.addEventListener('click', async () => {
-          if (!editMode) {
-            setEditMode(true);
-            return;
-          }
-
-          const texts = {};
-          editableNodes.forEach((node) => {
-            texts[node.dataset.siteText] = node.textContent.trim();
-          });
-
-          const response = await fetch('/admin/site-texts.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ csrf_token: csrfToken, texts }),
-          });
-
-          if (!response.ok) {
-            alert('Nu am putut salva textele.');
-            return;
-          }
-
-          setEditMode(false);
-        });
-
-        document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape' && editMode) {
-            editableNodes.forEach((node) => {
-              const original = originalValues.get(node.dataset.siteText);
-              if (typeof original === 'string') {
-                node.textContent = original;
-              }
-            });
-            setEditMode(false);
-          }
-        });
-      })();
     </script>
   <?php endif; ?>
 <?php endif; ?>
