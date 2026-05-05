@@ -1,19 +1,21 @@
 {
+  "id": "/elite-deux",
   "name": "EliteDeux",
   "short_name": "EliteDeux",
-  "start_url": "/elite-deux/",
+  "start_url": "/elite-deux",
+  "scope": "/elite-deux",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "/elite-deux/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "/elite-deux/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
