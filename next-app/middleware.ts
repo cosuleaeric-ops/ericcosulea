@@ -3,8 +3,19 @@ import { getIronSession } from "iron-session";
 
 type Session = { loggedInAt?: number };
 
+const PUBLIC_ELITE_DEUX_FILES = new Set([
+  "/elite-deux/manifest.json",
+  "/elite-deux/icon-192.png",
+  "/elite-deux/icon-512.png",
+  "/elite-deux/favicon.svg",
+  "/elite-deux/sw.js",
+  "/elite-deux/styles.css",
+  "/elite-deux/app.js",
+]);
+
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/admin/login")) return NextResponse.next();
+  if (PUBLIC_ELITE_DEUX_FILES.has(request.nextUrl.pathname)) return NextResponse.next();
 
   const password = process.env.SESSION_SECRET;
   if (!password) {
