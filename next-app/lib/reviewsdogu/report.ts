@@ -1,5 +1,5 @@
 import { and, between, eq, ne } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import type { CsvRow } from "./parsers";
 import { RESTAURANT_KEYS, LABELS, fmtRon, fmtRoDate, type RestaurantKey } from "./utils";
@@ -49,7 +49,7 @@ export type GlovoReport = {
 };
 
 export async function buildBoltReport(start: string, end: string): Promise<BoltReport> {
-  const rows = await db.select().from(orders).where(
+  const rows = await getDb().select().from(orders).where(
     and(eq(orders.platform, "bolt"), ne(orders.status, "cancelled"), between(orders.orderDate, start, end)),
   );
 
@@ -82,7 +82,7 @@ export async function buildBoltReport(start: string, end: string): Promise<BoltR
 }
 
 export async function buildGlovoReport(start: string, end: string): Promise<GlovoReport> {
-  const allRows = await db.select().from(orders).where(
+  const allRows = await getDb().select().from(orders).where(
     and(eq(orders.platform, "glovo"), between(orders.orderDate, start, end)),
   );
 

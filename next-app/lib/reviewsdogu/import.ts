@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import type { CsvRow } from "./parsers";
 
@@ -47,7 +47,7 @@ export async function saveBoltRows(rows: CsvRow[]): Promise<ImportResult> {
     .filter((v): v is NonNullable<typeof v> => v !== null);
 
   if (values.length === 0) return { saved: 0, skipped: 0 };
-  const result = await db.insert(orders).values(values).onConflictDoNothing({ target: [orders.platform, orders.orderId] }).returning({ id: orders.id });
+  const result = await getDb().insert(orders).values(values).onConflictDoNothing({ target: [orders.platform, orders.orderId] }).returning({ id: orders.id });
   return { saved: result.length, skipped: values.length - result.length };
 }
 
@@ -84,6 +84,6 @@ export async function saveGlovoRows(rows: CsvRow[]): Promise<ImportResult> {
     .filter((v): v is NonNullable<typeof v> => v !== null);
 
   if (values.length === 0) return { saved: 0, skipped: 0 };
-  const result = await db.insert(orders).values(values).onConflictDoNothing({ target: [orders.platform, orders.orderId] }).returning({ id: orders.id });
+  const result = await getDb().insert(orders).values(values).onConflictDoNothing({ target: [orders.platform, orders.orderId] }).returning({ id: orders.id });
   return { saved: result.length, skipped: values.length - result.length };
 }
