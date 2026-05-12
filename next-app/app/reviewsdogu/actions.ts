@@ -3,17 +3,37 @@
 import { revalidatePath } from "next/cache";
 import { isAuthenticated } from "@/lib/session";
 import { parseCsv, parseXlsx } from "@/lib/reviewsdogu/parsers";
-import { saveBoltRows, saveGlovoRows } from "@/lib/reviewsdogu/import";
+import { saveGlovoRows } from "@/lib/reviewsdogu/import";
+import { buildBoltReportFromRows, type BoltReport } from "@/lib/reviewsdogu/report";
 
-type ActionState = { error?: string; success?: string } | undefined;
+export type BoltReportState = { report?: BoltReport; error?: string } | undefined;
 
-export async function importAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function boltReportAction(_prev: BoltReportState, formData: FormData): Promise<BoltReportState> {
   if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
 
-  const platform = String(formData.get("platform") ?? "");
-  if (platform !== "bolt" && platform !== "glovo") {
-    return { error: "Selectează o platformă validă." };
+  const files = formData.getAll("bolt_csv").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) return { error: "Nu a fost selectat niciun fișier." };
+
+  try {
+    const allRows = [];
+    for (const file of files) {
+      if (!file.name.toLowerCase().endsWith(".csv")) return { error: `Format nesuportat: ${file.name}. Bolt exportă CSV.` };
+      const rows = parseCsv(await file.text());
+      if (rows.length === 0) continue;
+      if (!("Provider Name" in rows[0])) return { error: `Format Bolt invalid în "${file.name}" (lipsește "Provider Name").` };
+      allRows.push(...rows);
+    }
+    if (allRows.length === 0) return { error: "Fișierele selectate nu conțin date." };
+    return { report: buildBoltReportFromRows(allRows) };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Eroare la procesare." };
   }
+}
+
+type GlovoImportState = { error?: string; success?: string } | undefined;
+
+export async function glovoImportAction(_prev: GlovoImportState, formData: FormData): Promise<GlovoImportState> {
+  if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
 
   const files = formData.getAll("report_files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Nu a fost selectat niciun fișier." };
@@ -21,36 +41,19 @@ export async function importAction(_prev: ActionState, formData: FormData): Prom
   try {
     let totalSaved = 0;
     let totalSkipped = 0;
-
     for (const file of files) {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-      let rows;
-      if (ext === "csv") {
-        rows = parseCsv(await file.text());
-      } else if (ext === "xlsx") {
-        rows = await parseXlsx(await file.arrayBuffer());
-      } else {
-        return { error: `Format nesuportat: ${file.name}` };
-      }
-
+      if (ext !== "xlsx") return { error: `Format nesuportat: ${file.name}. Glovo exportă XLSX.` };
+      const rows = await parseXlsx(await file.arrayBuffer());
       if (rows.length === 0) continue;
-
-      if (platform === "bolt" && !("Provider Name" in rows[0])) {
-        return { error: `Format Bolt invalid în "${file.name}" (lipsește "Provider Name").` };
-      }
-      if (platform === "glovo" && !("Denumire restaurant" in rows[0])) {
-        return { error: `Format Glovo invalid în "${file.name}" (lipsește "Denumire restaurant").` };
-      }
-
-      const result = platform === "bolt" ? await saveBoltRows(rows) : await saveGlovoRows(rows);
+      if (!("Denumire restaurant" in rows[0])) return { error: `Format Glovo invalid în "${file.name}".` };
+      const result = await saveGlovoRows(rows);
       totalSaved += result.saved;
       totalSkipped += result.skipped;
     }
-
     revalidatePath("/reviewsdogu");
     return { success: `Importate: ${totalSaved} comenzi noi, ${totalSkipped} duplicate ignorate.` };
   } catch (err) {
-    console.error("Import error", err);
     return { error: err instanceof Error ? err.message : "Eroare la import." };
   }
 }

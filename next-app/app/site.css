@@ -1438,6 +1438,9 @@ body.lightbox-open {
   .reviews-form .form-row { grid-template-columns: 1fr; }
 }
 
+.reviews-tabs { display: flex; gap: 8px; margin: 16px 0 4px; }
+.reviews-tab-active { background: rgba(108, 82, 51, 0.12); border-color: rgba(108, 82, 51, 0.3); font-weight: 600; }
+
 .reviews-period-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
 .reviews-import {

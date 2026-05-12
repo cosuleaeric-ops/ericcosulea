@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { buildBoltReport, buildGlovoReport, fmtRon, fmtRoDate, LABELS, RESTAURANT_KEYS } from "@/lib/reviewsdogu/report";
+import { buildGlovoReport, fmtRon, fmtRoDate, LABELS, RESTAURANT_KEYS } from "@/lib/reviewsdogu/report";
+import BoltReportForm from "./BoltReportForm";
 import ImportForm from "./ImportForm";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ function getDefaultDates() {
   };
 }
 
-function getPeriodPresets(platform: string) {
+function getPeriodPresets() {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
   const thisStart = toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
   const thisEnd = toIsoDate(now);
@@ -28,30 +29,33 @@ function getPeriodPresets(platform: string) {
   const lastStart = toIsoDate(new Date(lastDay.getFullYear(), lastDay.getMonth(), 1));
   const lastEnd = toIsoDate(lastDay);
   return [
-    { label: "luna aceasta", start: thisStart, end: thisEnd },
-    { label: "luna trecută", start: lastStart, end: lastEnd },
-  ].map((p) => ({ ...p, href: `?platform=${platform}&date_start=${p.start}&date_end=${p.end}` }));
+    { label: "luna aceasta", href: `?platform=glovo&date_start=${thisStart}&date_end=${thisEnd}` },
+    { label: "luna trecută", href: `?platform=glovo&date_start=${lastStart}&date_end=${lastEnd}` },
+  ];
 }
 
 type SP = Promise<{ platform?: string; date_start?: string; date_end?: string }>;
 
 export default async function ReviewsdoguPage({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
+  const platform = sp.platform === "glovo" ? "glovo" : "bolt";
+
   const defaults = getDefaultDates();
-  const platform = sp.platform === "bolt" || sp.platform === "glovo" ? sp.platform : "bolt";
   const start = sp.date_start ?? defaults.start;
   const end = sp.date_end ?? defaults.end;
-  const presets = getPeriodPresets(platform);
+  const presets = getPeriodPresets();
 
   let error: string | null = null;
-  let report: Awaited<ReturnType<typeof buildBoltReport>> | Awaited<ReturnType<typeof buildGlovoReport>> | null = null;
+  let glovoReport: Awaited<ReturnType<typeof buildGlovoReport>> | null = null;
 
-  if (start > end) error = "Data de start trebuie să fie înainte de data de final.";
-  else {
-    report = platform === "bolt" ? await buildBoltReport(start, end) : await buildGlovoReport(start, end);
-    if (report.total === 0 && (report.type === "glovo" ? report.cancels.length === 0 : true)) {
-      error = "Nu există comenzi în perioada selectată.";
-      report = null;
+  if (platform === "glovo") {
+    if (start > end) error = "Data de start trebuie să fie înainte de data de final.";
+    else {
+      glovoReport = await buildGlovoReport(start, end);
+      if (glovoReport.total === 0 && glovoReport.cancels.length === 0) {
+        error = "Nu există comenzi în perioada selectată.";
+        glovoReport = null;
+      }
     }
   }
 
@@ -60,128 +64,95 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
       <section className="page-section">
         <Link className="post-back" href="/dogu">← dogu</Link>
         <h1 className="page-title">reviews & comenzi</h1>
-        <p className="page-lead">Raport pe interval de date din comenzile salvate (Bolt + Glovo).</p>
 
-        <form method="get" className="reviews-form">
-          <div className="form-row">
-            <div>
-              <label className="form-label" htmlFor="platform">Platformă</label>
-              <select className="form-input" id="platform" name="platform" defaultValue={platform} required>
-                <option value="bolt">Bolt</option>
-                <option value="glovo">Glovo</option>
-              </select>
-            </div>
-            <div>
-              <label className="form-label" htmlFor="date_start">De la</label>
-              <input className="form-input" type="date" id="date_start" name="date_start" defaultValue={start} required />
-            </div>
-            <div>
-              <label className="form-label" htmlFor="date_end">Până la</label>
-              <input className="form-input" type="date" id="date_end" name="date_end" defaultValue={end} required />
-            </div>
-          </div>
-          <div className="reviews-period-nav">
-            {presets.map((p) => (
-              <a key={p.label} href={p.href} className="btn">{p.label}</a>
-            ))}
-            <button type="submit" className="btn">interval personalizat →</button>
-          </div>
-        </form>
+        <div className="reviews-tabs">
+          <a href="?platform=bolt" className={`btn${platform === "bolt" ? " reviews-tab-active" : ""}`}>Bolt</a>
+          <a href={`?platform=glovo&date_start=${start}&date_end=${end}`} className={`btn${platform === "glovo" ? " reviews-tab-active" : ""}`}>Glovo</a>
+        </div>
 
-        {error && <div className="vanzari-alert">{error}</div>}
+        {platform === "bolt" && (
+          <BoltReportForm />
+        )}
 
-        {report && (
+        {platform === "glovo" && (
           <>
-            <div className="vanzari-report-header">
-              <div>
-                <span className="vanzari-badge">📊 {report.platform}</span>
-                <h2 className="vanzari-report-title">{report.total} comenzi · {fmtRoDate(report.periodStart)} → {fmtRoDate(report.periodEnd)}</h2>
-              </div>
-              <div className="vanzari-total-block">
-                <div className="vanzari-total-label">Total vânzări</div>
-                <div className="vanzari-total-value">{fmtRon(report.totalSales)}</div>
-              </div>
-            </div>
-
-            <div className="vanzari-section-title">Defalcat pe restaurante</div>
-            <div className="vanzari-rest-grid">
-              {RESTAURANT_KEYS.map((k) => (
-                <div key={k} className="vanzari-rest-card">
-                  <div className="vanzari-rest-label">{LABELS[k]}</div>
-                  <div className="vanzari-rest-amount">{report.counts[k]} comenzi</div>
-                  <div className="vanzari-rest-count">{fmtRon(report.sales[k])}</div>
+            <form method="get" className="reviews-form">
+              <input type="hidden" name="platform" value="glovo" />
+              <div className="form-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                <div>
+                  <label className="form-label" htmlFor="date_start">De la</label>
+                  <input className="form-input" type="date" id="date_start" name="date_start" defaultValue={start} required />
                 </div>
-              ))}
-            </div>
+                <div>
+                  <label className="form-label" htmlFor="date_end">Până la</label>
+                  <input className="form-input" type="date" id="date_end" name="date_end" defaultValue={end} required />
+                </div>
+              </div>
+              <div className="reviews-period-nav">
+                {presets.map((p) => (
+                  <a key={p.label} href={p.href} className="btn">{p.label}</a>
+                ))}
+                <button type="submit" className="btn">interval personalizat →</button>
+              </div>
+            </form>
 
-            {report.type === "bolt" && (
-              <>
-                <div className="vanzari-section-title">Rating-uri</div>
-                <table className="reviews-table">
-                  <thead>
-                    <tr><th>Restaurant</th><th>★ pozitive (4-5)</th><th>★ negative (1-3)</th></tr>
-                  </thead>
-                  <tbody>
-                    {RESTAURANT_KEYS.map((k) => (
-                      <tr key={k}>
-                        <td>{LABELS[k]}</td>
-                        <td>{report.positive[k]}</td>
-                        <td>{report.negative[k]}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {RESTAURANT_KEYS.flatMap((k) => report.comments[k]).length > 0 && (
-                  <>
-                    <div className="vanzari-section-title">Comentarii</div>
-                    <ul className="reviews-comments">
-                      {RESTAURANT_KEYS.flatMap((k) => report.comments[k]).map((c, i) => (
-                        <li key={i}>
-                          <div className="reviews-comment-meta">
-                            <strong>{c.provider}</strong> · {fmtRoDate(c.date)} · {"★".repeat(c.rating)}{"☆".repeat(5 - c.rating)}
-                          </div>
-                          <div className="reviews-comment-text">{c.comment}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </>
-            )}
+            {error && <div className="vanzari-alert">{error}</div>}
 
-            {report.type === "glovo" && (
+            {glovoReport && (
               <>
-                <div className="vanzari-section-title">Taxe pentru timp de așteptare: <strong>{fmtRon(report.waitingTotal)}</strong></div>
-                {report.waitingTax.length > 0 && (
+                <div className="vanzari-report-header">
+                  <div>
+                    <span className="vanzari-badge">📊 Glovo</span>
+                    <h2 className="vanzari-report-title">{glovoReport.total} comenzi · {fmtRoDate(glovoReport.periodStart)} → {fmtRoDate(glovoReport.periodEnd)}</h2>
+                  </div>
+                  <div className="vanzari-total-block">
+                    <div className="vanzari-total-label">Total vânzări</div>
+                    <div className="vanzari-total-value">{fmtRon(glovoReport.totalSales)}</div>
+                  </div>
+                </div>
+
+                <div className="vanzari-section-title">Defalcat pe restaurante</div>
+                <div className="vanzari-rest-grid">
+                  {RESTAURANT_KEYS.map((k) => (
+                    <div key={k} className="vanzari-rest-card">
+                      <div className="vanzari-rest-label">{LABELS[k]}</div>
+                      <div className="vanzari-rest-amount">{glovoReport.counts[k]} comenzi</div>
+                      <div className="vanzari-rest-count">{fmtRon(glovoReport.sales[k])}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="vanzari-section-title">Taxe pentru timp de așteptare: <strong>{fmtRon(glovoReport.waitingTotal)}</strong></div>
+                {glovoReport.waitingTax.length > 0 && (
                   <table className="reviews-table">
                     <thead><tr><th>Data</th><th>Ora</th><th>Restaurant</th><th>Sumă</th></tr></thead>
                     <tbody>
-                      {report.waitingTax.map((w, i) => (
+                      {glovoReport.waitingTax.map((w, i) => (
                         <tr key={i}><td>{fmtRoDate(w.date)}</td><td>{w.time ?? "—"}</td><td>{w.restaurant}</td><td>{fmtRon(w.amount ?? 0)}</td></tr>
                       ))}
                     </tbody>
                   </table>
                 )}
 
-                <div className="vanzari-section-title">Rambursări partener: <strong>{fmtRon(report.refundTotal)}</strong></div>
-                {report.refunds.length > 0 && (
+                <div className="vanzari-section-title">Rambursări partener: <strong>{fmtRon(glovoReport.refundTotal)}</strong></div>
+                {glovoReport.refunds.length > 0 && (
                   <table className="reviews-table">
                     <thead><tr><th>Data</th><th>Restaurant</th><th>Sumă</th></tr></thead>
                     <tbody>
-                      {report.refunds.map((r, i) => (
+                      {glovoReport.refunds.map((r, i) => (
                         <tr key={i}><td>{fmtRoDate(r.date)}</td><td>{r.restaurant}</td><td>{fmtRon(r.amount ?? 0)}</td></tr>
                       ))}
                     </tbody>
                   </table>
                 )}
 
-                {report.cancels.length > 0 && (
+                {glovoReport.cancels.length > 0 && (
                   <>
-                    <div className="vanzari-section-title">Anulări ({report.cancels.length})</div>
+                    <div className="vanzari-section-title">Anulări ({glovoReport.cancels.length})</div>
                     <table className="reviews-table">
                       <thead><tr><th>Data</th><th>Restaurant</th><th>Motiv</th><th>Responsabil</th></tr></thead>
                       <tbody>
-                        {report.cancels.map((c, i) => (
+                        {glovoReport.cancels.map((c, i) => (
                           <tr key={i}><td>{fmtRoDate(c.date)}</td><td>{c.restaurant}</td><td>{c.reason}</td><td>{c.responsible}</td></tr>
                         ))}
                       </tbody>
@@ -189,13 +160,13 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
                   </>
                 )}
 
-                {report.complaints.length > 0 && (
+                {glovoReport.complaints.length > 0 && (
                   <>
-                    <div className="vanzari-section-title">Reclamații ({report.complaints.length})</div>
+                    <div className="vanzari-section-title">Reclamații ({glovoReport.complaints.length})</div>
                     <table className="reviews-table">
                       <thead><tr><th>Data</th><th>Restaurant</th><th>Motiv</th></tr></thead>
                       <tbody>
-                        {report.complaints.map((c, i) => (
+                        {glovoReport.complaints.map((c, i) => (
                           <tr key={i}><td>{fmtRoDate(c.date)}</td><td>{c.restaurant}</td><td>{c.reason}</td></tr>
                         ))}
                       </tbody>
@@ -204,13 +175,13 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
                 )}
               </>
             )}
+
+            <details className="reviews-import">
+              <summary>+ importă comenzi noi Glovo (XLSX)</summary>
+              <ImportForm />
+            </details>
           </>
         )}
-
-        <details className="reviews-import">
-          <summary>+ importă comenzi noi (CSV Bolt / XLSX Glovo)</summary>
-          <ImportForm />
-        </details>
       </section>
     </main>
   );

@@ -1,6 +1,7 @@
 import { and, between, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
+import type { CsvRow } from "./parsers";
 
 export const RESTAURANT_KEYS = ["dogu", "turmerizza", "gustoria", "hotdog", "other"] as const;
 export type RestaurantKey = (typeof RESTAURANT_KEYS)[number];
@@ -125,6 +126,59 @@ export async function buildGlovoReport(start: string, end: string): Promise<Glov
   return {
     type: "glovo", platform: "Glovo", periodStart: start, periodEnd: end,
     counts, sales, waitingTax, waitingTotal, refunds, refundTotal, cancels, complaints,
+    total: Object.values(counts).reduce((a, b) => a + b, 0),
+    totalSales: Object.values(sales).reduce((a, b) => a + b, 0),
+  };
+}
+
+function resolveKey(name: string): RestaurantKey {
+  const l = name.toLowerCase();
+  if (l.includes("dogu")) return "dogu";
+  if (l.includes("turmerizza")) return "turmerizza";
+  if (l.includes("gustoria")) return "gustoria";
+  if (l.includes("hotdog") || l.includes("hot dog")) return "hotdog";
+  return "other";
+}
+
+export function buildBoltReportFromRows(rows: CsvRow[]): BoltReport {
+  const counts = emptyStats();
+  const sales = emptyStats();
+  const positive = emptyStats();
+  const negative = emptyStats();
+  const comments: Record<RestaurantKey, Comment[]> = { dogu: [], turmerizza: [], gustoria: [], hotdog: [], other: [] };
+  let minDate = "9999-99-99";
+  let maxDate = "0000-00-00";
+
+  for (const row of rows) {
+    const status = (row["Finished Order Status"] ?? "").toLowerCase().trim();
+    if (status === "cancelled" || status === "canceled") continue;
+
+    const provider = row["Provider Name"] ?? "";
+    const k = resolveKey(provider);
+    const date = (row["Order Create Date"] ?? "").slice(0, 10);
+    if (date < minDate) minDate = date;
+    if (date > maxDate) maxDate = date;
+
+    counts[k] += 1;
+    sales[k] += parseFloat(row["Order Total Gross"] ?? "0") || 0;
+
+    const ratingRaw = (row["Rating"] ?? "").trim();
+    if (ratingRaw) {
+      const n = parseInt(ratingRaw, 10);
+      if (!isNaN(n)) {
+        if (n >= 4) positive[k] += 1;
+        else if (n >= 1) negative[k] += 1;
+        const comment = (row["Rating Comment"] ?? "").trim();
+        if (comment) comments[k].push({ provider, date, rating: n, comment });
+      }
+    }
+  }
+
+  return {
+    type: "bolt", platform: "Bolt",
+    periodStart: minDate === "9999-99-99" ? "" : minDate,
+    periodEnd: maxDate === "0000-00-00" ? "" : maxDate,
+    counts, sales, positive, negative, comments,
     total: Object.values(counts).reduce((a, b) => a + b, 0),
     totalSales: Object.values(sales).reduce((a, b) => a + b, 0),
   };

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { importAction } from "./actions";
+import { glovoImportAction } from "./actions";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -10,21 +10,12 @@ function SubmitButton() {
 }
 
 export default function ImportForm() {
-  const [state, formAction] = useActionState(importAction, undefined);
+  const [state, formAction] = useActionState(glovoImportAction, undefined);
   return (
     <form action={formAction} className="reviews-form" encType="multipart/form-data">
-      <div className="form-row">
-        <div>
-          <label className="form-label" htmlFor="import_platform">Platformă</label>
-          <select className="form-input" id="import_platform" name="platform" defaultValue="bolt" required>
-            <option value="bolt">Bolt (.csv)</option>
-            <option value="glovo">Glovo (.xlsx)</option>
-          </select>
-        </div>
-        <div style={{ gridColumn: "span 2" }}>
-          <label className="form-label" htmlFor="report_files">Fișiere export (multiple ok)</label>
-          <input className="form-input" type="file" id="report_files" name="report_files" accept=".csv,.xlsx" multiple required />
-        </div>
+      <div>
+        <label className="form-label" htmlFor="report_files">Fișiere export Glovo (.xlsx, multiple ok)</label>
+        <input className="form-input" type="file" id="report_files" name="report_files" accept=".xlsx" multiple required />
       </div>
       <div className="form-actions">
         <SubmitButton />
