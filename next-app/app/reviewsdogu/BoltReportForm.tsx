@@ -22,8 +22,8 @@ export default function BoltReportForm() {
     <>
       <form action={action} className="reviews-form">
         <div>
-          <label className="form-label" htmlFor="bolt_csv">Fișiere CSV Bolt (multiple ok)</label>
-          <input className="form-input" type="file" id="bolt_csv" name="bolt_csv" accept=".csv" multiple required />
+          <label className="form-label" htmlFor="bolt_files">Fișiere Bolt (.csv sau .xlsx, multiple ok)</label>
+          <input className="form-input" type="file" id="bolt_files" name="bolt_files" accept=".csv,.xlsx" multiple required />
         </div>
         <div className="form-actions">
           <SubmitButton />

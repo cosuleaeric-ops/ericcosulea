@@ -22,8 +22,8 @@ export default function GlovoReportForm() {
     <>
       <form action={action} className="reviews-form">
         <div>
-          <label className="form-label" htmlFor="glovo_xlsx">Fișiere XLSX Glovo (multiple ok)</label>
-          <input className="form-input" type="file" id="glovo_xlsx" name="glovo_xlsx" accept=".xlsx" multiple required />
+          <label className="form-label" htmlFor="glovo_files">Fișiere Glovo (.csv sau .xlsx, multiple ok)</label>
+          <input className="form-input" type="file" id="glovo_files" name="glovo_files" accept=".csv,.xlsx" multiple required />
         </div>
         <div className="form-actions">
           <SubmitButton />

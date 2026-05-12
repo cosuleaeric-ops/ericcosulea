@@ -7,19 +7,23 @@ import { buildBoltReportFromRows, buildGlovoReportFromRows, type BoltReport, typ
 export type BoltReportState = { report?: BoltReport; error?: string } | undefined;
 export type GlovoReportState = { report?: GlovoReport; error?: string } | undefined;
 
+async function parseFile(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "csv") return parseCsv(await file.text());
+  if (ext === "xlsx") return parseXlsx(await file.arrayBuffer());
+  throw new Error(`Format nesuportat: ${file.name} (acceptat: .csv, .xlsx)`);
+}
+
 export async function boltReportAction(_prev: BoltReportState, formData: FormData): Promise<BoltReportState> {
   if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
-
-  const files = formData.getAll("bolt_csv").filter((f): f is File => f instanceof File && f.size > 0);
+  const files = formData.getAll("bolt_files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Nu a fost selectat niciun fișier." };
-
   try {
     const allRows = [];
     for (const file of files) {
-      if (!file.name.toLowerCase().endsWith(".csv")) return { error: `Format nesuportat: ${file.name}. Bolt exportă CSV.` };
-      const rows = parseCsv(await file.text());
+      const rows = await parseFile(file);
       if (rows.length === 0) continue;
-      if (!("Provider Name" in rows[0])) return { error: `Format Bolt invalid în "${file.name}".` };
+      if (!("Provider Name" in rows[0])) return { error: `Format Bolt invalid în "${file.name}" (lipsește "Provider Name").` };
       allRows.push(...rows);
     }
     if (allRows.length === 0) return { error: "Fișierele selectate nu conțin date." };
@@ -31,17 +35,14 @@ export async function boltReportAction(_prev: BoltReportState, formData: FormDat
 
 export async function glovoReportAction(_prev: GlovoReportState, formData: FormData): Promise<GlovoReportState> {
   if (!(await isAuthenticated())) return { error: "Nu ești autentificat." };
-
-  const files = formData.getAll("glovo_xlsx").filter((f): f is File => f instanceof File && f.size > 0);
+  const files = formData.getAll("glovo_files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Nu a fost selectat niciun fișier." };
-
   try {
     const allRows = [];
     for (const file of files) {
-      if (!file.name.toLowerCase().endsWith(".xlsx")) return { error: `Format nesuportat: ${file.name}. Glovo exportă XLSX.` };
-      const rows = await parseXlsx(await file.arrayBuffer());
+      const rows = await parseFile(file);
       if (rows.length === 0) continue;
-      if (!("Denumire restaurant" in rows[0])) return { error: `Format Glovo invalid în "${file.name}".` };
+      if (!("Denumire restaurant" in rows[0])) return { error: `Format Glovo invalid în "${file.name}" (lipsește "Denumire restaurant").` };
       allRows.push(...rows);
     }
     if (allRows.length === 0) return { error: "Fișierele selectate nu conțin date." };
