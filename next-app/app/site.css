@@ -1438,8 +1438,10 @@ body.lightbox-open {
   .reviews-form .form-row { grid-template-columns: 1fr; }
 }
 
+.reviews-period-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
 .reviews-import {
-  margin-top: 12px; padding: 14px; background: #fffbf3;
+  margin-top: 24px; padding: 14px; background: #fffbf3;
   border: 1px solid #E8E3D8; border-radius: 12px;
 }
 .reviews-import summary {

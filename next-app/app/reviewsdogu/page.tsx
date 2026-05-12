@@ -8,25 +8,50 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+function toIsoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getDefaultDates() {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+  return {
+    start: toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: toIsoDate(now),
+  };
+}
+
+function getPeriodPresets(platform: string) {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+  const thisStart = toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const thisEnd = toIsoDate(now);
+  const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastStart = toIsoDate(new Date(lastDay.getFullYear(), lastDay.getMonth(), 1));
+  const lastEnd = toIsoDate(lastDay);
+  return [
+    { label: "luna aceasta", start: thisStart, end: thisEnd },
+    { label: "luna trecută", start: lastStart, end: lastEnd },
+  ].map((p) => ({ ...p, href: `?platform=${platform}&date_start=${p.start}&date_end=${p.end}` }));
+}
+
 type SP = Promise<{ platform?: string; date_start?: string; date_end?: string }>;
 
 export default async function ReviewsdoguPage({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
-  const platform = sp.platform === "bolt" || sp.platform === "glovo" ? sp.platform : null;
-  const start = sp.date_start ?? "";
-  const end = sp.date_end ?? "";
+  const defaults = getDefaultDates();
+  const platform = sp.platform === "bolt" || sp.platform === "glovo" ? sp.platform : "bolt";
+  const start = sp.date_start ?? defaults.start;
+  const end = sp.date_end ?? defaults.end;
+  const presets = getPeriodPresets(platform);
 
   let error: string | null = null;
   let report: Awaited<ReturnType<typeof buildBoltReport>> | Awaited<ReturnType<typeof buildGlovoReport>> | null = null;
 
-  if (platform && start && end) {
-    if (start > end) error = "Data de start trebuie să fie înainte de data de final.";
-    else {
-      report = platform === "bolt" ? await buildBoltReport(start, end) : await buildGlovoReport(start, end);
-      if (report.total === 0 && (report.type === "glovo" ? report.cancels.length === 0 : true)) {
-        error = "Nu există comenzi în perioada selectată.";
-        report = null;
-      }
+  if (start > end) error = "Data de start trebuie să fie înainte de data de final.";
+  else {
+    report = platform === "bolt" ? await buildBoltReport(start, end) : await buildGlovoReport(start, end);
+    if (report.total === 0 && (report.type === "glovo" ? report.cancels.length === 0 : true)) {
+      error = "Nu există comenzi în perioada selectată.";
+      report = null;
     }
   }
 
@@ -37,16 +62,11 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
         <h1 className="page-title">reviews & comenzi</h1>
         <p className="page-lead">Raport pe interval de date din comenzile salvate (Bolt + Glovo).</p>
 
-        <details className="reviews-import">
-          <summary>+ importă comenzi noi (CSV Bolt / XLSX Glovo)</summary>
-          <ImportForm />
-        </details>
-
         <form method="get" className="reviews-form">
           <div className="form-row">
             <div>
               <label className="form-label" htmlFor="platform">Platformă</label>
-              <select className="form-input" id="platform" name="platform" defaultValue={platform ?? "bolt"} required>
+              <select className="form-input" id="platform" name="platform" defaultValue={platform} required>
                 <option value="bolt">Bolt</option>
                 <option value="glovo">Glovo</option>
               </select>
@@ -60,8 +80,11 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
               <input className="form-input" type="date" id="date_end" name="date_end" defaultValue={end} required />
             </div>
           </div>
-          <div className="form-actions">
-            <button type="submit" className="btn">Generează raport →</button>
+          <div className="reviews-period-nav">
+            {presets.map((p) => (
+              <a key={p.label} href={p.href} className="btn">{p.label}</a>
+            ))}
+            <button type="submit" className="btn">interval personalizat →</button>
           </div>
         </form>
 
@@ -183,6 +206,11 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
             )}
           </>
         )}
+
+        <details className="reviews-import">
+          <summary>+ importă comenzi noi (CSV Bolt / XLSX Glovo)</summary>
+          <ImportForm />
+        </details>
       </section>
     </main>
   );
