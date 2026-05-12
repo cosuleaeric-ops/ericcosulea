@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { boltReportAction, type BoltReportState } from "./actions";
-import { RESTAURANT_KEYS, LABELS, fmtRon, fmtRoDate } from "@/lib/reviewsdogu/report";
+import { RESTAURANT_KEYS, LABELS, fmtRon, fmtRoDate } from "@/lib/reviewsdogu/utils";
 
 function SubmitButton() {
   const { pending } = useFormStatus();

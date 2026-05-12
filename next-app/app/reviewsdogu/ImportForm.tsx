@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { glovoImportAction } from "./actions";
+import { glovoReportAction } from "./actions";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -10,18 +10,17 @@ function SubmitButton() {
 }
 
 export default function ImportForm() {
-  const [state, formAction] = useActionState(glovoImportAction, undefined);
+  const [state, formAction] = useActionState(glovoReportAction, undefined);
   return (
     <form action={formAction} className="reviews-form" encType="multipart/form-data">
       <div>
-        <label className="form-label" htmlFor="report_files">Fișiere export Glovo (.xlsx, multiple ok)</label>
-        <input className="form-input" type="file" id="report_files" name="report_files" accept=".xlsx" multiple required />
+        <label className="form-label" htmlFor="glovo_xlsx">Fișiere export Glovo (.xlsx, multiple ok)</label>
+        <input className="form-input" type="file" id="glovo_xlsx" name="glovo_xlsx" accept=".xlsx" multiple required />
       </div>
       <div className="form-actions">
         <SubmitButton />
       </div>
       {state?.error && <p className="login-error">{state.error}</p>}
-      {state?.success && <p className="reviews-success">{state.success}</p>}
     </form>
   );
 }
