@@ -51,10 +51,14 @@ export default async function ReviewsdoguPage({ searchParams }: { searchParams: 
   if (platform === "glovo") {
     if (start > end) error = "Data de start trebuie să fie înainte de data de final.";
     else {
-      glovoReport = await buildGlovoReport(start, end);
-      if (glovoReport.total === 0 && glovoReport.cancels.length === 0) {
-        error = "Nu există comenzi în perioada selectată.";
-        glovoReport = null;
+      try {
+        glovoReport = await buildGlovoReport(start, end);
+        if (glovoReport.total === 0 && glovoReport.cancels.length === 0) {
+          error = "Nu există comenzi în perioada selectată.";
+          glovoReport = null;
+        }
+      } catch (e) {
+        error = `Eroare DB: ${e instanceof Error ? e.message : String(e)}`;
       }
     }
   }
