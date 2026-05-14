@@ -778,7 +778,7 @@ function CheltuialaModal({
               value={catInput}
               autoComplete="off"
               onChange={(e) => { setCatInput(e.target.value); setShowSugg(true); setSuggIdx(-1); }}
-              onFocus={() => setShowSugg(true)}
+              onFocus={(e) => { e.target.select(); setShowSugg(true); }}
               onBlur={() => setTimeout(() => setShowSugg(false), 150)}
               onKeyDown={onCatKey}
               placeholder="Scrie sau caută categorie..."
