@@ -695,32 +695,45 @@ function CheltuialaModal({
 }) {
   const isEdit = row != null;
   const [data, setData] = useState(row?.data ?? getInitialAddDate());
-  const [cat, setCat] = useState(row?.categorie ?? (catChelt[0] ?? "__new__"));
-  const [catNoua, setCatNoua] = useState("");
+  const [catInput, setCatInput] = useState(row?.categorie ?? (catChelt[0] ?? ""));
+  const [showSugg, setShowSugg] = useState(false);
+  const [suggIdx, setSuggIdx] = useState(-1);
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
   const [detalii, setDetalii] = useState(row?.detalii ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const sumaRef = useRef<HTMLInputElement>(null);
-  const catNouaRef = useRef<HTMLInputElement>(null);
+  const catInputRef = useRef<HTMLInputElement>(null);
+
+  const suggestions = catChelt.filter((c) => c.toLowerCase().includes(catInput.toLowerCase()));
+  const isNew = catInput.trim() !== "" && !catChelt.some((c) => c.toLowerCase() === catInput.trim().toLowerCase());
 
   useEffect(() => { sumaRef.current?.focus(); }, []);
-  useEffect(() => { if (cat === "__new__") catNouaRef.current?.focus(); }, [cat]);
+
+  const selectSugg = (c: string) => { setCatInput(c); setShowSugg(false); setSuggIdx(-1); };
+
+  const onCatKey = (e: React.KeyboardEvent) => {
+    if (!showSugg) { if (e.key === "ArrowDown") { setShowSugg(true); setSuggIdx(0); } return; }
+    if (e.key === "ArrowDown") { e.preventDefault(); setSuggIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSuggIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === "Enter" && suggIdx >= 0) { e.preventDefault(); selectSugg(suggestions[suggIdx]); }
+    else if (e.key === "Escape") { setShowSugg(false); }
+  };
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    let categorie = cat;
-    if (cat === "__new__") {
-      const nume = catNoua.trim();
-      if (!nume) { setError("Selectează sau creează o categorie."); return; }
+    const numeCat = catInput.trim();
+    if (!numeCat) { setError("Selectează sau scrie o categorie."); return; }
+    let categorie = numeCat;
+    if (isNew) {
       setCreating(true);
-      const fd = new FormData(); fd.set("nume", nume);
+      const fd = new FormData(); fd.set("nume", numeCat);
       const res = await addCategorieCheltuialaAction(undefined, fd);
       setCreating(false);
       if (res?.error) { setError(res.error); return; }
-      categorie = nume;
+      categorie = numeCat;
     }
     const fd = new FormData();
     if (isEdit && row) fd.set("id", String(row.id));
@@ -757,21 +770,27 @@ function CheltuialaModal({
               <button type="button" className="date-nav-btn" onClick={() => setData(dayShift(data, 1))}>›</button>
             </div>
           </div>
-          <div className="form-group">
-            <label>Categorie</label>
-            <select value={cat} onChange={(e) => setCat(e.target.value)}>
-              {catChelt.map((c) => <option key={c} value={c}>{c}</option>)}
-              <option value="__new__">+ Categorie nouă...</option>
-            </select>
-            {cat === "__new__" && (
-              <input
-                ref={catNouaRef}
-                type="text"
-                placeholder="Nume categorie nouă"
-                value={catNoua}
-                onChange={(e) => setCatNoua(e.target.value)}
-                style={{ marginTop: 8, width: "100%", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, background: "var(--bg)" }}
-              />
+          <div className="form-group" style={{ position: "relative" }}>
+            <label>Categorie{isNew && <span style={{ marginLeft: 6, fontSize: 12, color: "var(--muted)" }}>— categorie nouă</span>}</label>
+            <input
+              ref={catInputRef}
+              type="text"
+              value={catInput}
+              autoComplete="off"
+              onChange={(e) => { setCatInput(e.target.value); setShowSugg(true); setSuggIdx(-1); }}
+              onFocus={() => setShowSugg(true)}
+              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+              onKeyDown={onCatKey}
+              placeholder="Scrie sau caută categorie..."
+            />
+            {showSugg && suggestions.length > 0 && (
+              <ul style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, margin: 0, padding: 0, listStyle: "none", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", maxHeight: 200, overflowY: "auto" }}>
+                {suggestions.map((c, i) => (
+                  <li key={c} onMouseDown={() => selectSugg(c)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 14, background: i === suggIdx ? "var(--bg-hover, #f5f0e8)" : undefined }}>
+                    {c}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
           <div className="form-group">
