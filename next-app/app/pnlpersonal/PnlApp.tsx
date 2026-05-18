@@ -705,15 +705,43 @@ function CheltuialaModal({
   const [creating, setCreating] = useState(false);
   const sumaRef = useRef<HTMLInputElement>(null);
   const catInputRef = useRef<HTMLInputElement>(null);
+  const typedRef = useRef(row?.categorie ?? (catChelt[0] ?? ""));
 
   const suggestions = catChelt.filter((c) => c.toLowerCase().includes(catInput.toLowerCase()));
   const isNew = catInput.trim() !== "" && !catChelt.some((c) => c.toLowerCase() === catInput.trim().toLowerCase());
 
   useEffect(() => { sumaRef.current?.focus(); }, []);
 
-  const selectSugg = (c: string) => { setCatInput(c); setShowSugg(false); setSuggIdx(-1); };
+  const selectSugg = (c: string) => { typedRef.current = c; setCatInput(c); setShowSugg(false); setSuggIdx(-1); };
 
-  const onCatKey = (e: React.KeyboardEvent) => {
+  const onCatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const typed = e.target.value;
+    typedRef.current = typed;
+    setShowSugg(true);
+    setSuggIdx(-1);
+    if (!typed) { setCatInput(""); return; }
+    const match = catChelt.find((c) => c.toLowerCase().startsWith(typed.toLowerCase()));
+    if (match && match.toLowerCase() !== typed.toLowerCase()) {
+      setCatInput(match);
+      requestAnimationFrame(() => {
+        catInputRef.current?.setSelectionRange(typed.length, match.length);
+      });
+    } else {
+      setCatInput(typed);
+    }
+  };
+
+  const onCatKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && catInputRef.current) {
+      const el = catInputRef.current;
+      if (el.selectionStart !== el.selectionEnd) {
+        e.preventDefault();
+        const newVal = el.value.slice(0, el.selectionStart!);
+        typedRef.current = newVal;
+        setCatInput(newVal);
+      }
+      return;
+    }
     if (!showSugg) { if (e.key === "ArrowDown") { setShowSugg(true); setSuggIdx(0); } return; }
     if (e.key === "ArrowDown") { e.preventDefault(); setSuggIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSuggIdx((i) => Math.max(i - 1, 0)); }
@@ -777,7 +805,7 @@ function CheltuialaModal({
               type="text"
               value={catInput}
               autoComplete="off"
-              onChange={(e) => { setCatInput(e.target.value); setShowSugg(true); setSuggIdx(-1); }}
+              onChange={onCatChange}
               onFocus={(e) => { e.target.select(); setShowSugg(true); }}
               onBlur={() => setTimeout(() => setShowSugg(false), 150)}
               onKeyDown={onCatKey}
