@@ -578,7 +578,7 @@ export default function PnlApp(props: Props) {
           row={modal.row}
           prefill={modal.prefill ?? null}
           onClose={() => setModal({ kind: "none" })}
-          onSaved={() => { setModal({ kind: "none" }); onDataChange(); }}
+          onSaved={() => { setModal({ kind: "none" }); setBannerClosed(true); onDataChange(); }}
         />
       )}
     </>
