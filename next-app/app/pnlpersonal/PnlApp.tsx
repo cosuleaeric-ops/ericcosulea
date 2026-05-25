@@ -312,7 +312,7 @@ export default function PnlApp(props: Props) {
         </div>
       </header>
 
-      {props.isMonday && !bannerClosed && (
+      {props.isMonday && !bannerClosed && props.latestPortofel?.data !== props.todayKey && (
         <div className="monday-banner visible">
           <span className="banner-icon">🔔</span>
           <span className="banner-text">E luni! Nu uita să actualizezi valorile din portofel.</span>
