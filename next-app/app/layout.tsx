@@ -3,12 +3,13 @@ import Script from "next/script";
 import { Crimson_Pro } from "next/font/google";
 import "./globals.css";
 import "./site.css";
-import AdminBar from "./AdminBar";
+import AdminBarClient from "./AdminBarClient";
 
 const crimsonPro = Crimson_Pro({
   variable: "--font-crimson-pro",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default function RootLayout({
         `}</Script>
       </head>
       <body>
-        <AdminBar />
+        <AdminBarClient />
         {children}
       </body>
     </html>

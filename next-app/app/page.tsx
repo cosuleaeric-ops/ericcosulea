@@ -1,6 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getProjectsForHome, getLatestImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
+
+export const revalidate = 3600;
 
 export default async function Home() {
   const [projects, latestImages] = await Promise.all([
@@ -12,7 +15,7 @@ export default async function Home() {
     <main className="page">
       <header className="hero">
         <div className="hero-avatar">
-          <img src="/assets/avatar.jpeg" alt="Eric Cosulea" />
+          <Image src="/assets/avatar.jpeg" alt="Eric Cosulea" width={100} height={100} priority />
         </div>
         <div className="hero-text">
           <div className="hero-title">
@@ -74,7 +77,12 @@ export default async function Home() {
         <div className="inspo-strip">
           {latestImages.map((img) => (
             <Link key={img.id} className="inspo-thumb" href="/inspo">
-              <img src={blobUrl(`inspo/${img.filename}`)} alt="" />
+              <Image
+                src={blobUrl(`inspo/${img.filename}`)}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 33vw, 120px"
+              />
             </Link>
           ))}
         </div>

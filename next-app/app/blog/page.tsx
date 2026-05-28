@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllPosts } from "@/lib/db/queries";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "articole - Eric Cosulea",
 };

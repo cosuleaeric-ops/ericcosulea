@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -9,6 +9,16 @@ const HIDDEN_ON = ["/pnlpersonal", "/elite-deux", "/admin"];
 export default function AdminBarClient() {
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth-status")
+      .then((r) => r.json())
+      .then((d) => setAuthed(Boolean(d.loggedIn)))
+      .catch(() => setAuthed(false));
+  }, []);
+
+  if (!authed) return null;
 
   if (pathname && HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(p + "/"))) return null;
 

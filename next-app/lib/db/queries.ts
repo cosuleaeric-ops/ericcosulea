@@ -1,37 +1,38 @@
+import { cache } from "react";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "./index";
 import { cheltuialaCategorii, cheltuieli, images, pages, portofel, posts, projects, venitCategorii, venituri } from "./schema";
 
-export async function getProjectsForHome() {
+export const getProjectsForHome = cache(async () => {
   return db.select().from(projects).orderBy(asc(projects.sort), asc(projects.id));
-}
+});
 
-export async function getLatestImages(limit = 8) {
+export const getLatestImages = cache(async (limit = 8) => {
   return db.select().from(images).orderBy(desc(images.createdAt)).limit(limit);
-}
+});
 
-export async function getAllImages() {
+export const getAllImages = cache(async () => {
   return db.select().from(images).orderBy(desc(images.createdAt));
-}
+});
 
-export async function getAllPosts() {
+export const getAllPosts = cache(async () => {
   return db.select({
     slug: posts.slug,
     title: posts.title,
     excerpt: posts.excerpt,
     publishedAt: posts.publishedAt,
   }).from(posts).orderBy(desc(posts.publishedAt));
-}
+});
 
-export async function getPostBySlug(slug: string) {
+export const getPostBySlug = cache(async (slug: string) => {
   const rows = await db.select().from(posts).where(eq(posts.slug, slug)).limit(1);
   return rows[0] ?? null;
-}
+});
 
-export async function getPageBySlug(slug: string) {
+export const getPageBySlug = cache(async (slug: string) => {
   const rows = await db.select().from(pages).where(eq(pages.slug, slug)).limit(1);
   return rows[0] ?? null;
-}
+});
 
 export async function getAllPostsForAdmin() {
   return db.select({

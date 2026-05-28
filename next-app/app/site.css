@@ -524,6 +524,7 @@ body.site-text-editing [data-site-text] {
 }
 
 .inspo-thumb {
+  position: relative;
   display: block;
   border-radius: 12px;
   overflow: hidden;

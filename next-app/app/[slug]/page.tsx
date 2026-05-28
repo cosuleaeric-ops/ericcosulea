@@ -28,6 +28,7 @@ function renderPostContent(html: string): { html: string; hasTweets: boolean } {
   return { html: rewriteUploadUrls(replaced), hasTweets };
 }
 
+export const revalidate = 3600;
 export const dynamicParams = false;
 
 export async function generateStaticParams() {

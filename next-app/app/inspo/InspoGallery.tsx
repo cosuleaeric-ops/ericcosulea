@@ -81,7 +81,7 @@ export default function InspoGallery({ images, baseUrl }: { images: Image[]; bas
           return (
             <div key={img.id} className="inspo-card">
               <button className="inspo-card-open" type="button" onClick={() => setActiveSrc(src)}>
-                <img src={src} alt="" />
+                <img src={src} alt="" loading="lazy" decoding="async" />
               </button>
               {isAdmin && (
                 <div className="inspo-card-delete">

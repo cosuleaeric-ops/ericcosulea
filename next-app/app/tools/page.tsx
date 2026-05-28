@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { getPageBySlug } from "@/lib/db/queries";
 import { rewriteUploadUrls } from "@/lib/blob";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "tools - Eric Cosulea",
 };

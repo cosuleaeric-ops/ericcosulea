@@ -4,6 +4,8 @@ import { getAllImages } from "@/lib/db/queries";
 import { BLOB_BASE_URL } from "@/lib/blob";
 import InspoGallery from "./InspoGallery";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "inspo - Eric Cosulea",
 };
