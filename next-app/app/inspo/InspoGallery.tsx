@@ -1,14 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { uploadInspoAction, deleteInspoAction } from "./actions";
 
-type Image = {
+type ImageItem = {
   id: number;
-  filename: string;
+  src: string;
 };
 
-export default function InspoGallery({ images, baseUrl }: { images: Image[]; baseUrl: string }) {
+export default function InspoGallery({ images }: { images: ImageItem[] }) {
   const [activeSrc, setActiveSrc] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -76,23 +77,27 @@ export default function InspoGallery({ images, baseUrl }: { images: Image[]; bas
         </div>
       )}
       <div className="inspo-grid">
-        {images.map((img) => {
-          const src = `${baseUrl}/inspo/${img.filename}`;
-          return (
-            <div key={img.id} className="inspo-card">
-              <button className="inspo-card-open" type="button" onClick={() => setActiveSrc(src)}>
-                <img src={src} alt="" loading="lazy" decoding="async" />
-              </button>
-              {isAdmin && (
-                <div className="inspo-card-delete">
-                  <button type="button" aria-label="șterge imaginea" onClick={() => onDelete(img.id)}>
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {images.map((img) => (
+          <div key={img.id} className="inspo-card">
+            <button className="inspo-card-open" type="button" onClick={() => setActiveSrc(img.src)}>
+              <Image
+                src={img.src}
+                alt=""
+                width={480}
+                height={640}
+                sizes="(max-width: 768px) 100vw, 33vw"
+                style={{ width: "100%", height: "auto" }}
+              />
+            </button>
+            {isAdmin && (
+              <div className="inspo-card-delete">
+                <button type="button" aria-label="șterge imaginea" onClick={() => onDelete(img.id)}>
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
       <div
         className="inspo-lightbox"
@@ -109,7 +114,18 @@ export default function InspoGallery({ images, baseUrl }: { images: Image[]; bas
         >
           ×
         </button>
-        {activeSrc && <img className="inspo-lightbox-image" src={activeSrc} alt="" />}
+        {activeSrc && (
+          <Image
+            className="inspo-lightbox-image"
+            src={activeSrc}
+            alt=""
+            width={1100}
+            height={1100}
+            sizes="100vw"
+            priority
+            style={{ width: "auto", height: "auto", maxWidth: "min(1100px, calc(100vw - 56px))", maxHeight: "calc(100vh - 56px)" }}
+          />
+        )}
       </div>
     </>
   );

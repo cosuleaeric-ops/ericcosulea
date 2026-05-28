@@ -615,6 +615,11 @@ body.site-text-editing [data-site-text] {
   display: block;
 }
 
+.inspo-card-open > span {
+  display: block !important;
+  width: 100%;
+}
+
 .inspo-card-delete {
   position: absolute;
   top: 10px;

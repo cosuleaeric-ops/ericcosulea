@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "./index";
 import { cheltuialaCategorii, cheltuieli, images, pages, portofel, posts, projects, venitCategorii, venituri } from "./schema";
 
@@ -53,23 +53,7 @@ export async function getProjectById(id: number) {
   return rows[0] ?? null;
 }
 
-const monthDateRange = (yyyymm: string) => ({ start: `${yyyymm}-01`, end: `${yyyymm}-31` });
 const yearDateRange = (yyyy: string) => ({ start: `${yyyy}-01-01`, end: `${yyyy}-12-31` });
-
-export async function getVenituriByMonth(yyyymm: string) {
-  const { start, end } = monthDateRange(yyyymm);
-  return db.select().from(venituri).where(and(gte(venituri.data, start), lte(venituri.data, end))).orderBy(asc(venituri.data), asc(venituri.id));
-}
-
-export async function getCheltuieliByMonth(yyyymm: string) {
-  const { start, end } = monthDateRange(yyyymm);
-  return db.select().from(cheltuieli).where(and(gte(cheltuieli.data, start), lte(cheltuieli.data, end))).orderBy(asc(cheltuieli.data), asc(cheltuieli.id));
-}
-
-export async function getCheltuieliTotalByMonth(yyyymm: string): Promise<number> {
-  const rows = await getCheltuieliByMonth(yyyymm);
-  return rows.reduce((s, c) => s + c.suma, 0);
-}
 
 export async function getVenituriByYear(yyyy: string) {
   const { start, end } = yearDateRange(yyyy);
@@ -87,17 +71,15 @@ export async function getPortofelByYear(yyyy: string) {
 }
 
 export async function getDistinctMonthsWithEntries(): Promise<string[]> {
-  const v = await db.select({ data: venituri.data }).from(venituri);
-  const c = await db.select({ data: cheltuieli.data }).from(cheltuieli);
-  const set = new Set<string>();
-  for (const r of v) set.add(r.data.slice(0, 7));
-  for (const r of c) set.add(r.data.slice(0, 7));
-  return Array.from(set).sort().reverse();
-}
-
-export async function getLastCheltuialaDate(): Promise<string | null> {
-  const rows = await db.select({ data: cheltuieli.data }).from(cheltuieli).orderBy(desc(cheltuieli.data), desc(cheltuieli.id)).limit(1);
-  return rows[0]?.data ?? null;
+  const result = await db.execute<{ month: string }>(sql`
+    SELECT month FROM (
+      SELECT DISTINCT LEFT(data, 7) AS month FROM venituri
+      UNION
+      SELECT DISTINCT LEFT(data, 7) AS month FROM cheltuieli
+    ) AS months
+    ORDER BY month DESC
+  `);
+  return result.rows.map((r) => r.month);
 }
 
 export async function getCategoriiVenit() {
@@ -111,9 +93,4 @@ export async function getCategoriiCheltuiala() {
 export async function getLatestPortofel() {
   const rows = await db.select().from(portofel).orderBy(desc(portofel.data), desc(portofel.id)).limit(1);
   return rows[0] ?? null;
-}
-
-export async function getPortofelByMonth(yyyymm: string) {
-  const { start, end } = monthDateRange(yyyymm);
-  return db.select().from(portofel).where(and(gte(portofel.data, start), lte(portofel.data, end))).orderBy(desc(portofel.data), desc(portofel.id));
 }

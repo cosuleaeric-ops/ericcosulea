@@ -20,7 +20,7 @@
 
 body {
   margin: 0;
-  font-family: "IBM Plex Sans", sans-serif;
+  font-family: var(--font-ibm-plex), "IBM Plex Sans", sans-serif;
   color: var(--ink);
   background:
     radial-gradient(circle at 0% 0%, #ffffff 0%, #f4f4f6 45%),
@@ -70,7 +70,7 @@ body.dark {
 
 .brand-wrap h1 {
   margin: 0;
-  font-family: "Bebas Neue", sans-serif;
+  font-family: var(--font-bebas-neue), "Bebas Neue", sans-serif;
   letter-spacing: 0.03em;
   font-size: 20px;
   line-height: 1;
@@ -159,7 +159,7 @@ main {
 }
 
 .day-name {
-  font-family: "Bebas Neue", sans-serif;
+  font-family: var(--font-bebas-neue), "Bebas Neue", sans-serif;
   letter-spacing: 0.03em;
   font-size: 34px;
   line-height: 1;
@@ -397,7 +397,7 @@ body[data-bullets="none"] .check-btn {
   margin: 0;
   font-size: 30px;
   letter-spacing: 0.03em;
-  font-family: "Bebas Neue", sans-serif;
+  font-family: var(--font-bebas-neue), "Bebas Neue", sans-serif;
 }
 
 .prefs-section {
