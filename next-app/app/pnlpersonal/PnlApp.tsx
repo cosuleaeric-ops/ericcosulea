@@ -3,21 +3,6 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-
-const RankingChart = dynamic(() => import("./RankingChart"), { ssr: false });
-
-const CAT_COLORS = [
-  "#4A90D9", "#E8704A", "#2A7D4F", "#C1444A", "#7B5EA7",
-  "#D4A017", "#E8A87C", "#85C1E9", "#A9DFBF", "#F1948A",
-  "#B8860B", "#5DADE2", "#A569BD", "#45B39D", "#EC7063",
-  "#F0B27A", "#82E0AA", "#AED6F1", "#F9E79F", "#D2B4DE",
-  "#A3E4D7", "#FAD7A0", "#FDFEFE", "#D5D8DC", "#1A5276",
-];
-
-const RO_MONTHS = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"];
-
-const LAST_DATE_KEY = "pnlpersonal_last_date";
-
 import {
   addCategorieCheltuialaAction,
   addCategorieVenitAction,
@@ -31,52 +16,28 @@ import {
   editPortofelAction,
   editVenitAction,
 } from "./actions";
+import type { Cheltuiala, PnlDataInput, Portofel, Venit } from "./types";
+import { usePnlData } from "./usePnlData";
+import { dayShift, fmt, fmtDate, fmtRon, periodLabel, today } from "./utils";
 
-type Venit = { id: number; data: string; descriere: string; suma: number };
-type Cheltuiala = { id: number; data: string; categorie: string; detalii: string; suma: number };
-type Portofel = { id: number; data: string; cash: number; ing: number; revolut: number; trading212: number };
+const RankingChart = dynamic(() => import("./RankingChart"), { ssr: false });
 
-type Props = {
-  initialMonth: string;
-  loadedYear: string;
-  availableMonths: string[];
+const CAT_COLORS = [
+  "#4A90D9", "#E8704A", "#2A7D4F", "#C1444A", "#7B5EA7",
+  "#D4A017", "#E8A87C", "#85C1E9", "#A9DFBF", "#F1948A",
+  "#B8860B", "#5DADE2", "#A569BD", "#45B39D", "#EC7063",
+  "#F0B27A", "#82E0AA", "#AED6F1", "#F9E79F", "#D2B4DE",
+  "#A3E4D7", "#FAD7A0", "#FDFEFE", "#D5D8DC", "#1A5276",
+];
+
+const LAST_DATE_KEY = "pnlpersonal_last_date";
+
+type Props = PnlDataInput & {
   todayKey: string;
   isMonday: boolean;
-  venituri: Venit[];
-  cheltuieli: Cheltuiala[];
   catVenit: string[];
   catChelt: string[];
   latestPortofel: Portofel | null;
-  portofel: Portofel[];
-};
-
-const fmt = (n: number) => new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-const fmtRon = (n: number) => `${fmt(n)} lei`;
-const fmtDate = (s: string) => {
-  if (!s) return "—";
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y) return s;
-  return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
-};
-const today = () => new Date().toISOString().slice(0, 10);
-const dayShift = (yyyymmdd: string, delta: number) => {
-  const d = new Date(yyyymmdd || today());
-  d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
-};
-const periodLabel = (period: string) => {
-  if (/^\d{4}$/.test(period)) return period;
-  const [y, m] = period.split("-").map(Number);
-  return `${RO_MONTHS[m - 1]} ${y}`;
-};
-const daysInMonth = (yyyymm: string) => {
-  const [y, m] = yyyymm.split("-").map(Number);
-  return new Date(y, m, 0).getDate();
-};
-const monthShift = (yyyymm: string, delta: number) => {
-  const [y, m] = yyyymm.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
 type Tab = "toate" | "venituri" | "cheltuieli";
@@ -87,18 +48,19 @@ type ModalState =
   | { kind: "cheltuiala"; row: Cheltuiala | null }
   | { kind: "portofel"; row: Portofel | null; prefill?: Portofel | null };
 
-const matchPeriod = (date: string, period: string) => {
-  if (/^\d{4}$/.test(period)) return date.startsWith(period + "-");
-  return date.startsWith(period);
-};
-
 export default function PnlApp(props: Props) {
   const router = useRouter();
-  const [venituri, setVenituri] = useState(props.venituri);
-  const [cheltuieli, setCheltuieli] = useState(props.cheltuieli);
-  const [portofel, setPortofel] = useState(props.portofel);
-  const loadedYearsRef = useRef(new Set([props.loadedYear]));
-  const [period, setPeriod] = useState<string>(props.initialMonth);
+  const {
+    period, setPeriod, periodIsYear, periods,
+    prevPeriodValue, nextPeriodValue,
+    venituri, cheltuieli,
+    filteredVenituri, filteredCheltuieli, filteredPortofel,
+    totalVenituri, totalCheltuieli, profitNet, marja,
+    days, medieZilnica, prevMonthLabel,
+    diffTxt, card4ValueClass, card4SubText,
+    topCategorii, lastCheltuialaDate, lastEntryInfo,
+  } = usePnlData(props);
+
   const [tab, setTab] = useState<Tab>("toate");
   const [filterCategorie, setFilterCategorie] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
@@ -107,32 +69,6 @@ export default function PnlApp(props: Props) {
   const [bannerClosed, setBannerClosed] = useState(false);
   const [rankingExpanded, setRankingExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
-
-  const periodIsYear = /^\d{4}$/.test(period);
-  const periodYear = periodIsYear ? period : period.slice(0, 4);
-
-  useEffect(() => {
-    setVenituri(props.venituri);
-    setCheltuieli(props.cheltuieli);
-    setPortofel(props.portofel);
-    loadedYearsRef.current = new Set([props.loadedYear]);
-  }, [props.venituri, props.cheltuieli, props.portofel, props.loadedYear]);
-
-  useEffect(() => {
-    if (loadedYearsRef.current.has(periodYear)) return;
-    let cancelled = false;
-    fetch(`/api/pnlpersonal/data?year=${periodYear}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled || data.error) return;
-        loadedYearsRef.current.add(periodYear);
-        setVenituri((prev) => [...prev.filter((v) => !v.data.startsWith(`${periodYear}-`)), ...data.venituri]);
-        setCheltuieli((prev) => [...prev.filter((c) => !c.data.startsWith(`${periodYear}-`)), ...data.cheltuieli]);
-        setPortofel((prev) => [...prev.filter((p) => !p.data.startsWith(`${periodYear}-`)), ...data.portofel]);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [periodYear]);
 
   useEffect(() => {
     document.body.classList.toggle("hide-sums", hideSums);
@@ -160,81 +96,6 @@ export default function PnlApp(props: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // Periods grouped: years (header) + months (indented muted)
-  const periods = useMemo(() => {
-    const set = new Set<string>(props.availableMonths);
-    set.add(props.initialMonth);
-    const months = Array.from(set);
-    const yearMap = new Map<string, string[]>();
-    for (const m of months) {
-      const [y] = m.split("-");
-      if (!yearMap.has(y)) yearMap.set(y, []);
-      yearMap.get(y)!.push(m);
-    }
-    const sortedYears = Array.from(yearMap.keys()).sort().reverse();
-    const out: { value: string; label: string; isYear: boolean }[] = [];
-    for (const y of sortedYears) {
-      out.push({ value: y, label: y, isYear: true });
-      const ms = yearMap.get(y)!.sort().reverse();
-      for (const m of ms) {
-        const mm = parseInt(m.split("-")[1], 10);
-        out.push({ value: m, label: `${RO_MONTHS[mm - 1]} ${y}`, isYear: false });
-      }
-    }
-    return out;
-  }, [props.availableMonths, props.initialMonth]);
-
-  const monthOnlyPeriods = useMemo(() => periods.filter((p) => !p.isYear), [periods]);
-  const navIdx = monthOnlyPeriods.findIndex((p) => p.value === period);
-  const prevPeriodValue = navIdx >= 0 && navIdx < monthOnlyPeriods.length - 1 ? monthOnlyPeriods[navIdx + 1].value : null;
-  const nextPeriodValue = navIdx > 0 ? monthOnlyPeriods[navIdx - 1].value : null;
-
-  // Filter data by selected period (client-side)
-  const filteredVenituri = useMemo(
-    () => venituri.filter((v) => matchPeriod(v.data, period)),
-    [venituri, period],
-  );
-  const filteredCheltuieli = useMemo(
-    () => cheltuieli.filter((c) => matchPeriod(c.data, period)),
-    [cheltuieli, period],
-  );
-  const filteredPortofel = useMemo(
-    () => portofel.filter((p) => matchPeriod(p.data, period)),
-    [portofel, period],
-  );
-
-  const totalVenituri = filteredVenituri.reduce((s, v) => s + v.suma, 0);
-  const totalCheltuieli = filteredCheltuieli.reduce((s, c) => s + c.suma, 0);
-  const profitNet = totalVenituri - totalCheltuieli;
-  const marja = totalVenituri > 0 ? Math.round((profitNet / totalVenituri) * 100) : 0;
-
-  const days = periodIsYear ? 0 : daysInMonth(period);
-  const medieZilnica = days > 0 ? totalCheltuieli / days : 0;
-
-  const prevMonthLabel = periodIsYear ? "" : periodLabel(monthShift(period, -1));
-  const prevC = useMemo(() => {
-    if (periodIsYear) return 0;
-    const prev = monthShift(period, -1);
-    return cheltuieli.filter((c) => c.data.startsWith(prev)).reduce((s, c) => s + c.suma, 0);
-  }, [cheltuieli, period, periodIsYear]);
-
-  const diff = prevC > 0 ? ((totalCheltuieli - prevC) / prevC) * 100 : null;
-  const diffTxt = diff === null ? "—" : `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
-  const card4ValueClass = diff === null ? "" : (diff <= 0 ? "green" : "red");
-  const card4SubText = prevC > 0 ? `${fmt(prevC)} lei atunci` : "fără date";
-
-  const latestTotalLichid = props.latestPortofel
-    ? props.latestPortofel.cash + props.latestPortofel.ing + props.latestPortofel.revolut
-    : 0;
-
-  const topCategorii = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of filteredCheltuieli) {
-      map.set(c.categorie, (map.get(c.categorie) ?? 0) + c.suma);
-    }
-    return Array.from(map, ([categorie, suma]) => ({ categorie, suma })).sort((a, b) => b.suma - a.suma);
-  }, [filteredCheltuieli]);
-
   const txList = useMemo(() => {
     const all: Array<{ kind: "venit" | "cheltuiala"; date: string; categorie: string; detalii: string; suma: number; id: number }> = [];
     if (tab === "toate" || tab === "venituri") {
@@ -258,21 +119,9 @@ export default function PnlApp(props: Props) {
     return Array.from(totals, ([cat, suma]) => ({ cat, suma })).sort((a, b) => b.suma - a.suma).map((x) => x.cat);
   }, [filteredCheltuieli]);
 
-  // Last cheltuiala date — across ALL data
-  const lastCheltuialaDate = useMemo(() => {
-    if (cheltuieli.length === 0) return null;
-    return [...cheltuieli].sort((a, b) => b.data.localeCompare(a.data))[0].data;
-  }, [cheltuieli]);
-
-  const lastEntryInfo = useMemo(() => {
-    if (!lastCheltuialaDate) return null;
-    const [y, m, d] = lastCheltuialaDate.split("-").map(Number);
-    const entryDt = new Date(y, m - 1, d);
-    const todayDt = new Date(); todayDt.setHours(0, 0, 0, 0);
-    const diffZ = Math.round((todayDt.getTime() - entryDt.getTime()) / 86400000);
-    const when = diffZ === 0 ? "azi" : diffZ === 1 ? "ieri" : `acum ${diffZ} zile`;
-    return { when, stale: diffZ >= 3 };
-  }, [lastCheltuialaDate]);
+  const latestTotalLichid = props.latestPortofel
+    ? props.latestPortofel.cash + props.latestPortofel.ing + props.latestPortofel.revolut
+    : 0;
 
   const onDataChange = () => router.refresh();
 
