@@ -38,6 +38,8 @@ type Portofel = { id: number; data: string; cash: number; ing: number; revolut: 
 
 type Props = {
   initialMonth: string;
+  loadedYear: string;
+  availableMonths: string[];
   todayKey: string;
   isMonday: boolean;
   venituri: Venit[];
@@ -92,6 +94,10 @@ const matchPeriod = (date: string, period: string) => {
 
 export default function PnlApp(props: Props) {
   const router = useRouter();
+  const [venituri, setVenituri] = useState(props.venituri);
+  const [cheltuieli, setCheltuieli] = useState(props.cheltuieli);
+  const [portofel, setPortofel] = useState(props.portofel);
+  const loadedYearsRef = useRef(new Set([props.loadedYear]));
   const [period, setPeriod] = useState<string>(props.initialMonth);
   const [tab, setTab] = useState<Tab>("toate");
   const [filterCategorie, setFilterCategorie] = useState<string | null>(null);
@@ -103,6 +109,30 @@ export default function PnlApp(props: Props) {
   const [pending, startTransition] = useTransition();
 
   const periodIsYear = /^\d{4}$/.test(period);
+  const periodYear = periodIsYear ? period : period.slice(0, 4);
+
+  useEffect(() => {
+    setVenituri(props.venituri);
+    setCheltuieli(props.cheltuieli);
+    setPortofel(props.portofel);
+    loadedYearsRef.current = new Set([props.loadedYear]);
+  }, [props.venituri, props.cheltuieli, props.portofel, props.loadedYear]);
+
+  useEffect(() => {
+    if (loadedYearsRef.current.has(periodYear)) return;
+    let cancelled = false;
+    fetch(`/api/pnlpersonal/data?year=${periodYear}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || data.error) return;
+        loadedYearsRef.current.add(periodYear);
+        setVenituri((prev) => [...prev.filter((v) => !v.data.startsWith(`${periodYear}-`)), ...data.venituri]);
+        setCheltuieli((prev) => [...prev.filter((c) => !c.data.startsWith(`${periodYear}-`)), ...data.cheltuieli]);
+        setPortofel((prev) => [...prev.filter((p) => !p.data.startsWith(`${periodYear}-`)), ...data.portofel]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [periodYear]);
 
   useEffect(() => {
     document.body.classList.toggle("hide-sums", hideSums);
@@ -132,10 +162,7 @@ export default function PnlApp(props: Props) {
 
   // Periods grouped: years (header) + months (indented muted)
   const periods = useMemo(() => {
-    const set = new Set<string>();
-    for (const v of props.venituri) set.add(v.data.slice(0, 7));
-    for (const c of props.cheltuieli) set.add(c.data.slice(0, 7));
-    if (props.venituri.length === 0 && props.cheltuieli.length === 0) set.add(props.initialMonth);
+    const set = new Set<string>(props.availableMonths);
     set.add(props.initialMonth);
     const months = Array.from(set);
     const yearMap = new Map<string, string[]>();
@@ -155,7 +182,7 @@ export default function PnlApp(props: Props) {
       }
     }
     return out;
-  }, [props.venituri, props.cheltuieli, props.initialMonth]);
+  }, [props.availableMonths, props.initialMonth]);
 
   const monthOnlyPeriods = useMemo(() => periods.filter((p) => !p.isYear), [periods]);
   const navIdx = monthOnlyPeriods.findIndex((p) => p.value === period);
@@ -164,16 +191,16 @@ export default function PnlApp(props: Props) {
 
   // Filter data by selected period (client-side)
   const filteredVenituri = useMemo(
-    () => props.venituri.filter((v) => matchPeriod(v.data, period)),
-    [props.venituri, period],
+    () => venituri.filter((v) => matchPeriod(v.data, period)),
+    [venituri, period],
   );
   const filteredCheltuieli = useMemo(
-    () => props.cheltuieli.filter((c) => matchPeriod(c.data, period)),
-    [props.cheltuieli, period],
+    () => cheltuieli.filter((c) => matchPeriod(c.data, period)),
+    [cheltuieli, period],
   );
   const filteredPortofel = useMemo(
-    () => props.portofel.filter((p) => matchPeriod(p.data, period)),
-    [props.portofel, period],
+    () => portofel.filter((p) => matchPeriod(p.data, period)),
+    [portofel, period],
   );
 
   const totalVenituri = filteredVenituri.reduce((s, v) => s + v.suma, 0);
@@ -188,8 +215,8 @@ export default function PnlApp(props: Props) {
   const prevC = useMemo(() => {
     if (periodIsYear) return 0;
     const prev = monthShift(period, -1);
-    return props.cheltuieli.filter((c) => c.data.startsWith(prev)).reduce((s, c) => s + c.suma, 0);
-  }, [props.cheltuieli, period, periodIsYear]);
+    return cheltuieli.filter((c) => c.data.startsWith(prev)).reduce((s, c) => s + c.suma, 0);
+  }, [cheltuieli, period, periodIsYear]);
 
   const diff = prevC > 0 ? ((totalCheltuieli - prevC) / prevC) * 100 : null;
   const diffTxt = diff === null ? "—" : `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
@@ -233,9 +260,9 @@ export default function PnlApp(props: Props) {
 
   // Last cheltuiala date — across ALL data
   const lastCheltuialaDate = useMemo(() => {
-    if (props.cheltuieli.length === 0) return null;
-    return [...props.cheltuieli].sort((a, b) => b.data.localeCompare(a.data))[0].data;
-  }, [props.cheltuieli]);
+    if (cheltuieli.length === 0) return null;
+    return [...cheltuieli].sort((a, b) => b.data.localeCompare(a.data))[0].data;
+  }, [cheltuieli]);
 
   const lastEntryInfo = useMemo(() => {
     if (!lastCheltuialaDate) return null;
@@ -530,10 +557,10 @@ export default function PnlApp(props: Props) {
                         <div className="actions-cell">
                           <button className="icon-btn" title="Editează" onClick={() => {
                             if (t.kind === "venit") {
-                              const row = props.venituri.find((v) => v.id === t.id);
+                              const row = venituri.find((v) => v.id === t.id);
                               if (row) setModal({ kind: "venit", row });
                             } else {
-                              const row = props.cheltuieli.find((c) => c.id === t.id);
+                              const row = cheltuieli.find((c) => c.id === t.id);
                               if (row) setModal({ kind: "cheltuiala", row });
                             }
                           }}>✎</button>

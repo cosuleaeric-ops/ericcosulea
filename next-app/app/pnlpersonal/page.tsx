@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import {
-  getAllCheltuieli,
-  getAllPortofel,
-  getAllVenituri,
+  getCheltuieliByYear,
   getCategoriiCheltuiala,
   getCategoriiVenit,
+  getDistinctMonthsWithEntries,
   getLatestPortofel,
+  getPortofelByYear,
+  getVenituriByYear,
 } from "@/lib/db/queries";
 import "./style.css";
 import PnlApp from "./PnlApp";
@@ -18,22 +19,26 @@ export const metadata: Metadata = {
 };
 
 export default async function PnlPage() {
-  const [venituri, cheltuieli, portofel, catVenit, catChelt, latest] = await Promise.all([
-    getAllVenituri(),
-    getAllCheltuieli(),
-    getAllPortofel(),
-    getCategoriiVenit(),
-    getCategoriiCheltuiala(),
-    getLatestPortofel(),
-  ]);
-
   const todayKey = new Date().toISOString().slice(0, 10);
   const isMonday = new Date().getDay() === 1;
   const initialMonth = todayKey.slice(0, 7);
+  const initialYear = initialMonth.slice(0, 4);
+
+  const [venituri, cheltuieli, portofel, catVenit, catChelt, latest, availableMonths] = await Promise.all([
+    getVenituriByYear(initialYear),
+    getCheltuieliByYear(initialYear),
+    getPortofelByYear(initialYear),
+    getCategoriiVenit(),
+    getCategoriiCheltuiala(),
+    getLatestPortofel(),
+    getDistinctMonthsWithEntries(),
+  ]);
 
   return (
     <PnlApp
       initialMonth={initialMonth}
+      loadedYear={initialYear}
+      availableMonths={availableMonths}
       todayKey={todayKey}
       isMonday={isMonday}
       venituri={venituri.map((v) => ({ id: v.id, data: v.data, descriere: v.descriere, suma: v.suma }))}

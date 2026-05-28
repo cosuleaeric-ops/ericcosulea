@@ -1,5 +1,1 @@
-@import "tailwindcss";
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
-  prefix: "du-";
-}
+/* Stilurile site-ului sunt în site.css; admin în admin.css; pnlpersonal în style.css. */
