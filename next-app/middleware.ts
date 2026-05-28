@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
-import { syncAdminHintCookie, type Session } from "@/lib/session";
+import { sessionOptions, syncAdminHintCookie, type Session } from "@/lib/session";
 
 const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/manifest.json",
@@ -12,54 +12,41 @@ const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/app.js",
 ]);
 
-const PROTECTED_PREFIXES = [
-  "/admin",
-  "/dogu",
-  "/vanzaridogu",
-  "/raportpnldogu",
-  "/reviewsdogu",
-  "/elite-deux",
-  "/pnlpersonal",
-];
-
-function isProtectedPath(pathname: string): boolean {
-  if (pathname.startsWith("/admin/login")) return false;
-  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin/login")) return NextResponse.next();
   if (PUBLIC_ELITE_DEUX_FILES.has(pathname)) return NextResponse.next();
 
-  const password = process.env.SESSION_SECRET;
-  const response = NextResponse.next();
-
-  if (!password) {
-    if (isProtectedPath(pathname)) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
-    }
-    return response;
-  }
-
-  const session = await getIronSession<Session>(request, response, {
-    password,
-    cookieName: "ericcosulea_admin",
-  });
-
-  const loggedIn = Boolean(session.loggedInAt);
-  syncAdminHintCookie(response, loggedIn);
-
-  if (isProtectedPath(pathname) && !loggedIn) {
+  if (!sessionOptions.password) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
+  const response = NextResponse.next();
+  const session = await getIronSession<Session>(request, response, sessionOptions);
+
+  if (!session.loggedInAt) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
+  syncAdminHintCookie(response, true);
   return response;
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|assets/).*)",
+    "/admin/:path*",
+    "/dogu",
+    "/dogu/:path*",
+    "/vanzaridogu",
+    "/vanzaridogu/:path*",
+    "/raportpnldogu",
+    "/raportpnldogu/:path*",
+    "/reviewsdogu",
+    "/reviewsdogu/:path*",
+    "/elite-deux",
+    "/elite-deux/:path*",
+    "/pnlpersonal",
+    "/pnlpersonal/:path*",
   ],
 };
