@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
-import { sessionOptions, syncAdminHintCookie, type Session } from "@/lib/session";
+import { sessionOptions, syncAdminHintCookie, type Session } from "@/lib/session-config";
 
 const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/manifest.json",
@@ -15,7 +15,6 @@ const PUBLIC_ELITE_DEUX_FILES = new Set([
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/admin/login")) return NextResponse.next();
   if (PUBLIC_ELITE_DEUX_FILES.has(pathname)) return NextResponse.next();
 
   if (!sessionOptions.password) {
@@ -35,7 +34,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
     "/dogu",
     "/dogu/:path*",
     "/vanzaridogu",

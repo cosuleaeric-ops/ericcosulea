@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllPostsForAdmin } from "@/lib/db/queries";
-import { logoutAction } from "./login/actions";
-import "./admin.css";
+import { logoutAction } from "../login/actions";
+import "../admin.css";
 
 export const metadata: Metadata = {
   title: "admin",
