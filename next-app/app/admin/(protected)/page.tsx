@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllPostsForAdmin } from "@/lib/db/queries";
-import { logoutAction } from "../login/actions";
 import "../admin.css";
 
 export const metadata: Metadata = {
@@ -18,15 +17,6 @@ export default async function AdminDashboard() {
 
   return (
     <>
-      <div className="admin-bar">
-        <div className="admin-bar-inner">
-          <Link className="btn" href="/">Website</Link>
-          <form action={logoutAction} style={{ marginLeft: "auto", display: "inline" }}>
-            <button type="submit" className="btn">Logout</button>
-          </form>
-        </div>
-      </div>
-
       <div className="admin-wrap">
         <div className="admin-top">
           <h1>Admin</h1>
