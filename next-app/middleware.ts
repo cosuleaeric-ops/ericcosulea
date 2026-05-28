@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
-
-type Session = { loggedInAt?: number };
+import { syncAdminHintCookie, type Session } from "@/lib/session";
 
 const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/manifest.json",
@@ -13,34 +12,54 @@ const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/app.js",
 ]);
 
+const PROTECTED_PREFIXES = [
+  "/admin",
+  "/dogu",
+  "/vanzaridogu",
+  "/raportpnldogu",
+  "/reviewsdogu",
+  "/elite-deux",
+  "/pnlpersonal",
+];
+
+function isProtectedPath(pathname: string): boolean {
+  if (pathname.startsWith("/admin/login")) return false;
+  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/admin/login")) return NextResponse.next();
-  if (PUBLIC_ELITE_DEUX_FILES.has(request.nextUrl.pathname)) return NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/admin/login")) return NextResponse.next();
+  if (PUBLIC_ELITE_DEUX_FILES.has(pathname)) return NextResponse.next();
 
   const password = process.env.SESSION_SECRET;
+  const response = NextResponse.next();
+
   if (!password) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    if (isProtectedPath(pathname)) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    return response;
   }
 
-  const response = NextResponse.next();
   const session = await getIronSession<Session>(request, response, {
     password,
     cookieName: "ericcosulea_admin",
   });
-  if (!session.loggedInAt) {
+
+  const loggedIn = Boolean(session.loggedInAt);
+  syncAdminHintCookie(response, loggedIn);
+
+  if (isProtectedPath(pathname) && !loggedIn) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
+
   return response;
 }
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/dogu", "/dogu/:path*",
-    "/vanzaridogu", "/vanzaridogu/:path*",
-    "/raportpnldogu", "/raportpnldogu/:path*",
-    "/reviewsdogu", "/reviewsdogu/:path*",
-    "/elite-deux", "/elite-deux/:path*",
-    "/pnlpersonal", "/pnlpersonal/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|assets/).*)",
   ],
 };

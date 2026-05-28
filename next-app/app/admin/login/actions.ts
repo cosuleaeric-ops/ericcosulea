@@ -1,8 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { ADMIN_HINT_COOKIE, getSession } from "@/lib/session";
 import { createMagicToken, sendMagicEmail } from "@/lib/auth";
 
 export async function loginAction(_prev: { ok?: boolean; error?: string } | undefined, formData: FormData) {
@@ -34,5 +34,7 @@ export async function loginAction(_prev: { ok?: boolean; error?: string } | unde
 export async function logoutAction() {
   const session = await getSession();
   session.destroy();
+  const jar = await cookies();
+  jar.delete(ADMIN_HINT_COOKIE);
   redirect("/admin/login");
 }

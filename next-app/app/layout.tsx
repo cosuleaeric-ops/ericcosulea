@@ -4,6 +4,20 @@ import { Crimson_Pro } from "next/font/google";
 import "./globals.css";
 import "./site.css";
 import AdminBarClient from "./AdminBarClient";
+import { ADMIN_BAR_HIDDEN_PREFIXES, ADMIN_HINT_COOKIE } from "@/lib/admin-bar-paths";
+
+const adminBarInitScript = `
+(function () {
+  if (document.cookie.indexOf("${ADMIN_HINT_COOKIE}=1") === -1) return;
+  var p = location.pathname;
+  var hidden = ${JSON.stringify(ADMIN_BAR_HIDDEN_PREFIXES)};
+  for (var i = 0; i < hidden.length; i++) {
+    var h = hidden[i];
+    if (p === h || p.indexOf(h + "/") === 0) return;
+  }
+  document.documentElement.classList.add("admin-authed");
+})();
+`;
 
 const crimsonPro = Crimson_Pro({
   variable: "--font-crimson-pro",
@@ -26,6 +40,9 @@ export default function RootLayout({
   return (
     <html lang="ro" className={crimsonPro.variable}>
       <head>
+        <Script id="admin-bar-init" strategy="beforeInteractive">
+          {adminBarInitScript}
+        </Script>
         <Script
           src="https://plausible.io/js/pa-U3QUedm8aW1g2Ou0qk-1J.js"
           strategy="afterInteractive"

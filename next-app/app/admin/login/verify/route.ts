@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import { consumeMagicToken } from "@/lib/auth";
-import { sessionOptions, type Session } from "@/lib/session";
+import { sessionOptions, syncAdminHintCookie, type Session } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -23,5 +23,6 @@ export async function GET(request: NextRequest) {
   const session = await getIronSession<Session>(request, response, sessionOptions);
   session.loggedInAt = Date.now();
   await session.save();
+  syncAdminHintCookie(response, true);
   return response;
 }

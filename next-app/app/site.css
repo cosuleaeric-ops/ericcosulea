@@ -53,17 +53,22 @@ body {
   line-height: 1.5;
 }
 
-body:has(.admin-bar) {
-  padding-top: 86px;
+html.admin-authed body {
+  padding-top: 48px;
 }
 
 .admin-bar {
   position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
-  width: min(720px, calc(100% - 24px));
+  width: 100%;
+  display: none;
+}
+
+html.admin-authed .admin-bar {
+  display: block;
 }
 
 .admin-bar-inner {
@@ -72,14 +77,13 @@ body:has(.admin-bar) {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  padding: 8px;
-  border: 1px solid rgba(143, 111, 74, 0.18);
-  border-radius: 20px;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid rgba(143, 111, 74, 0.18);
+  border-radius: 0;
   background:
     linear-gradient(180deg, rgba(219, 204, 181, 0.96) 0%, rgba(206, 187, 160, 0.98) 100%);
-  box-shadow:
-    0 18px 44px rgba(90, 67, 39, 0.18),
-    inset 0 1px 0 rgba(255, 250, 242, 0.5);
+  box-shadow: 0 4px 16px rgba(90, 67, 39, 0.12);
   backdrop-filter: blur(12px);
 }
 
@@ -291,18 +295,13 @@ body.site-text-editing [data-site-text] {
 }
 
 @media (max-width: 720px) {
-  body:has(.admin-bar) {
-    padding-top: 116px;
-  }
-
-  .admin-bar {
-    top: 12px;
-    width: calc(100% - 20px);
+  html.admin-authed body {
+    padding-top: 56px;
   }
 
   .admin-bar-inner {
     gap: 8px;
-    padding: 10px;
+    padding: 10px 12px;
   }
 
   .admin-bar a {
