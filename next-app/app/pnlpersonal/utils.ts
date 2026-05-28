@@ -17,6 +17,8 @@ export const fmtDate = (s: string) => {
   return `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
 };
 
+export const LAST_DATE_KEY = "pnlpersonal_last_date";
+
 export const today = () => new Date().toISOString().slice(0, 10);
 
 export const dayShift = (yyyymmdd: string, delta: number) => {
@@ -65,4 +67,9 @@ export function buildPeriods(availableMonths: string[], initialMonth: string): P
     }
   }
   return out;
+}
+
+export function getInitialAddDate(): string {
+  if (typeof window === "undefined") return today();
+  return localStorage.getItem(LAST_DATE_KEY) || today();
 }
