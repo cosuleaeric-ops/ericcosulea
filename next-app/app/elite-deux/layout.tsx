@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Bebas_Neue, Inter } from "next/font/google";
+
+const bebasNeue = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-bebas-neue",
+  display: "swap",
+});
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -22,8 +29,8 @@ export const viewport: Viewport = {
 
 export default function EliteDeuxLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`elite-deux-root ${inter.variable} ${inter.className}`}>
-      <link rel="stylesheet" href="/elite-deux/styles.css?v=4" />
+    <div className={`elite-deux-root ${inter.variable} ${inter.className} ${bebasNeue.variable}`}>
+      <link rel="stylesheet" href="/elite-deux/styles.css?v=5" />
       {children}
     </div>
   );

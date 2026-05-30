@@ -83,10 +83,11 @@ body.dark {
 
 .brand-wrap h1 {
   margin: 0;
-  font-weight: 600;
-  letter-spacing: -0.0225em;
-  font-size: 18px;
-  line-height: 1.1;
+  font-family: var(--font-bebas-neue), "Bebas Neue", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .brand-mark {
@@ -172,10 +173,11 @@ main {
 }
 
 .day-name {
-  font-weight: 600;
-  letter-spacing: -0.01875em;
-  font-size: 20px;
-  line-height: 1.15;
+  font-family: var(--font-bebas-neue), "Bebas Neue", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  font-size: 22px;
+  line-height: 1;
   margin-top: 2px;
 }
 
