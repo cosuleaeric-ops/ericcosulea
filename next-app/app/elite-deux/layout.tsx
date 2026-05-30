@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 export default function EliteDeuxLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`elite-deux-root ${inter.variable} ${inter.className}`}>
-      <link rel="stylesheet" href="/elite-deux/styles.css?v=3" />
+      <link rel="stylesheet" href="/elite-deux/styles.css?v=4" />
       {children}
     </div>
   );
