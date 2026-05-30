@@ -1,17 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, IBM_Plex_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 
-const bebasNeue = Bebas_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-bebas-neue",
-  display: "swap",
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
-  variable: "--font-ibm-plex",
+const inter = Inter({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -29,8 +22,8 @@ export const viewport: Viewport = {
 
 export default function EliteDeuxLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${bebasNeue.variable} ${ibmPlexSans.variable}`}>
-      <link rel="stylesheet" href="/elite-deux/styles.css" />
+    <div className={`elite-deux-root ${inter.variable} ${inter.className}`}>
+      <link rel="stylesheet" href="/elite-deux/styles.css?v=3" />
       {children}
     </div>
   );
