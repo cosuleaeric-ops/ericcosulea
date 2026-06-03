@@ -32,12 +32,6 @@ html:has(.elite-deux-root) body {
   min-height: 100vh;
 }
 
-.elite-deux-root .task-content,
-.elite-deux-root .add-input,
-.elite-deux-root .edit-input {
-  font-family: var(--font-lab-grotesque), sans-serif;
-}
-
 body {
   margin: 0;
   color: var(--ink);
@@ -256,7 +250,6 @@ body[data-bullets="none"] .check-btn {
   cursor: grab;
   font-size: var(--task-font-size);
   font-weight: 400;
-  letter-spacing: -0.01875em;
 }
 
 .task-content:active {
@@ -332,10 +325,8 @@ body[data-bullets="none"] .check-btn {
   border-bottom: calc(var(--row-line-opacity) * 1px) solid var(--line);
   background: transparent;
   color: var(--ink);
+  font: inherit;
   font-size: var(--task-font-size);
-  font-weight: 400;
-  letter-spacing: -0.01875em;
-  line-height: 1.35;
   padding: 8px 3px;
 }
 

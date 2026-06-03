@@ -10,7 +10,6 @@ const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/sw.js",
   "/elite-deux/styles.css",
   "/elite-deux/app.js",
-  "/elite-deux/fonts/LabGrotesque-Regular.woff2",
 ]);
 
 export async function middleware(request: NextRequest) {
