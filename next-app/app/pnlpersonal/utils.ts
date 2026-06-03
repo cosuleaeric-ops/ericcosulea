@@ -19,7 +19,42 @@ export const fmtDate = (s: string) => {
 
 export const LAST_DATE_KEY = "pnlpersonal_last_date";
 
-export const today = () => new Date().toISOString().slice(0, 10);
+const RO_TZ = "Europe/Bucharest";
+
+export const todayInRo = (timeZone = RO_TZ) =>
+  new Date().toLocaleDateString("en-CA", { timeZone });
+
+export const today = () => todayInRo();
+
+export function addDaysYmd(dateStr: string, delta: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + delta));
+  return dt.toISOString().slice(0, 10);
+}
+
+function weekdayIsoInRo(dateStr: string, timeZone = RO_TZ): number {
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+  }).format(new Date(`${dateStr}T12:00:00`));
+  const map: Record<string, number> = {
+    Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
+  };
+  return map[wd] ?? 1;
+}
+
+/** YYYY-MM-DD al lunei săptămânii care conține `dateStr` (timezone RO). */
+export function mondayOfWeekRo(dateStr: string): string {
+  const dow = weekdayIsoInRo(dateStr);
+  return addDaysYmd(dateStr, -(dow - 1));
+}
+
+/** Banner portofel: de luni înainte, până există o intrare cu data ≥ lunea săptămânii curente. */
+export function needsWalletUpdate(latestData: string | null | undefined): boolean {
+  const monday = mondayOfWeekRo(todayInRo());
+  if (!latestData) return true;
+  return latestData < monday;
+}
 
 export const dayShift = (yyyymmdd: string, delta: number) => {
   const d = new Date(yyyymmdd || today());

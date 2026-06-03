@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Lab Grotesque";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/elite-deux/fonts/LabGrotesque-Regular.woff2") format("woff2");
+}
+
 :root {
   --bg: #f4f4f6;
   --paper: #fbfbfc;
@@ -12,6 +20,7 @@
   --task-padding-y: 8px;
   --row-line-opacity: 1;
   --check-radius: 999px;
+  --font-task: "Lab Grotesque", var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -248,8 +257,10 @@ body[data-bullets="none"] .check-btn {
   line-height: 1.35;
   word-break: break-word;
   cursor: grab;
+  font-family: var(--font-task);
   font-size: var(--task-font-size);
   font-weight: 400;
+  letter-spacing: -0.01875em;
 }
 
 .task-content:active {
@@ -325,8 +336,11 @@ body[data-bullets="none"] .check-btn {
   border-bottom: calc(var(--row-line-opacity) * 1px) solid var(--line);
   background: transparent;
   color: var(--ink);
-  font: inherit;
+  font-family: var(--font-task);
   font-size: var(--task-font-size);
+  font-weight: 400;
+  letter-spacing: -0.01875em;
+  line-height: 1.35;
   padding: 8px 3px;
 }
 

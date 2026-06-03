@@ -27,7 +27,7 @@ const CAT_COLORS = [
 
 type Props = PnlDataInput & {
   todayKey: string;
-  isMonday: boolean;
+  showWalletBanner: boolean;
   catVenit: string[];
   catChelt: string[];
   latestPortofel: Portofel | null;
@@ -132,7 +132,14 @@ export default function PnlApp(props: Props) {
 
   const portofelPrefill = (): Portofel | null => {
     if (!props.latestPortofel) return null;
-    return { ...props.latestPortofel, id: 0, data: props.todayKey };
+    return {
+      id: 0,
+      data: props.todayKey,
+      cash: 0,
+      ing: 0,
+      revolut: 0,
+      trading212: props.latestPortofel.trading212,
+    };
   };
 
   const headerLabel = periodLabel(period);
@@ -181,10 +188,10 @@ export default function PnlApp(props: Props) {
         </div>
       </header>
 
-      {props.isMonday && !bannerClosed && props.latestPortofel?.data !== props.todayKey && (
+      {props.showWalletBanner && !bannerClosed && (
         <div className="monday-banner visible">
           <span className="banner-icon">🔔</span>
-          <span className="banner-text">E luni! Nu uita să actualizezi valorile din portofel.</span>
+          <span className="banner-text">Actualizează valorile din portofel pentru săptămâna aceasta.</span>
           <button className="banner-btn" onClick={() => setModal({ kind: "portofel", row: null, prefill: portofelPrefill() })}>Actualizează portofelul</button>
           <button className="banner-close" onClick={() => setBannerClosed(true)}>×</button>
         </div>

@@ -14,12 +14,13 @@ type Props = {
 
 export function PortofelModal({ row, prefill, onClose, onSaved }: Props) {
   const isEdit = row != null;
-  const initial = row ?? prefill;
-  const [data, setData] = useState(initial?.data ?? today());
-  const [cash, setCash] = useState(initial ? String(initial.cash) : "");
-  const [ing, setIng] = useState(initial ? String(initial.ing) : "");
-  const [revolut, setRevolut] = useState(initial ? String(initial.revolut) : "");
-  const [trading212, setTrading212] = useState(initial ? String(initial.trading212) : "");
+  const [data, setData] = useState(row?.data ?? prefill?.data ?? today());
+  const [cash, setCash] = useState(isEdit && row ? String(row.cash) : "");
+  const [ing, setIng] = useState(isEdit && row ? String(row.ing) : "");
+  const [revolut, setRevolut] = useState(isEdit && row ? String(row.revolut) : "");
+  const [trading212, setTrading212] = useState(
+    isEdit && row ? String(row.trading212) : prefill ? String(prefill.trading212) : "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
