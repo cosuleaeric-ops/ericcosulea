@@ -96,6 +96,19 @@ prefsOverlay.addEventListener("click", () => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.ui.prefsOpen) {
     setPreferencesPanel(false);
+    return;
+  }
+
+  if (
+    event.key.toLowerCase() === "n" &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !state.ui.prefsOpen &&
+    !isTypingTarget(event.target)
+  ) {
+    event.preventDefault();
+    focusTodayComposer();
   }
 });
 
@@ -623,6 +636,30 @@ function openInlineComposer(taskList, dateKey) {
   row.appendChild(input);
   taskList.appendChild(row);
   input.focus();
+}
+
+function focusTodayComposer() {
+  const todayKey = formatDateKey(new Date());
+  let taskList = document.querySelector(`.day-column[data-date-key="${todayKey}"] .task-list`);
+
+  if (!taskList) {
+    state.dayOffset = state.settings.startOn === "yesterday" ? 1 : 0;
+    renderWeek();
+    taskList = document.querySelector(`.day-column[data-date-key="${todayKey}"] .task-list`);
+  }
+
+  if (taskList) {
+    openInlineComposer(taskList, todayKey);
+  }
+}
+
+function isTypingTarget(target) {
+  if (!target) {
+    return false;
+  }
+
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
 function renderTask(dateKey, task) {
