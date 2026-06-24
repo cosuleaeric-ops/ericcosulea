@@ -52,6 +52,12 @@ export default function RootLayout({
           window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
           plausible.init();
         `}</Script>
+        <Script
+          src="https://datafa.st/js/script.js"
+          data-website-id="dfid_gYVQtrsZRrDX6Brm02Dek"
+          data-domain="ericcosulea.ro"
+          strategy="afterInteractive"
+        />
       </head>
       <body>
         <AdminBarClient />
