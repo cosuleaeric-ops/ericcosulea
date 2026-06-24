@@ -9,7 +9,9 @@ structurat, fidel sursei.
 | Fișier | Conținut |
 |---|---|
 | `articole.json` | **99 articole** — titlu, slug, date, categorii, tag-uri, imagine featured, `content_html` (HTML complet), `content_text` (text simplu) |
-| `cadouri.json` | **294 idei de cadou** — titlu, slug, **`affiliate_link`** (2Performant / Profitshare), imagine, taxonomii (`ocazie`, `pentru_cine`, `pret`, `tip`) |
+| `cadouri.json` | **294 idei de cadou** (CPT separat) — titlu, slug, **`affiliate_link`** (2Performant / Profitshare), imagine, taxonomii (`ocazie`, `pentru_cine`, `pret`, `tip`) |
+| `articole_produse.json` | **Produse afiliate din CORPUL articolelor** — 3071 produse (995 linkuri unice), grupate pe articol, fiecare cu nume + `affiliate_link` + network + merchant + imagine. Acoperă atât cardurile media-text cât și linkurile puse direct în text. |
+| `articole_produse_flat.csv` | Aceleași date, aplatizate (1 rând = 1 produs), pentru import rapid în Supabase |
 | `pagini.json` | 5 pagini statice |
 | `taxonomii.json` | Toți termenii rezolvați (categorii, tag-uri, ocazie, pentru-cine, preț, tip) |
 | `manifest.json` | Numărători + lista URL-urilor de imagini referite |
@@ -17,7 +19,8 @@ structurat, fidel sursei.
 ## Verificare calitate (QA)
 
 - Articole: **0** cu conținut gol, **0** fără imagine. Medie ~125k caractere/articol.
-- Cadouri: **0** fără link. **294/294 au link afiliat real** (210 Profitshare + 84 2Performant). 0 linkuri interne.
+- Cadouri (CPT): **0** fără link. **294/294 au link afiliat real** (210 Profitshare + 84 2Performant). 0 linkuri interne.
+- Produse în articole: **3071** linkuri afiliate extrase, **0** fără nume detectabil. 61 sunt linkuri inline în text (fără card) — la acestea numele e textul ancorei (uneori generic, ex. „apasă aici"), restul au nume curat din `alt`/heading. Toate sunt mapate la articolul lor.
 - Imagini: 99/99 articole + **221/294** cadouri. Restul de **72 imagini** sunt blocate
   de o permisiune REST (HTTP 401 pe `/wp/v2/media/<id>`) — vezi mai jos cum le recuperezi.
 

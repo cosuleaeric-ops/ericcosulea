@@ -41,3 +41,19 @@ create table if not exists cadouri (
 create index if not exists cadouri_pentru_cine_idx on cadouri using gin (pentru_cine);
 create index if not exists cadouri_tip_idx         on cadouri using gin (tip);
 create index if not exists cadouri_ocazie_idx      on cadouri using gin (ocazie);
+
+-- ============ PRODUSE DIN ARTICOLE (affiliate links inside post bodies) ============
+-- Produsele linkate în corpul articolelor (blocuri media-text sau linkuri inline).
+-- Distinct de tabelul `cadouri` (care e CPT separat). Sursa: articole_produse.json.
+create table if not exists articol_produse (
+  id             bigserial primary key,
+  article_id     bigint not null references articole(id) on delete cascade,
+  name           text,                      -- nume produs (best-effort la linkuri inline)
+  affiliate_link text not null,             -- Profitshare / 2Performant
+  network        text,                      -- 'profitshare' | '2performant'
+  merchant       text,                      -- magazin final (doar pt 2Performant)
+  image          text,
+  unique (article_id, affiliate_link)
+);
+
+create index if not exists articol_produse_article_idx on articol_produse (article_id);
