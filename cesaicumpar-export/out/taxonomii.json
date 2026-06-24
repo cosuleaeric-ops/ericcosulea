@@ -1,0 +1,76 @@
+{
+  "categories": {
+    "170": "Idei cadouri barbati",
+    "187": "Idei cadouri copii",
+    "167": "Idei cadouri femei",
+    "203": "Idei cadouri ocazii",
+    "197": "Idei cadouri pasiuni",
+    "198": "Idei cadouri profesii",
+    "202": "Recomandari",
+    "1": "Uncategorized"
+  },
+  "tags": {
+    "240": "Baieti",
+    "241": "ieftin",
+    "243": "Scump",
+    "242": "sport"
+  },
+  "ocazie": {
+    "296": "1 martie",
+    "245": "Craciun",
+    "287": "Majorat",
+    "302": "Nunta de argint",
+    "271": "Valentine's"
+  },
+  "pentru-cine": {
+    "256": "Baietei",
+    "255": "Baieti 12-18 ani",
+    "290": "Baieti 7-11 ani",
+    "257": "Barbati",
+    "294": "Bunic",
+    "293": "Bunica",
+    "288": "Cea mai buna prietena",
+    "303": "Cuplu",
+    "284": "Diriginte",
+    "259": "Femei",
+    "251": "Fete 12-18 ani",
+    "289": "Fete 7-11 ani",
+    "254": "Fetite",
+    "298": "Frate",
+    "268": "Iubit",
+    "269": "Iubita",
+    "299": "Mama",
+    "304": "Pescar",
+    "278": "Preot",
+    "283": "Profesor",
+    "300": "Sora",
+    "297": "Tata"
+  },
+  "pret": {
+    "244": "Ieftin"
+  },
+  "tip": {
+    "260": "Accesorii",
+    "280": "Accesorii casa",
+    "281": "Amuzant",
+    "279": "Aparat de masaj",
+    "262": "Beauty",
+    "270": "Buchet de flori",
+    "263": "Cadou personalizat",
+    "306": "Cadou personalizat 25 ani",
+    "305": "Cadou personalizat 30 ani",
+    "246": "Carte",
+    "261": "Device",
+    "248": "Fashion",
+    "276": "Felicitare",
+    "249": "Funny",
+    "282": "Gaming",
+    "273": "Jocuri erotice",
+    "252": "Jucarie",
+    "295": "Martisor",
+    "253": "Random",
+    "277": "Set cadou",
+    "258": "Sport",
+    "267": "Voucher"
+  }
+}
