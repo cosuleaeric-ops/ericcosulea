@@ -1,0 +1,56 @@
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { getWebsiteByPublicId } from "@/lib/analytics/queries";
+import { SnippetBlock } from "./SnippetBlock";
+
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage({
+  params,
+}: {
+  params: Promise<{ publicId: string }>;
+}) {
+  const { publicId } = await params;
+  const website = await getWebsiteByPublicId(publicId);
+  if (!website) notFound();
+
+  const appUrl = process.env.APP_URL || "https://ericcosulea.ro";
+  const snippet = `<script
+  defer
+  data-website-id="${website.publicId}"
+  data-domain="${website.domain}"
+  src="${appUrl}/js/script.js"
+></script>`;
+
+  return (
+    <div className="dfa-settings">
+      <a className="dfa-back" href={`/analytics/${website.publicId}`}>
+        <ArrowLeft size={15} /> {website.domain}
+      </a>
+      <h1 className="dfa-settings-title">Settings</h1>
+
+      <section className="dfa-card dfa-settings-card">
+        <h2>Install tracking</h2>
+        <p className="dfa-muted">
+          Pune snippet-ul în <code>&lt;head&gt;</code> pe <strong>{website.domain}</strong>.
+          Pageview-urile și custom event-urile (<code>window.datafast(&quot;nume&quot;)</code>)
+          apar imediat în dashboard.
+        </p>
+        <SnippetBlock code={snippet} />
+      </section>
+
+      <section className="dfa-card dfa-settings-card">
+        <h2>Integrations</h2>
+        <div className="dfa-integration-row">
+          <div>
+            <div className="dfa-integration-name">Google Search Console</div>
+            <div className="dfa-muted">Keywords, clicks, impressions, CTR, position.</div>
+          </div>
+          <button className="dfa-btn" disabled title="Disponibil în M6">
+            Connect
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
