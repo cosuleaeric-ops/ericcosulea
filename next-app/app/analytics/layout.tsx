@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import "./analytics.css";
+
+export const metadata: Metadata = {
+  title: { default: "EliteData", template: "%s · EliteData" },
+};
 
 function ownerName(): string {
   const email = process.env.ADMIN_EMAIL ?? "";
@@ -28,8 +33,8 @@ export default async function AnalyticsLayout({
       <div className="dfa-shell">
         <header className="dfa-topbar">
           <a href="/analytics" className="dfa-brand">
-            <span className="dfa-brand-mark">a</span>
-            analytics
+            <span className="dfa-brand-mark">E</span>
+            EliteData
           </a>
           <div className="dfa-user">
             <span>{ownerName()}</span>
