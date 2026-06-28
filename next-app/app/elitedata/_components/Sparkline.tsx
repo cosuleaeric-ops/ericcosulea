@@ -1,8 +1,8 @@
 "use client";
 import { useId } from "react";
+import { motion } from "framer-motion";
 
-// Spline cubic MONOTON (Fritsch–Carlson): neted, dar nu depășește niciodată
-// valorile punctelor — deci o linie plată la 0 nu mai coboară sub 0 înainte să urce.
+// Spline cubic MONOTON (Fritsch–Carlson): neted, dar nu depășește valorile punctelor.
 function monotoneLine(pts: [number, number][]): string {
   const n = pts.length;
   if (n === 0) return "";
@@ -23,7 +23,6 @@ function monotoneLine(pts: [number, number][]): string {
   for (let i = 1; i < n - 1; i++) {
     m[i] = delta[i - 1] * delta[i] <= 0 ? 0 : (delta[i - 1] + delta[i]) / 2;
   }
-  // Constrângere de monotonicitate (fără overshoot)
   for (let i = 0; i < n - 1; i++) {
     if (delta[i] === 0) {
       m[i] = 0;
@@ -51,8 +50,17 @@ function monotoneLine(pts: [number, number][]): string {
   return d;
 }
 
-export function Sparkline({ data, height = 56 }: { data: number[]; height?: number }) {
+export function Sparkline({
+  data,
+  height = 56,
+  delay = 0,
+}: {
+  data: number[];
+  height?: number;
+  delay?: number;
+}) {
   const id = useId();
+  const clipId = `clip-${id}`;
   const w = 240;
   const h = height;
   const pad = 4;
@@ -63,8 +71,10 @@ export function Sparkline({ data, height = 56 }: { data: number[]; height?: numb
 
   const pts: [number, number][] = data.map((v, i) => [x(i), y(v)]);
   const line = monotoneLine(pts);
-  const area =
-    n > 0 ? `${line} L${x(n - 1).toFixed(1)},${h} L${x(0).toFixed(1)},${h} Z` : "";
+  const area = n > 0 ? `${line} L${x(n - 1).toFixed(1)},${h} L${x(0).toFixed(1)},${h} Z` : "";
+
+  // draw-in: cortina de clip se desface de la stânga la dreapta la montare/refresh
+  const reveal = { duration: 0.85, delay, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
   return (
     <svg className="dfa-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" width="100%" height={h}>
@@ -73,9 +83,14 @@ export function Sparkline({ data, height = 56 }: { data: number[]; height?: numb
           <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.32} />
           <stop offset="100%" stopColor="var(--dfa-chart)" stopOpacity={0} />
         </linearGradient>
+        <clipPath id={clipId}>
+          <motion.rect x={0} y={0} height={h} initial={{ width: 0 }} animate={{ width: w }} transition={reveal} />
+        </clipPath>
       </defs>
-      <path d={area} fill={`url(#sg-${id})`} />
-      <path d={line} fill="none" stroke="var(--dfa-chart)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      <g clipPath={`url(#${clipId})`}>
+        <path d={area} fill={`url(#sg-${id})`} />
+        <path d={line} fill="none" stroke="var(--dfa-chart)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      </g>
     </svg>
   );
 }
