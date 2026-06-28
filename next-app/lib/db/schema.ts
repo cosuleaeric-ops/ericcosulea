@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -114,4 +114,77 @@ export const verificationTokens = pgTable("verification_tokens", {
   email: text("email").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
+// ───────────────────────────── Analytics (DataFast clone) ─────────────────────────────
+// Single-user: izolarea e implicită (un singur owner = adminul site-ului). Fără account_id.
+
+export const websites = pgTable("websites", {
+  id: serial("id").primaryKey(),
+  publicId: text("public_id").notNull().unique(), // dfid_xxxx, folosit de scriptul de tracking
+  domain: text("domain").notNull(),
+  name: text("name").notNull(),
+  timezone: text("timezone").notNull().default("Europe/Bucharest"),
+  faviconUrl: text("favicon_url"),
+  plan: text("plan").notNull().default("free"), // neutilizat (fără billing), păstrat conform spec
+  kpiGoalName: text("kpi_goal_name"), // numele goal-ului promovat ca "#1 KPI" configurabil
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  type: text("type").notNull(), // pageview | custom
+  name: text("name"), // numele custom event-ului (ex: faq_tech_stack)
+  path: text("path"),
+  hostname: text("hostname"),
+  referrerRaw: text("referrer_raw"),
+  referrerSource: text("referrer_source"), // Google, Bing, Direct/None, ...
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  country: text("country"),
+  region: text("region"),
+  city: text("city"),
+  browser: text("browser"),
+  os: text("os"),
+  device: text("device"), // desktop | mobile | tablet
+  visitorId: text("visitor_id"),
+  sessionId: text("session_id"),
+  isBounce: boolean("is_bounce").notNull().default(true),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("events_website_created_idx").on(t.websiteId, t.createdAt),
+  index("events_website_type_idx").on(t.websiteId, t.type),
+  index("events_website_name_idx").on(t.websiteId, t.name),
+]);
+
+export const goals = pgTable("goals", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  name: text("name").notNull(), // numele tehnic al custom event-ului
+  displayName: text("display_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("goals_website_name_unique").on(t.websiteId, t.name),
+]);
+
+export const funnels = pgTable("funnels", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  name: text("name").notNull(),
+  steps: jsonb("steps").notNull(), // listă de { type: "goal"|"path", value: string }
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const integrationsGsc = pgTable("integrations_gsc", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull().unique(),
+  googleEmail: text("google_email"),
+  gscSiteUrl: text("gsc_site_url"), // sc-domain:cesaicumpar.ro sau https://cesaicumpar.ro/
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
+  connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
 });

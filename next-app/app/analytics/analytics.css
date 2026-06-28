@@ -1,0 +1,391 @@
+/* ============================================================================
+   ANALYTICS — design tokens (DataFast clone)
+   Singurul fișier de schimbat pentru temă/accent. Totul e scoped sub `.dfa`
+   ca să nu afecteze restul site-ului (site.css, admin.css etc.).
+   ============================================================================ */
+
+.dfa {
+  /* ── Suprafețe ── */
+  --dfa-bg: #0a0a0b;
+  --dfa-bg-2: #0e0f12;
+  --dfa-panel: #15161a;
+  --dfa-panel-2: #191a1f;
+  --dfa-panel-hover: #1d1f25;
+  --dfa-border: rgba(255, 255, 255, 0.06);
+  --dfa-border-strong: rgba(255, 255, 255, 0.1);
+
+  /* ── Text ── */
+  --dfa-text: #ededf0;
+  --dfa-text-2: #b7bbc2;
+  --dfa-muted: #8b8f98;
+  --dfa-faint: #5f636c;
+
+  /* ── Grafic ── */
+  --dfa-chart: #4d9fff;
+  --dfa-chart-2: #6ab0ff;
+  --dfa-chart-fill-top: rgba(77, 159, 255, 0.32);
+  --dfa-chart-fill-bottom: rgba(77, 159, 255, 0);
+  --dfa-chart-compare: #6b7280;
+
+  /* ── Bare breakdown (translucid în spatele rândului) ── */
+  --dfa-bar: rgba(99, 132, 255, 0.16);
+  --dfa-bar-strong: rgba(99, 132, 255, 0.26);
+
+  /* ── Accent brand (logo, butoane primare, highlight) ── */
+  --dfa-accent: #e16540;
+  --dfa-accent-hover: #ec754f;
+  --dfa-accent-contrast: #ffffff;
+
+  /* ── Semnale ── */
+  --dfa-up: #4ade80;
+  --dfa-down: #f87171;
+  --dfa-online: #34d399;
+
+  /* ── Forme ── */
+  --dfa-radius: 14px;
+  --dfa-radius-sm: 10px;
+  --dfa-radius-lg: 18px;
+  --dfa-gap: 16px;
+
+  /* ── Tipografie ── */
+  --dfa-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --dfa-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+/* ============================================================================
+   Reset scoped + bază
+   ============================================================================ */
+.dfa,
+.dfa *,
+.dfa *::before,
+.dfa *::after {
+  box-sizing: border-box;
+}
+
+.dfa {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--dfa-bg);
+  color: var(--dfa-text);
+  font-family: var(--dfa-font);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  z-index: 1;
+}
+
+.dfa ::selection {
+  background: color-mix(in srgb, var(--dfa-accent) 35%, transparent);
+}
+
+.dfa a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dfa button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ============================================================================
+   Shell — header + container
+   ============================================================================ */
+.dfa-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dfa-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 60px;
+  padding: 0 24px;
+  background: color-mix(in srgb, var(--dfa-bg) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--dfa-border);
+}
+
+.dfa-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.dfa-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--dfa-accent);
+  color: var(--dfa-accent-contrast);
+  font-weight: 800;
+}
+
+.dfa-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--dfa-text-2);
+}
+
+.dfa-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dfa-accent), #b23e6b);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dfa-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+}
+
+/* ============================================================================
+   Primitive: card / panel / button / chip
+   ============================================================================ */
+.dfa-card {
+  background: var(--dfa-panel);
+  border: 1px solid var(--dfa-border);
+  border-radius: var(--dfa-radius);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.dfa-card:hover {
+  background: var(--dfa-panel-hover);
+  border-color: var(--dfa-border-strong);
+}
+
+.dfa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--dfa-border-strong);
+  background: var(--dfa-panel-2);
+  color: var(--dfa-text);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.dfa-btn:hover {
+  background: var(--dfa-panel-hover);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.dfa-btn-icon {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.dfa-btn-primary {
+  background: var(--dfa-accent);
+  border-color: var(--dfa-accent);
+  color: var(--dfa-accent-contrast);
+  font-weight: 600;
+}
+
+.dfa-btn-primary:hover {
+  background: var(--dfa-accent-hover);
+  border-color: var(--dfa-accent-hover);
+}
+
+/* ── Headline cu segment subliniat + dropdown ── */
+.dfa-headline {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 6px 0 22px;
+  color: var(--dfa-text);
+}
+
+.dfa-headline .dfa-pill-period {
+  color: var(--dfa-accent);
+  border-bottom: 2px dashed color-mix(in srgb, var(--dfa-accent) 55%, transparent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   Empty / loading states
+   ============================================================================ */
+.dfa-empty {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 72px 24px;
+  text-align: center;
+  color: var(--dfa-muted);
+  border: 1px dashed var(--dfa-border-strong);
+  border-radius: var(--dfa-radius);
+  background: var(--dfa-bg-2);
+}
+
+.dfa-empty h3 {
+  color: var(--dfa-text);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Skeleton shimmer (folosit din M3 încolo) */
+.dfa-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--dfa-panel-2);
+  border-radius: 8px;
+}
+
+.dfa-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: dfa-shimmer 1.4s infinite;
+}
+
+@keyframes dfa-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Bulina Online pulsatilă (folosită în M3) */
+@keyframes dfa-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dfa-online) 60%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* ============================================================================
+   Overview — headline row + site grid
+   ============================================================================ */
+.dfa-overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dfa-overview-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dfa-headline strong {
+  font-weight: 700;
+}
+
+.dfa-site-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--dfa-gap);
+}
+
+.dfa-site-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  cursor: pointer;
+}
+
+.dfa-site-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dfa-favicon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--dfa-panel-hover);
+  border: 1px solid var(--dfa-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dfa-text-2);
+}
+
+.dfa-site-card-spark {
+  height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    var(--dfa-chart-fill-top),
+    var(--dfa-chart-fill-bottom)
+  );
+  border-bottom: 2px solid var(--dfa-chart);
+  opacity: 0.4;
+}
+
+.dfa-site-card-foot {
+  font-size: 13px;
+  color: var(--dfa-muted);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+@media (max-width: 900px) {
+  .dfa-site-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .dfa-topbar {
+    padding: 0 14px;
+  }
+  .dfa-main {
+    padding: 20px 14px 64px;
+  }
+  .dfa-site-grid {
+    grid-template-columns: 1fr;
+  }
+}
