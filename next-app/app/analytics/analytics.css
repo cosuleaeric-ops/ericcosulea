@@ -367,6 +367,88 @@
 }
 
 /* ============================================================================
+   GSC integration + keyword modal
+   ============================================================================ */
+.dfa-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+.dfa-banner-ok {
+  background: color-mix(in srgb, var(--dfa-up) 14%, transparent);
+  color: var(--dfa-up);
+}
+.dfa-banner-warn {
+  background: color-mix(in srgb, var(--dfa-down) 14%, transparent);
+  color: var(--dfa-down);
+}
+.dfa-gsc-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dfa-gsc-email {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.dfa-gsc-ok-ico {
+  color: var(--dfa-up);
+}
+.dfa-gsc-prop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dfa-muted);
+}
+.dfa-gsc-prop select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--dfa-border-strong);
+  background: var(--dfa-bg-2);
+  color: var(--dfa-text);
+  font-size: 13px;
+  color-scheme: dark;
+}
+.dfa-gsc-actions {
+  display: flex;
+  gap: 8px;
+}
+.dfa-gsc-note {
+  font-size: 11.5px;
+  color: var(--dfa-faint);
+}
+.dfa-keyword-details {
+  width: calc(100% - 8px);
+}
+.dfa-modal-wide {
+  max-width: 720px;
+}
+.dfa-kw-head,
+.dfa-kw-row {
+  display: grid;
+  grid-template-columns: 1fr 72px 84px 62px 56px;
+  align-items: center;
+  gap: 6px;
+}
+.dfa-kw-head {
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-kw-row {
+  padding: 9px 18px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* ============================================================================
    Utilitare
    ============================================================================ */
 .dfa-faint {

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getWebsiteByPublicId } from "@/lib/analytics/queries";
 import { SnippetBlock } from "./SnippetBlock";
+import { GscIntegration } from "./GscIntegration";
 
 export const dynamic = "force-dynamic";
 
@@ -39,18 +41,9 @@ export default async function SettingsPage({
         <SnippetBlock code={snippet} />
       </section>
 
-      <section className="dfa-card dfa-settings-card">
-        <h2>Integrations</h2>
-        <div className="dfa-integration-row">
-          <div>
-            <div className="dfa-integration-name">Google Search Console</div>
-            <div className="dfa-muted">Keywords, clicks, impressions, CTR, position.</div>
-          </div>
-          <button className="dfa-btn" disabled title="Disponibil în M6">
-            Connect
-          </button>
-        </div>
-      </section>
+      <Suspense fallback={<div className="dfa-card dfa-settings-card"><div className="dfa-skeleton" style={{ height: 60 }} /></div>}>
+        <GscIntegration sitePublicId={website.publicId} />
+      </Suspense>
     </div>
   );
 }

@@ -12,6 +12,7 @@ export type TabDef = {
   unit?: string;
   renderRow?: (key: string) => { icon?: ReactNode; label: string };
   placeholder?: ReactNode;
+  node?: ReactNode; // conținut custom (ex: tab-ul Keyword din GSC)
 };
 
 const ROWS_SHOWN = 7;
@@ -63,7 +64,9 @@ export function BreakdownPanel({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
             >
-              {tab.placeholder ? (
+              {tab.node ? (
+                tab.node
+              ) : tab.placeholder ? (
                 <div className="dfa-panel-placeholder">{tab.placeholder}</div>
               ) : shown.length === 0 ? (
                 <div className="dfa-panel-empty">Fără date în perioada asta.</div>
@@ -105,7 +108,7 @@ export function BreakdownPanel({
         )}
       </div>
 
-      {!tab.placeholder && rows.length > 0 && (
+      {!tab.placeholder && !tab.node && rows.length > 0 && (
         <button className="dfa-panel-details" onClick={() => onDetails(tab, rows)}>
           DETAILS
         </button>

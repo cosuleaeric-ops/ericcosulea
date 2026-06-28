@@ -1,8 +1,9 @@
 "use client";
 import { useState, type ReactNode } from "react";
-import { Monitor, Smartphone, Tablet, Globe, Search, Map as MapIcon } from "lucide-react";
+import { Monitor, Smartphone, Tablet, Globe, Map as MapIcon } from "lucide-react";
 import { BreakdownPanel, type TabDef } from "./BreakdownPanel";
 import { BreakdownModal } from "./BreakdownModal";
+import { KeywordTab } from "./KeywordTab";
 import type { Breakdowns, BreakdownRow, Filters } from "@/lib/analytics/queries";
 import { countryName, countryFlag, sourceFavicon } from "@/lib/analytics/labels";
 
@@ -42,17 +43,6 @@ const SOURCES_TABS: TabDef[] = [
     dim: "campaign",
     filterKey: "campaign",
     renderRow: (k) => ({ label: k }),
-  },
-  {
-    key: "keyword",
-    label: "Keyword",
-    placeholder: (
-      <div className="dfa-connect-note">
-        <Search size={20} className="dfa-faint" />
-        <p>Conectează Google Search Console ca să vezi keywords.</p>
-        <span className="dfa-muted">Vine în M6 (Settings → Integrations).</span>
-      </div>
-    ),
   },
 ];
 
@@ -102,10 +92,18 @@ export function Panels({
   breakdowns,
   loading,
   onFilter,
+  sitePublicId,
+  from,
+  to,
+  pathFilter,
 }: {
   breakdowns: Breakdowns | null;
   loading: boolean;
   onFilter: (key: keyof Filters, value: string) => void;
+  sitePublicId: string;
+  from: string;
+  to: string;
+  pathFilter?: string;
 }) {
   const [modalTab, setModalTab] = useState<TabDef | null>(null);
   const [modalRows, setModalRows] = useState<BreakdownRow[]>([]);
@@ -115,10 +113,19 @@ export function Panels({
     setModalRows(rows);
   };
 
+  const sourcesTabs: TabDef[] = [
+    ...SOURCES_TABS,
+    {
+      key: "keyword",
+      label: "Keyword",
+      node: <KeywordTab site={sitePublicId} from={from} to={to} path={pathFilter} />,
+    },
+  ];
+
   return (
     <>
       <div className="dfa-panels-grid">
-        <BreakdownPanel tabs={SOURCES_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
+        <BreakdownPanel tabs={sourcesTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
         <BreakdownPanel tabs={PAGES_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
         <BreakdownPanel tabs={GEO_TABS} breakdowns={breakdowns} loading={loading} defaultTab={1} onFilter={onFilter} onDetails={openDetails} />
         <BreakdownPanel tabs={TECH_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />

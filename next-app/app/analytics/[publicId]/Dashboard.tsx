@@ -248,6 +248,10 @@ export default function Dashboard({
         breakdowns={data?.breakdowns ?? null}
         loading={noData}
         onFilter={addFilter}
+        sitePublicId={website.publicId}
+        from={range.from.toISOString()}
+        to={range.to.toISOString()}
+        pathFilter={filters.path}
       />
       <BottomPanel
         sitePublicId={website.publicId}
