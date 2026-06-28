@@ -16,7 +16,7 @@ export default async function SettingsPage({
   const website = await getWebsiteByPublicId(publicId);
   if (!website) notFound();
 
-  const appUrl = process.env.APP_URL || "https://ericcosulea.ro";
+  const appUrl = process.env.APP_URL || "https://www.ericcosulea.ro";
   const snippet = `<script
   defer
   data-website-id="${website.publicId}"
