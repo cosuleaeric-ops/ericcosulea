@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["chart.js", "react-chartjs-2", "xlsx"],
   },
+  async redirects() {
+    return [
+      { source: "/analytics", destination: "/elitedata", permanent: true },
+      { source: "/analytics/:path*", destination: "/elitedata/:path*", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
