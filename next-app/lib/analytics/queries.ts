@@ -6,7 +6,6 @@ import {
   type Range,
   type Granularity,
   bucketStarts,
-  stepMs,
   formatBucketLabel,
   previousRange,
 } from "./range";
@@ -204,14 +203,28 @@ export function computeSeries(
   tz: string,
 ): SeriesPoint[] {
   const starts = bucketStarts(range, g);
-  const step = stepMs(g);
-  const base = starts.length ? starts[0].getTime() : range.from.getTime();
+  const ms = starts.map((d) => d.getTime());
   const sets: Array<Set<string>> = starts.map(() => new Set());
+
+  // ultimul bucket cu start <= t (suportă bucket-uri de lățime variabilă: lună)
+  const idxFor = (t: number): number => {
+    let lo = 0;
+    let hi = ms.length - 1;
+    let res = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (ms[mid] <= t) {
+        res = mid;
+        lo = mid + 1;
+      } else hi = mid - 1;
+    }
+    return res;
+  };
 
   for (const r of rows) {
     if (!r.visitorId) continue;
-    const idx = Math.floor((r.createdAt.getTime() - base) / step);
-    if (idx < 0 || idx >= sets.length) continue;
+    const idx = idxFor(r.createdAt.getTime());
+    if (idx < 0) continue;
     sets[idx].add(r.visitorId);
   }
 

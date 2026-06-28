@@ -34,7 +34,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  const granularity = p.get("granularity") === "hourly" ? "hourly" : "daily";
+  const gParam = p.get("granularity");
+  const granularity =
+    gParam === "minute" || gParam === "hourly" || gParam === "monthly"
+      ? gParam
+      : "daily";
   const compare = p.get("compare") === "1";
 
   const filters: Filters = {};

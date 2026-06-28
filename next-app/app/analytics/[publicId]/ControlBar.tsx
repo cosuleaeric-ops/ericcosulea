@@ -10,26 +10,36 @@ import {
   GitCompare,
 } from "lucide-react";
 import { Dropdown } from "../_components/Dropdown";
+import { PeriodPicker } from "./PeriodPicker";
 import {
-  PERIOD_LABELS,
-  PERIOD_ORDER,
+  isNavigable,
   type Granularity,
   type PeriodKey,
 } from "@/lib/analytics/range";
 
 type SiteLite = { publicId: string; domain: string; faviconUrl: string | null };
 
+const GRANULARITY_LABELS: Record<Granularity, string> = {
+  minute: "Per minute",
+  hourly: "Hourly",
+  daily: "Daily",
+  monthly: "Monthly",
+};
+
 export function ControlBar({
   site,
   sites,
   period,
   offset,
-  rangeLabel,
+  displayLabel,
+  tz,
+  custom,
   granularity,
   compare,
   refreshing,
   filterCount,
   onPeriod,
+  onCustom,
   onShift,
   onGranularity,
   onToggleCompare,
@@ -40,12 +50,15 @@ export function ControlBar({
   sites: SiteLite[];
   period: PeriodKey;
   offset: number;
-  rangeLabel: string;
+  displayLabel: string;
+  tz: string;
+  custom: { from: string; to: string } | null;
   granularity: Granularity;
   compare: boolean;
   refreshing: boolean;
   filterCount: number;
   onPeriod: (p: PeriodKey) => void;
+  onCustom: (from: string, to: string) => void;
   onShift: (dir: -1 | 1) => void;
   onGranularity: (g: Granularity) => void;
   onToggleCompare: () => void;
@@ -53,6 +66,7 @@ export function ControlBar({
   onFilter: () => void;
 }) {
   const router = useRouter();
+  const navigable = isNavigable(period);
 
   return (
     <div className="dfa-controlbar">
@@ -82,26 +96,26 @@ export function ControlBar({
 
       <div className="dfa-controlbar-right">
         <div className="dfa-period-nav">
-          <button className="dfa-btn dfa-btn-icon" onClick={() => onShift(-1)} title="Previous">
+          <button
+            className="dfa-btn dfa-btn-icon"
+            onClick={() => onShift(-1)}
+            disabled={!navigable}
+            title="Previous"
+          >
             <ChevronLeft size={16} />
           </button>
-          <Dropdown
-            align="left"
-            width={180}
-            value={period}
-            onSelect={(k) => onPeriod(k as PeriodKey)}
-            trigger={
-              <span className="dfa-period-trigger">
-                {offset === 0 ? PERIOD_LABELS[period] : rangeLabel}
-                <ChevronDown size={15} className="dfa-faint" />
-              </span>
-            }
-            items={PERIOD_ORDER.map((k) => ({ key: k, label: PERIOD_LABELS[k] }))}
+          <PeriodPicker
+            period={period}
+            displayLabel={displayLabel}
+            tz={tz}
+            custom={custom}
+            onSelect={onPeriod}
+            onCustom={onCustom}
           />
           <button
             className="dfa-btn dfa-btn-icon"
             onClick={() => onShift(1)}
-            disabled={offset >= 0}
+            disabled={!navigable || offset >= 0}
             title="Next"
           >
             <ChevronRight size={16} />
@@ -118,19 +132,19 @@ export function ControlBar({
 
         <Dropdown
           align="right"
-          width={140}
+          width={150}
           value={granularity}
           onSelect={(k) => onGranularity(k as Granularity)}
           trigger={
             <span className="dfa-period-trigger">
-              {granularity === "hourly" ? "Hourly" : "Daily"}
+              {GRANULARITY_LABELS[granularity]}
               <ChevronDown size={15} className="dfa-faint" />
             </span>
           }
-          items={[
-            { key: "hourly", label: "Hourly" },
-            { key: "daily", label: "Daily" },
-          ]}
+          items={(Object.keys(GRANULARITY_LABELS) as Granularity[]).map((g) => ({
+            key: g,
+            label: GRANULARITY_LABELS[g],
+          }))}
         />
 
         <button
@@ -142,11 +156,7 @@ export function ControlBar({
           {filterCount > 0 && <span className="dfa-filter-badge">{filterCount}</span>}
         </button>
 
-        <button
-          className="dfa-btn dfa-btn-icon"
-          onClick={onRefresh}
-          title="Refresh"
-        >
+        <button className="dfa-btn dfa-btn-icon" onClick={onRefresh} title="Refresh">
           <RefreshCw size={16} className={refreshing ? "dfa-spin" : ""} />
         </button>
       </div>

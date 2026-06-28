@@ -7,6 +7,9 @@ import {
   computeRange,
   defaultGranularity,
   formatRangeLabel,
+  isNavigable,
+  isLive,
+  PERIOD_LABELS,
   type Granularity,
   type PeriodKey,
 } from "@/lib/analytics/range";
@@ -18,6 +21,7 @@ type WebsiteProp = SiteLite & {
   timezone: string;
   kpiGoalName: string | null;
 };
+type Custom = { from: string; to: string };
 
 const EMPTY_KPIS: Kpis = {
   visitors: 0,
@@ -47,6 +51,7 @@ export default function Dashboard({
 }) {
   const [period, setPeriod] = useState<PeriodKey>("last7");
   const [offset, setOffset] = useState(0);
+  const [custom, setCustom] = useState<Custom | null>(null);
   const [granularity, setGranularity] = useState<Granularity>(
     defaultGranularity("last7"),
   );
@@ -57,12 +62,16 @@ export default function Dashboard({
   const [refreshing, setRefreshing] = useState(false);
   const reqId = useRef(0);
 
-  const range = computeRange(period, offset);
-  const rangeLabel = formatRangeLabel(range, website.timezone);
+  const range = computeRange(period, offset, custom ?? undefined);
+  const tz = website.timezone;
+  const displayLabel =
+    period === "custom" || (isNavigable(period) && offset !== 0)
+      ? formatRangeLabel(range, tz)
+      : PERIOD_LABELS[period];
 
   const load = useCallback(
-    async (mode: "full" | "refresh") => {
-      const r = computeRange(period, offset);
+    async (mode: "full" | "refresh" | "silent") => {
+      const r = computeRange(period, offset, custom ?? undefined);
       const params = new URLSearchParams({
         site: website.publicId,
         from: r.from.toISOString(),
@@ -74,12 +83,10 @@ export default function Dashboard({
 
       const id = ++reqId.current;
       if (mode === "full") setLoading(true);
-      else setRefreshing(true);
+      else if (mode === "refresh") setRefreshing(true);
       try {
-        const res = await fetch(`/api/analytics/stats?${params}`, {
-          cache: "no-store",
-        });
-        if (id !== reqId.current) return; // răspuns stale
+        const res = await fetch(`/api/analytics/stats?${params}`, { cache: "no-store" });
+        if (id !== reqId.current) return;
         if (res.ok) setData(await res.json());
       } catch {
         /* ignore */
@@ -90,17 +97,58 @@ export default function Dashboard({
         }
       }
     },
-    [period, offset, granularity, compare, filters, website.publicId],
+    [period, offset, custom, granularity, compare, filters, website.publicId],
   );
 
   useEffect(() => {
     load("full");
   }, [load]);
 
+  // Mod live: la "Now" reîmprospătează silențios la fiecare 10s.
+  useEffect(() => {
+    if (!isLive(period)) return;
+    const id = setInterval(() => load("silent"), 10_000);
+    return () => clearInterval(id);
+  }, [period, load]);
+
+  // Scurtături de tastatură (ca în DataFast).
+  useEffect(() => {
+    const map: Record<string, PeriodKey> = {
+      n: "now",
+      t: "today",
+      y: "yesterday",
+      d: "last24h",
+      w: "last7",
+      "3": "last30",
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+      const p = map[e.key.toLowerCase()];
+      if (p) {
+        e.preventDefault();
+        changePeriod(p);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function changePeriod(p: PeriodKey) {
     setPeriod(p);
     setOffset(0);
+    setCustom(null);
     setGranularity(defaultGranularity(p));
+  }
+
+  function applyCustom(from: string, to: string) {
+    const span = new Date(to + "T23:59:59").getTime() - new Date(from + "T00:00:00").getTime();
+    setPeriod("custom");
+    setOffset(0);
+    setCustom({ from, to });
+    setGranularity(defaultGranularity("custom", span));
   }
 
   const kpis = data?.kpis ?? EMPTY_KPIS;
@@ -114,12 +162,15 @@ export default function Dashboard({
         sites={sites}
         period={period}
         offset={offset}
-        rangeLabel={rangeLabel}
+        displayLabel={displayLabel}
+        tz={tz}
+        custom={custom}
         granularity={granularity}
         compare={compare}
         refreshing={refreshing}
         filterCount={Object.values(filters).filter(Boolean).length}
         onPeriod={changePeriod}
+        onCustom={applyCustom}
         onShift={(dir) => setOffset((o) => Math.min(0, o + dir))}
         onGranularity={setGranularity}
         onToggleCompare={() => setCompare((c) => !c)}
@@ -128,12 +179,7 @@ export default function Dashboard({
           /* popover de filtre — M4 */
         }}
       />
-      <KpiRow
-        kpis={kpis}
-        deltas={deltas}
-        online={data?.online ?? 0}
-        loading={noData}
-      />
+      <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
       <MainChart
         series={data?.series ?? []}
         compareSeries={data?.compareSeries ?? null}
