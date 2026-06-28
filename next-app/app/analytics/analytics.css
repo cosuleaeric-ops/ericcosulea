@@ -460,6 +460,7 @@
    ============================================================================ */
 .dfa-dd {
   position: relative;
+  display: inline-block;
 }
 .dfa-dd-trigger {
   background: none;

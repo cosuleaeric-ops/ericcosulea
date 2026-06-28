@@ -83,17 +83,16 @@ export type OverviewSite = {
   spark: number[];
 };
 
-// Overview: vizitatori + sparkline (7 zile) per site.
-export async function getOverview(): Promise<{
-  totalVisitors: number;
-  sites: OverviewSite[];
-}> {
+// Overview: vizitatori + sparkline per site, pentru un range dat.
+export async function getOverview(
+  range: Range,
+  granularity: Granularity,
+): Promise<{ totalVisitors: number; sites: OverviewSite[] }> {
   const all = await db.select().from(websites).orderBy(websites.createdAt);
-  const range = computeRange("last7");
   const sites = await Promise.all(
     all.map(async (s) => {
       const rows = await fetchEvents(s.id, range);
-      const series = computeSeries(rows, range, "daily", s.timezone);
+      const series = computeSeries(rows, range, granularity, s.timezone);
       const visitors = new Set(rows.map((r) => r.visitorId).filter(Boolean)).size;
       return {
         publicId: s.publicId,
