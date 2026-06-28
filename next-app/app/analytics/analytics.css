@@ -351,22 +351,19 @@
   color: var(--dfa-text-2);
 }
 
-.dfa-site-card-spark {
-  height: 56px;
-  border-radius: 8px;
-  background: linear-gradient(
-    180deg,
-    var(--dfa-chart-fill-top),
-    var(--dfa-chart-fill-bottom)
-  );
-  border-bottom: 2px solid var(--dfa-chart);
-  opacity: 0.4;
+.dfa-spark {
+  display: block;
+  width: 100%;
 }
 
 .dfa-site-card-foot {
   font-size: 13px;
   color: var(--dfa-muted);
   font-weight: 500;
+}
+.dfa-site-card-foot strong {
+  color: var(--dfa-text);
+  font-weight: 700;
 }
 
 /* ============================================================================
@@ -892,6 +889,200 @@
   flex-direction: column;
   gap: 12px;
   padding: 8px;
+}
+
+/* ============================================================================
+   Bottom panel — Goal / Funnel / User / Journey
+   ============================================================================ */
+.dfa-bottom {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 4px 8px;
+}
+.dfa-bottom-body {
+  padding: 10px 8px;
+  min-height: 200px;
+}
+
+/* Goal */
+.dfa-goal-rate {
+  margin-left: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--dfa-muted);
+}
+.dfa-add-goals {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 10px 4px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  border: 1px dashed var(--dfa-border-strong);
+  background: none;
+  color: var(--dfa-text-2);
+  font-size: 12.5px;
+  transition: background 140ms ease, color 140ms ease;
+}
+.dfa-add-goals:hover {
+  background: var(--dfa-panel-hover);
+  color: var(--dfa-text);
+}
+.dfa-goal-add {
+  display: flex;
+  gap: 8px;
+  margin: 10px;
+}
+.dfa-goal-add input {
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--dfa-border-strong);
+  background: var(--dfa-bg-2);
+  color: var(--dfa-text);
+  font-size: 13px;
+  outline: none;
+}
+
+/* Funnel */
+.dfa-funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 6px;
+}
+.dfa-funnel-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dfa-text-2);
+}
+.dfa-funnel-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dfa-funnel-step-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.dfa-funnel-idx {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--dfa-panel-hover);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dfa-muted);
+}
+.dfa-funnel-label {
+  flex: 1;
+  font-family: var(--dfa-mono);
+  font-size: 12.5px;
+  color: var(--dfa-text-2);
+}
+.dfa-funnel-count {
+  font-weight: 700;
+}
+.dfa-funnel-bar-track {
+  height: 10px;
+  border-radius: 6px;
+  background: var(--dfa-bg-2);
+  overflow: hidden;
+}
+.dfa-funnel-bar {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--dfa-chart), var(--dfa-chart-2));
+}
+.dfa-funnel-drop {
+  font-size: 11.5px;
+  color: var(--dfa-down);
+  align-self: flex-end;
+}
+
+/* User table */
+.dfa-utable,
+.dfa-utable-head,
+.dfa-utable-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 90px 70px 100px;
+}
+.dfa-utable {
+  display: flex;
+  flex-direction: column;
+}
+.dfa-utable-head {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--dfa-border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dfa-muted);
+}
+.dfa-utable-row {
+  align-items: center;
+  padding: 9px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.dfa-utable-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.dfa-uvisitor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dfa-anon {
+  font-family: var(--dfa-mono);
+  font-size: 12.5px;
+}
+
+/* Journeys */
+.dfa-journeys {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dfa-journey {
+  padding: 10px;
+  border-radius: 10px;
+}
+.dfa-journey:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.dfa-journey-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+.dfa-journey-count {
+  margin-left: auto;
+  color: var(--dfa-faint);
+}
+.dfa-journey-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.dfa-journey-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--dfa-bg-2);
+  font-family: var(--dfa-mono);
+  font-size: 11.5px;
+  color: var(--dfa-text-2);
 }
 
 /* ============================================================================

@@ -1,13 +1,14 @@
 import "server-only";
 import { and, eq, gte, lt, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { events, websites } from "@/lib/db/schema";
+import { events, websites, goals, funnels } from "@/lib/db/schema";
 import {
   type Range,
   type Granularity,
   bucketStarts,
   formatBucketLabel,
   previousRange,
+  computeRange,
 } from "./range";
 import { channelOf } from "./parse";
 
@@ -72,6 +73,41 @@ export async function getWebsiteByPublicId(publicId: string) {
 
 export async function listWebsites() {
   return db.select().from(websites).orderBy(websites.createdAt);
+}
+
+export type OverviewSite = {
+  publicId: string;
+  domain: string;
+  faviconUrl: string | null;
+  visitors: number;
+  spark: number[];
+};
+
+// Overview: vizitatori + sparkline (7 zile) per site.
+export async function getOverview(): Promise<{
+  totalVisitors: number;
+  sites: OverviewSite[];
+}> {
+  const all = await db.select().from(websites).orderBy(websites.createdAt);
+  const range = computeRange("last7");
+  const sites = await Promise.all(
+    all.map(async (s) => {
+      const rows = await fetchEvents(s.id, range);
+      const series = computeSeries(rows, range, "daily", s.timezone);
+      const visitors = new Set(rows.map((r) => r.visitorId).filter(Boolean)).size;
+      return {
+        publicId: s.publicId,
+        domain: s.domain,
+        faviconUrl: s.faviconUrl,
+        visitors,
+        spark: series.map((p) => p.value),
+      };
+    }),
+  );
+  return {
+    totalVisitors: sites.reduce((sum, s) => sum + s.visitors, 0),
+    sites,
+  };
 }
 
 export async function fetchEvents(
@@ -361,6 +397,180 @@ export function computeBreakdowns(rows: EventLite[]): Breakdowns {
   };
 }
 
+// ───────────────────────── Goal / Funnel / User / Journey ─────────────────────────
+export type GoalRow = { name: string; displayName: string; count: number; rate: number };
+export type FunnelStep = { label: string; count: number };
+export type FunnelData = { name: string; steps: FunnelStep[] } | null;
+export type UserRow = {
+  id: string;
+  country: string | null;
+  device: string | null;
+  os: string | null;
+  browser: string | null;
+  referrerSource: string | null;
+  sessions: number;
+  pageviews: number;
+  lastSeen: string;
+};
+export type JourneyRow = {
+  id: string;
+  country: string | null;
+  device: string | null;
+  startedAt: string;
+  pages: string[];
+};
+
+export function computeGoals(
+  rows: EventLite[],
+  defs: { name: string; displayName: string | null }[],
+  totalVisitors: number,
+): GoalRow[] {
+  const byGoal = new Map<string, Set<string>>();
+  for (const r of rows) {
+    if (r.type !== "custom" || !r.name) continue;
+    const vid = r.visitorId ?? r.sessionId ?? "?";
+    let s = byGoal.get(r.name);
+    if (!s) {
+      s = new Set();
+      byGoal.set(r.name, s);
+    }
+    s.add(vid);
+  }
+  return defs
+    .map((g) => {
+      const count = byGoal.get(g.name)?.size ?? 0;
+      return {
+        name: g.name,
+        displayName: g.displayName ?? g.name,
+        count,
+        rate: totalVisitors ? (count / totalVisitors) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
+type FunnelDef = { name: string; steps: { type: string; value: string }[] };
+
+export function computeFunnel(rows: EventLite[], def: FunnelDef | null): FunnelData {
+  if (!def || !def.steps?.length) return null;
+  // pentru fiecare vizitator, ce pași a atins
+  const reached = new Map<string, Set<number>>();
+  for (const r of rows) {
+    const vid = r.visitorId ?? r.sessionId;
+    if (!vid) continue;
+    def.steps.forEach((step, i) => {
+      const ok =
+        step.type === "path"
+          ? r.type === "pageview" && r.path === step.value
+          : r.type === "custom" && r.name === step.value;
+      if (ok) {
+        let s = reached.get(vid);
+        if (!s) {
+          s = new Set();
+          reached.set(vid, s);
+        }
+        s.add(i);
+      }
+    });
+  }
+  const steps: FunnelStep[] = def.steps.map((step, i) => {
+    let count = 0;
+    for (const s of reached.values()) {
+      let all = true;
+      for (let j = 0; j <= i; j++) if (!s.has(j)) { all = false; break; }
+      if (all) count++;
+    }
+    return { label: step.value, count };
+  });
+  return { name: def.name, steps };
+}
+
+export function computeUsers(rows: EventLite[]): UserRow[] {
+  const m = new Map<
+    string,
+    {
+      sessions: Set<string>;
+      pageviews: number;
+      lastSeen: number;
+      country: string | null;
+      device: string | null;
+      os: string | null;
+      browser: string | null;
+      referrerSource: string | null;
+    }
+  >();
+  for (const r of rows) {
+    if (!r.visitorId) continue;
+    let u = m.get(r.visitorId);
+    if (!u) {
+      u = {
+        sessions: new Set(),
+        pageviews: 0,
+        lastSeen: 0,
+        country: r.country,
+        device: r.device,
+        os: r.os,
+        browser: r.browser,
+        referrerSource: r.referrerSource,
+      };
+      m.set(r.visitorId, u);
+    }
+    if (r.sessionId) u.sessions.add(r.sessionId);
+    if (r.type === "pageview") u.pageviews++;
+    const t = r.createdAt.getTime();
+    if (t > u.lastSeen) {
+      u.lastSeen = t;
+      u.country = r.country;
+      u.device = r.device;
+      u.os = r.os;
+      u.browser = r.browser;
+    }
+  }
+  return [...m.entries()]
+    .map(([id, u]) => ({
+      id,
+      country: u.country,
+      device: u.device,
+      os: u.os,
+      browser: u.browser,
+      referrerSource: u.referrerSource,
+      sessions: u.sessions.size,
+      pageviews: u.pageviews,
+      lastSeen: new Date(u.lastSeen).toISOString(),
+    }))
+    .sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1))
+    .slice(0, 30);
+}
+
+export function computeJourneys(rows: EventLite[]): JourneyRow[] {
+  const m = new Map<
+    string,
+    { startedAt: number; country: string | null; device: string | null; pages: { t: number; path: string }[] }
+  >();
+  for (const r of rows) {
+    if (r.type !== "pageview" || !r.sessionId || !r.path) continue;
+    const t = r.createdAt.getTime();
+    let s = m.get(r.sessionId);
+    if (!s) {
+      s = { startedAt: t, country: r.country, device: r.device, pages: [] };
+      m.set(r.sessionId, s);
+    }
+    if (t < s.startedAt) s.startedAt = t;
+    s.pages.push({ t, path: r.path });
+  }
+  return [...m.entries()]
+    .map(([id, s]) => ({
+      id,
+      country: s.country,
+      device: s.device,
+      startedAt: new Date(s.startedAt).toISOString(),
+      pages: s.pages.sort((a, b) => a.t - b.t).map((p) => p.path),
+    }))
+    .filter((j) => j.pages.length > 0)
+    .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+    .slice(0, 30);
+}
+
 // ───────────────────────── Payload complet ─────────────────────────
 export type StatsPayload = {
   kpis: Kpis;
@@ -369,6 +579,10 @@ export type StatsPayload = {
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
   breakdowns: Breakdowns;
+  goals: GoalRow[];
+  funnel: FunnelData;
+  users: UserRow[];
+  journeys: JourneyRow[];
 };
 
 export async function getStats(opts: {
@@ -381,10 +595,19 @@ export async function getStats(opts: {
   filters: Filters;
 }): Promise<StatsPayload> {
   const prev = previousRange(opts.range);
-  const [curRaw, prevRaw, online] = await Promise.all([
+  const [curRaw, prevRaw, online, goalDefs, funnelDefs] = await Promise.all([
     fetchEvents(opts.websiteId, opts.range),
     fetchEvents(opts.websiteId, prev),
     getOnline(opts.websiteId),
+    db
+      .select({ name: goals.name, displayName: goals.displayName })
+      .from(goals)
+      .where(eq(goals.websiteId, opts.websiteId)),
+    db
+      .select({ name: funnels.name, steps: funnels.steps })
+      .from(funnels)
+      .where(eq(funnels.websiteId, opts.websiteId))
+      .limit(1),
   ]);
 
   const curRows = applyFilters(curRaw, opts.filters);
@@ -397,6 +620,10 @@ export async function getStats(opts: {
     ? computeSeries(prevRows, prev, opts.granularity, opts.tz)
     : null;
 
+  const funnelDef = funnelDefs[0]
+    ? { name: funnelDefs[0].name, steps: funnelDefs[0].steps as { type: string; value: string }[] }
+    : null;
+
   return {
     kpis,
     deltas: computeDeltas(kpis, prevKpis),
@@ -404,5 +631,9 @@ export async function getStats(opts: {
     series,
     compareSeries,
     breakdowns: computeBreakdowns(curRows),
+    goals: computeGoals(curRows, goalDefs, kpis.visitors),
+    funnel: computeFunnel(curRows, funnelDef),
+    users: computeUsers(curRows),
+    journeys: computeJourneys(curRows),
   };
 }

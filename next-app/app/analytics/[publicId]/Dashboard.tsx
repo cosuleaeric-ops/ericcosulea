@@ -5,6 +5,7 @@ import { ControlBar } from "./ControlBar";
 import { KpiRow } from "./KpiRow";
 import { MainChart } from "./MainChart";
 import { Panels } from "./Panels";
+import { BottomPanel } from "./BottomPanel";
 import {
   computeRange,
   defaultGranularity,
@@ -247,6 +248,15 @@ export default function Dashboard({
         breakdowns={data?.breakdowns ?? null}
         loading={noData}
         onFilter={addFilter}
+      />
+      <BottomPanel
+        sitePublicId={website.publicId}
+        goals={data?.goals ?? []}
+        funnel={data?.funnel ?? null}
+        users={data?.users ?? []}
+        journeys={data?.journeys ?? []}
+        loading={noData}
+        onGoalAdded={() => load("refresh")}
       />
     </div>
   );
