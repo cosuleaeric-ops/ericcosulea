@@ -129,8 +129,8 @@ export function MainChart({
                 strokeWidth: 2,
               }}
               isAnimationActive={!loading}
-              animationDuration={700}
-              animationEasing="ease-out"
+              animationDuration={1500}
+              animationEasing="ease"
             />
           </AreaChart>
         </ResponsiveContainer>

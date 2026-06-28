@@ -121,7 +121,7 @@ export function OverviewClient({
           className="dfa-site-grid"
           style={{ opacity: loading ? 0.5 : 1, transition: "opacity 150ms ease" }}
         >
-          {sortedSites.map((s, i) => (
+          {sortedSites.map((s) => (
             <Link
               key={s.publicId}
               href={`/elitedata/${s.publicId}`}
@@ -136,8 +136,8 @@ export function OverviewClient({
                 )}
                 {s.domain}
               </div>
-              {/* key include perioada -> re-animă draw-in la refresh / schimbare perioadă */}
-              <Sparkline key={`${period}-${s.publicId}`} data={s.spark} delay={i * 0.07} />
+              {/* key include perioada -> re-animă draw-in la refresh / schimbare perioadă (fără stagger, ca DataFast) */}
+              <Sparkline key={`${period}-${s.publicId}`} data={s.spark} />
               <div className="dfa-site-card-foot">
                 <strong>{formatNumber(s.visitors)}</strong> visitors
               </div>

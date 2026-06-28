@@ -73,8 +73,8 @@ export function Sparkline({
   const line = monotoneLine(pts);
   const area = n > 0 ? `${line} L${x(n - 1).toFixed(1)},${h} L${x(0).toFixed(1)},${h} Z` : "";
 
-  // draw-in: cortina de clip se desface de la stânga la dreapta la montare/refresh
-  const reveal = { duration: 0.85, delay, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
+  // draw-in EXACT ca Recharts/DataFast: clip-wipe stânga→dreapta, 1500ms, easing "ease"
+  const reveal = { duration: 1.5, delay, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] };
 
   return (
     <svg className="dfa-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" width="100%" height={h}>
