@@ -973,6 +973,34 @@
   padding: 8px;
 }
 
+/* Add website modal */
+.dfa-addsite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+.dfa-addsite label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dfa-muted);
+}
+.dfa-addsite input {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--dfa-border-strong);
+  background: var(--dfa-bg-2);
+  color: var(--dfa-text);
+  font-size: 13px;
+  outline: none;
+}
+.dfa-addsite input:focus {
+  border-color: var(--dfa-accent);
+}
+
 /* ============================================================================
    Bottom panel — Goal / Funnel / User / Journey
    ============================================================================ */

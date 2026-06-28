@@ -53,8 +53,8 @@ export default function RootLayout({
           plausible.init();
         `}</Script>
         <Script
-          src="https://datafa.st/js/script.js"
-          data-website-id="dfid_gYVQtrsZRrDX6Brm02Dek"
+          src="/js/script.js"
+          data-website-id="dfid_eric001"
           data-domain="ericcosulea.ro"
           strategy="afterInteractive"
         />

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Share2, ShoppingBag, Plus } from "lucide-react";
+import { Share2, ShoppingBag } from "lucide-react";
 import { getOverview } from "@/lib/analytics/queries";
 import { formatNumber } from "@/lib/analytics/format";
 import { Sparkline } from "./_components/Sparkline";
+import { AddWebsite } from "./AddWebsite";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,7 @@ export default async function AnalyticsOverviewPage() {
           <button className="dfa-btn">
             <ShoppingBag size={15} /> Order
           </button>
-          <button className="dfa-btn dfa-btn-primary">
-            <Plus size={15} /> Website
-          </button>
+          <AddWebsite />
         </div>
       </div>
 
