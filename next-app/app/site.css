@@ -395,6 +395,45 @@ body.site-text-editing [data-site-text] {
   font-weight: 300;
 }
 
+.old-projects {
+  margin-top: 16px;
+}
+
+.old-projects-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 300;
+  text-transform: lowercase;
+  transition: color 160ms ease;
+}
+
+.old-projects-toggle:hover {
+  color: var(--text);
+}
+
+.old-projects-chevron {
+  display: inline-block;
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.old-projects-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.old-projects-list {
+  margin-top: 12px;
+}
+
 .topic-list {
   display: flex;
   flex-direction: column;

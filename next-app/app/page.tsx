@@ -2,14 +2,22 @@ import Link from "next/link";
 import Image from "next/image";
 import { getProjectsForHome, getLatestImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
+import OldProjects from "./old-projects";
 
 export const revalidate = 3600;
 
+// proiecte vechi (inactive) — restul rămân active by default
+const OLD_PROJECTS = ["robotache", "sportivoo", "storyhub", "capsuladefotbal"];
+const isOldProject = (url: string) => OLD_PROJECTS.some((s) => url.includes(s));
+
 export default async function Home() {
-  const [projects, latestImages] = await Promise.all([
+  const [allProjects, latestImages] = await Promise.all([
     getProjectsForHome(),
     getLatestImages(8),
   ]);
+
+  const projects = allProjects.filter((p) => !isOldProject(p.url));
+  const oldProjects = allProjects.filter((p) => isOldProject(p.url));
 
   return (
     <main className="page">
@@ -49,6 +57,7 @@ export default async function Home() {
             </a>
           ))}
         </div>
+        <OldProjects projects={oldProjects} />
       </section>
 
       <section className="section">
