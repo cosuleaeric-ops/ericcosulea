@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Share2, ShoppingBag } from "lucide-react";
 import { getOverview } from "@/lib/analytics/queries";
 import { formatNumber } from "@/lib/analytics/format";
 import { Sparkline } from "./_components/Sparkline";
@@ -25,12 +24,6 @@ export default async function AnalyticsOverviewPage() {
           <span className="dfa-pill-period">last 7 days</span>
         </h1>
         <div className="dfa-overview-actions">
-          <button className="dfa-btn">
-            <Share2 size={15} /> Share
-          </button>
-          <button className="dfa-btn">
-            <ShoppingBag size={15} /> Order
-          </button>
           <AddWebsite />
         </div>
       </div>
