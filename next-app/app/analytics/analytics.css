@@ -714,6 +714,293 @@
 }
 
 /* ============================================================================
+   Filter chips
+   ============================================================================ */
+.dfa-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -4px;
+}
+.dfa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dfa-border-strong);
+  background: color-mix(in srgb, var(--dfa-accent) 12%, var(--dfa-panel-2));
+  color: var(--dfa-text);
+  font-size: 12.5px;
+  transition: background 140ms ease;
+}
+.dfa-chip:hover {
+  background: color-mix(in srgb, var(--dfa-accent) 20%, var(--dfa-panel-2));
+}
+.dfa-chip-key {
+  color: var(--dfa-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.dfa-chip-clear {
+  background: var(--dfa-panel-2);
+}
+
+/* ============================================================================
+   Breakdown panels
+   ============================================================================ */
+.dfa-panels-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--dfa-gap);
+}
+.dfa-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 4px 0;
+  min-height: 320px;
+}
+.dfa-panel-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-panel-tab {
+  padding: 7px 10px 9px;
+  background: none;
+  border: 0;
+  color: var(--dfa-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 0;
+  transition: color 140ms ease, box-shadow 140ms ease;
+}
+.dfa-panel-tab:hover {
+  color: var(--dfa-text-2);
+}
+.dfa-panel-tab.is-active {
+  color: var(--dfa-text);
+  box-shadow: inset 0 -2px var(--dfa-text);
+}
+.dfa-panel-body {
+  flex: 1;
+  padding: 8px 8px 4px;
+}
+.dfa-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dfa-row.is-clickable {
+  cursor: pointer;
+}
+.dfa-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.dfa-row-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--dfa-bar);
+  border-radius: 8px;
+  z-index: 0;
+}
+.dfa-row.is-clickable:hover .dfa-row-bar {
+  background: var(--dfa-bar-strong);
+}
+.dfa-row-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+.dfa-row-ico {
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
+  flex-shrink: 0;
+}
+.dfa-row-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+.dfa-row-value {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dfa-text);
+}
+.dfa-flag {
+  font-size: 14px;
+  line-height: 1;
+}
+.dfa-panel-details {
+  margin: 4px;
+  padding: 9px;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--dfa-border);
+  color: var(--dfa-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  transition: color 140ms ease;
+}
+.dfa-panel-details:hover {
+  color: var(--dfa-text);
+}
+.dfa-panel-empty,
+.dfa-panel-placeholder {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--dfa-muted);
+  font-size: 13px;
+}
+.dfa-connect-note {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 36px 16px;
+  text-align: center;
+}
+.dfa-connect-note p {
+  color: var(--dfa-text-2);
+  font-size: 13px;
+}
+.dfa-connect-note span {
+  font-size: 12px;
+}
+.dfa-panel-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px;
+}
+
+/* ============================================================================
+   Details modal
+   ============================================================================ */
+.dfa-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+.dfa-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--dfa-panel);
+  border: 1px solid var(--dfa-border-strong);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.dfa-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-modal-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.dfa-modal-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-modal-search input {
+  flex: 1;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--dfa-text);
+  font-size: 13px;
+}
+.dfa-modal-table {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dfa-modal-thead {
+  display: grid;
+  grid-template-columns: 1fr 90px 70px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  color: var(--dfa-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dfa-th-num {
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dfa-modal-rows {
+  overflow-y: auto;
+}
+.dfa-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 70px;
+  align-items: center;
+  padding: 9px 18px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.dfa-modal-row.is-clickable {
+  cursor: pointer;
+}
+.dfa-modal-row.is-clickable:hover {
+  background: var(--dfa-panel-hover);
+}
+.dfa-modal-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
    Settings
    ============================================================================ */
 .dfa-settings {
@@ -798,6 +1085,9 @@
 @media (max-width: 900px) {
   .dfa-site-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .dfa-panels-grid {
+    grid-template-columns: 1fr;
   }
 }
 

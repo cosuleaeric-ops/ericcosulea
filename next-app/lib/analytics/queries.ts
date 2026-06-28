@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, lt, gt, sql, type SQL } from "drizzle-orm";
+import { and, eq, gte, lt, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { events, websites } from "@/lib/db/schema";
 import {
@@ -9,16 +9,35 @@ import {
   formatBucketLabel,
   previousRange,
 } from "./range";
+import { channelOf } from "./parse";
 
 export type Filters = {
   path?: string;
+  hostname?: string;
   country?: string;
+  region?: string;
+  city?: string;
   source?: string;
   device?: string;
   os?: string;
   browser?: string;
   channel?: string;
+  campaign?: string;
 };
+
+export const FILTER_KEYS: (keyof Filters)[] = [
+  "path",
+  "hostname",
+  "country",
+  "region",
+  "city",
+  "source",
+  "device",
+  "os",
+  "browser",
+  "channel",
+  "campaign",
+];
 
 export type EventLite = {
   visitorId: string | null;
@@ -55,25 +74,9 @@ export async function listWebsites() {
   return db.select().from(websites).orderBy(websites.createdAt);
 }
 
-function filterConds(websiteId: number, range: Range, f: Filters): SQL[] {
-  const conds: SQL[] = [
-    eq(events.websiteId, websiteId),
-    gte(events.createdAt, range.from),
-    lt(events.createdAt, range.to),
-  ];
-  if (f.path) conds.push(eq(events.path, f.path));
-  if (f.country) conds.push(eq(events.country, f.country));
-  if (f.source) conds.push(eq(events.referrerSource, f.source));
-  if (f.device) conds.push(eq(events.device, f.device));
-  if (f.os) conds.push(eq(events.os, f.os));
-  if (f.browser) conds.push(eq(events.browser, f.browser));
-  return conds;
-}
-
 export async function fetchEvents(
   websiteId: number,
   range: Range,
-  f: Filters = {},
 ): Promise<EventLite[]> {
   return db
     .select({
@@ -98,7 +101,38 @@ export async function fetchEvents(
       utmCampaign: events.utmCampaign,
     })
     .from(events)
-    .where(and(...filterConds(websiteId, range, f)));
+    .where(
+      and(
+        eq(events.websiteId, websiteId),
+        gte(events.createdAt, range.from),
+        lt(events.createdAt, range.to),
+      ),
+    );
+}
+
+// Filtrele se aplică în JS (channel e derivat, nu coloană) — fetch-ul aduce
+// oricum toate rândurile pentru agregare.
+function rowChannel(r: EventLite): string {
+  return channelOf(r.referrerSource ?? "Direct/None", r.utmMedium);
+}
+
+export function applyFilters(rows: EventLite[], f: Filters): EventLite[] {
+  const active = FILTER_KEYS.filter((k) => f[k]);
+  if (!active.length) return rows;
+  return rows.filter((r) => {
+    if (f.path && r.path !== f.path) return false;
+    if (f.hostname && r.hostname !== f.hostname) return false;
+    if (f.country && r.country !== f.country) return false;
+    if (f.region && r.region !== f.region) return false;
+    if (f.city && r.city !== f.city) return false;
+    if (f.source && r.referrerSource !== f.source) return false;
+    if (f.device && r.device !== f.device) return false;
+    if (f.os && r.os !== f.os) return false;
+    if (f.browser && r.browser !== f.browser) return false;
+    if (f.campaign && r.utmCampaign !== f.campaign) return false;
+    if (f.channel && rowChannel(r) !== f.channel) return false;
+    return true;
+  });
 }
 
 // ───────────────────────── KPI ─────────────────────────
@@ -245,6 +279,88 @@ export async function getOnline(websiteId: number): Promise<number> {
   return new Set(rows.map((r) => r.v)).size;
 }
 
+// ───────────────────────── Breakdowns ─────────────────────────
+export type BreakdownRow = { key: string; value: number };
+export type Breakdowns = {
+  channel: BreakdownRow[];
+  referrer: BreakdownRow[];
+  campaign: BreakdownRow[];
+  page: BreakdownRow[];
+  hostname: BreakdownRow[];
+  entry: BreakdownRow[];
+  exit: BreakdownRow[];
+  country: BreakdownRow[];
+  region: BreakdownRow[];
+  city: BreakdownRow[];
+  browser: BreakdownRow[];
+  os: BreakdownRow[];
+  device: BreakdownRow[];
+};
+
+const TOP_N = 100;
+
+// Rank după vizitatori distincți per cheie.
+function rankVisitors(
+  rows: EventLite[],
+  keyFn: (r: EventLite) => string | null | undefined,
+): BreakdownRow[] {
+  const m = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (k == null || k === "") continue;
+    const vid = r.visitorId ?? r.sessionId ?? "?";
+    let s = m.get(k);
+    if (!s) {
+      s = new Set();
+      m.set(k, s);
+    }
+    s.add(vid);
+  }
+  return [...m.entries()]
+    .map(([key, set]) => ({ key, value: set.size }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, TOP_N);
+}
+
+// Entry/exit page: prima/ultima pagină pe sesiune, numărate ca sesiuni.
+function rankEntryExit(rows: EventLite[], which: "first" | "last"): BreakdownRow[] {
+  const bySession = new Map<string, { t: number; path: string }>();
+  for (const r of rows) {
+    if (r.type !== "pageview" || !r.sessionId || !r.path) continue;
+    const t = r.createdAt.getTime();
+    const cur = bySession.get(r.sessionId);
+    if (!cur) bySession.set(r.sessionId, { t, path: r.path });
+    else if (which === "first" ? t < cur.t : t > cur.t) {
+      cur.t = t;
+      cur.path = r.path;
+    }
+  }
+  const m = new Map<string, number>();
+  for (const { path } of bySession.values()) m.set(path, (m.get(path) ?? 0) + 1);
+  return [...m.entries()]
+    .map(([key, value]) => ({ key, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, TOP_N);
+}
+
+export function computeBreakdowns(rows: EventLite[]): Breakdowns {
+  return {
+    channel: rankVisitors(rows, rowChannel),
+    referrer: rankVisitors(rows, (r) => r.referrerSource ?? "Direct/None"),
+    campaign: rankVisitors(rows, (r) => r.utmCampaign),
+    page: rankVisitors(rows, (r) => r.path),
+    hostname: rankVisitors(rows, (r) => r.hostname),
+    entry: rankEntryExit(rows, "first"),
+    exit: rankEntryExit(rows, "last"),
+    country: rankVisitors(rows, (r) => r.country),
+    region: rankVisitors(rows, (r) => r.region),
+    city: rankVisitors(rows, (r) => r.city),
+    browser: rankVisitors(rows, (r) => r.browser),
+    os: rankVisitors(rows, (r) => r.os),
+    device: rankVisitors(rows, (r) => r.device),
+  };
+}
+
 // ───────────────────────── Payload complet ─────────────────────────
 export type StatsPayload = {
   kpis: Kpis;
@@ -252,6 +368,7 @@ export type StatsPayload = {
   online: number;
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
+  breakdowns: Breakdowns;
 };
 
 export async function getStats(opts: {
@@ -264,11 +381,14 @@ export async function getStats(opts: {
   filters: Filters;
 }): Promise<StatsPayload> {
   const prev = previousRange(opts.range);
-  const [curRows, prevRows, online] = await Promise.all([
-    fetchEvents(opts.websiteId, opts.range, opts.filters),
-    fetchEvents(opts.websiteId, prev, opts.filters),
+  const [curRaw, prevRaw, online] = await Promise.all([
+    fetchEvents(opts.websiteId, opts.range),
+    fetchEvents(opts.websiteId, prev),
     getOnline(opts.websiteId),
   ]);
+
+  const curRows = applyFilters(curRaw, opts.filters);
+  const prevRows = applyFilters(prevRaw, opts.filters);
 
   const kpis = computeKpis(curRows, opts.kpiGoalName);
   const prevKpis = computeKpis(prevRows, opts.kpiGoalName);
@@ -283,5 +403,6 @@ export async function getStats(opts: {
     online,
     series,
     compareSeries,
+    breakdowns: computeBreakdowns(curRows),
   };
 }

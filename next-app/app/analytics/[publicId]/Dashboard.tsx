@@ -1,8 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { ControlBar } from "./ControlBar";
 import { KpiRow } from "./KpiRow";
 import { MainChart } from "./MainChart";
+import { Panels } from "./Panels";
 import {
   computeRange,
   defaultGranularity,
@@ -13,7 +15,28 @@ import {
   type Granularity,
   type PeriodKey,
 } from "@/lib/analytics/range";
-import type { StatsPayload, Kpis, Deltas } from "@/lib/analytics/queries";
+import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
+import { countryName } from "@/lib/analytics/labels";
+
+const FILTER_LABEL: Record<string, string> = {
+  path: "Page",
+  hostname: "Hostname",
+  country: "Country",
+  region: "Region",
+  city: "City",
+  source: "Referrer",
+  device: "Device",
+  os: "OS",
+  browser: "Browser",
+  channel: "Channel",
+  campaign: "Campaign",
+};
+
+function chipValue(key: string, value: string): string {
+  if (key === "country") return countryName(value);
+  if (key === "device") return value.charAt(0).toUpperCase() + value.slice(1);
+  return value;
+}
 
 type SiteLite = { publicId: string; domain: string; faviconUrl: string | null };
 type WebsiteProp = SiteLite & {
@@ -56,7 +79,7 @@ export default function Dashboard({
     defaultGranularity("last7"),
   );
   const [compare, setCompare] = useState(false);
-  const [filters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
   const [data, setData] = useState<StatsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,6 +174,20 @@ export default function Dashboard({
     setGranularity(defaultGranularity("custom", span));
   }
 
+  const addFilter = (key: keyof Filters, value: string) =>
+    setFilters((f) => ({ ...f, [key]: value }));
+  const removeFilter = (key: keyof Filters) =>
+    setFilters((f) => {
+      const n = { ...f };
+      delete n[key];
+      return n;
+    });
+  const clearFilters = () => setFilters({});
+  const activeFilters = Object.entries(filters).filter(([, v]) => v) as [
+    keyof Filters,
+    string,
+  ][];
+
   const kpis = data?.kpis ?? EMPTY_KPIS;
   const deltas = data?.deltas ?? EMPTY_DELTAS;
   const noData = loading && !data;
@@ -175,15 +212,41 @@ export default function Dashboard({
         onGranularity={setGranularity}
         onToggleCompare={() => setCompare((c) => !c)}
         onRefresh={() => load("refresh")}
-        onFilter={() => {
-          /* popover de filtre — M4 */
-        }}
+        onFilter={() => activeFilters.length && clearFilters()}
       />
+
+      {activeFilters.length > 0 && (
+        <div className="dfa-filter-chips">
+          {activeFilters.map(([key, value]) => (
+            <button
+              key={key}
+              className="dfa-chip"
+              onClick={() => removeFilter(key)}
+              title="Elimină filtrul"
+            >
+              <span className="dfa-chip-key">{FILTER_LABEL[key] ?? key}</span>
+              {chipValue(key, value)}
+              <X size={12} />
+            </button>
+          ))}
+          {activeFilters.length > 1 && (
+            <button className="dfa-chip dfa-chip-clear" onClick={clearFilters}>
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+
       <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
       <MainChart
         series={data?.series ?? []}
         compareSeries={data?.compareSeries ?? null}
         loading={noData || refreshing}
+      />
+      <Panels
+        breakdowns={data?.breakdowns ?? null}
+        loading={noData}
+        onFilter={addFilter}
       />
     </div>
   );

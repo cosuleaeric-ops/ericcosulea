@@ -3,6 +3,7 @@ import { isAuthenticated } from "@/lib/session";
 import {
   getWebsiteByPublicId,
   getStats,
+  FILTER_KEYS,
   type Filters,
 } from "@/lib/analytics/queries";
 
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
   const compare = p.get("compare") === "1";
 
   const filters: Filters = {};
-  for (const k of ["path", "country", "source", "device", "os", "browser", "channel"] as const) {
+  for (const k of FILTER_KEYS) {
     const v = p.get(k);
     if (v) filters[k] = v;
   }
