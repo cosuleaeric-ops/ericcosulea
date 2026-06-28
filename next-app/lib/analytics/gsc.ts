@@ -7,7 +7,12 @@ import { integrationsGsc } from "@/lib/db/schema";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API = "https://www.googleapis.com/webmasters/v3";
-const SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly", "openid", "email"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/analytics.readonly",
+  "openid",
+  "email",
+];
 
 export function gscConfigured(): boolean {
   return !!(
