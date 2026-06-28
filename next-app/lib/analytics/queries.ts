@@ -196,10 +196,6 @@ const EMPTY_KPIS: Kpis = {
   kpi1Value: 0,
 };
 
-function truncUnit(g: Granularity): string {
-  return g === "minute" ? "minute" : g === "hourly" ? "hour" : g === "monthly" ? "month" : "day";
-}
-
 function pctDelta(cur: number, prev: number): number | null {
   if (prev === 0) return cur === 0 ? 0 : null;
   return ((cur - prev) / prev) * 100;
@@ -330,22 +326,6 @@ GROUP BY b.idx ORDER BY b.idx`;
     t: d.toISOString(),
     label: formatBucketLabel(d, g, tz),
     value: byIdx.get(i) ?? 0,
-  }));
-}
-
-function gapFill(
-  rows: { bucket_utc: string; value: number }[],
-  range: Range,
-  g: Granularity,
-  tz: string,
-): SeriesPoint[] {
-  const starts = bucketStarts(range, g);
-  const map = new Map<number, number>();
-  for (const r of rows) map.set(new Date(r.bucket_utc).getTime(), Number(r.value));
-  return starts.map((d) => ({
-    t: d.toISOString(),
-    label: formatBucketLabel(d, g, tz),
-    value: map.get(d.getTime()) ?? 0,
   }));
 }
 
@@ -611,41 +591,50 @@ export async function getOverview(
 
   const from = range.from.toISOString();
   const to = range.to.toISOString();
-  // Toate site-urile au aceeași tz (Europe/Bucharest); folosim prima.
-  const tz = all[0].timezone;
-  const unit = truncUnit(granularity);
+  const starts = bucketStarts(range, granularity);
+  const startISO = starts.map((d) => d.toISOString());
 
   const [visRows, sparkRows] = await Promise.all([
+    // vizitatori distincți / site (tot intervalul)
     q<{ website_id: number; visitors: number }>(
       `SELECT website_id, count(DISTINCT visitor_id)::int AS visitors FROM events
        WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz AND visitor_id IS NOT NULL GROUP BY website_id`,
       [from, to],
     ),
-    q<{ website_id: number; bucket_utc: string; value: number }>(
-      `SELECT website_id, (date_trunc($3, created_at AT TIME ZONE $4) AT TIME ZONE $4) AS bucket_utc,
-              count(DISTINCT visitor_id)::int AS value FROM events
-       WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz AND visitor_id IS NOT NULL
-       GROUP BY website_id, 2`,
-      [from, to, unit, tz],
+    // sparkline: vizitatori / site / bucket — pe granițele EXACTE bucketStarts (tz-agnostic)
+    q<{ website_id: number; idx: number; value: number }>(
+      `WITH bnd AS (
+         SELECT ord-1 AS idx, lo::timestamptz AS lo,
+                coalesce(lead(lo) OVER (ORDER BY ord), $2::timestamptz) AS hi
+         FROM unnest($3::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
+       )
+       SELECT e.website_id, b.idx, count(DISTINCT e.visitor_id)::int AS value
+       FROM bnd b JOIN events e ON e.created_at >= b.lo AND e.created_at < b.hi
+       WHERE e.created_at>=$1::timestamptz AND e.created_at<$2::timestamptz AND e.visitor_id IS NOT NULL
+       GROUP BY e.website_id, b.idx`,
+      [from, to, startISO],
     ),
   ]);
 
   const visBySite = new Map(visRows.map((r) => [Number(r.website_id), Number(r.visitors)]));
-  const sparkBySite = new Map<number, { bucket_utc: string; value: number }[]>();
+  const sparkBySite = new Map<number, Map<number, number>>();
   for (const r of sparkRows) {
     const id = Number(r.website_id);
-    let arr = sparkBySite.get(id);
-    if (!arr) sparkBySite.set(id, (arr = []));
-    arr.push({ bucket_utc: r.bucket_utc, value: Number(r.value) });
+    let m = sparkBySite.get(id);
+    if (!m) sparkBySite.set(id, (m = new Map()));
+    m.set(Number(r.idx), Number(r.value));
   }
 
-  const sites: OverviewSite[] = all.map((s) => ({
-    publicId: s.publicId,
-    domain: s.domain,
-    faviconUrl: s.faviconUrl,
-    visitors: visBySite.get(s.id) ?? 0,
-    spark: gapFill(sparkBySite.get(s.id) ?? [], range, granularity, s.timezone).map((p) => p.value),
-  }));
+  const sites: OverviewSite[] = all.map((s) => {
+    const m = sparkBySite.get(s.id) ?? new Map<number, number>();
+    return {
+      publicId: s.publicId,
+      domain: s.domain,
+      faviconUrl: s.faviconUrl,
+      visitors: visBySite.get(s.id) ?? 0,
+      spark: starts.map((_, i) => m.get(i) ?? 0),
+    };
+  });
 
   return {
     totalVisitors: sites.reduce((sum, s) => sum + s.visitors, 0),
