@@ -1,11 +1,22 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowDownUp, ChevronDown } from "lucide-react";
 import { computeRange, type PeriodKey } from "@/lib/analytics/range";
 import { formatNumber } from "@/lib/analytics/format";
 import { Sparkline } from "./_components/Sparkline";
 import { Dropdown } from "./_components/Dropdown";
 import { AddWebsite } from "./AddWebsite";
+
+type SortKey = "views" | "alpha";
+const SORT_OPTS: { key: SortKey; label: string }[] = [
+  { key: "views", label: "Most visitors" },
+  { key: "alpha", label: "A → Z" },
+];
+const SORT_LABELS: Record<SortKey, string> = {
+  views: "Most visitors",
+  alpha: "A → Z",
+};
 
 type Site = {
   publicId: string;
@@ -35,7 +46,15 @@ export function OverviewClient({
   const [period, setPeriod] = useState<PeriodKey>("last7");
   const [data, setData] = useState<Data>(initial);
   const [loading, setLoading] = useState(false);
+  const [sort, setSort] = useState<SortKey>("views");
   const first = useRef(true);
+
+  const sortedSites = useMemo(() => {
+    const arr = [...data.sites];
+    if (sort === "alpha") arr.sort((a, b) => a.domain.localeCompare(b.domain));
+    else arr.sort((a, b) => b.visitors - a.visitors);
+    return arr;
+  }, [data.sites, sort]);
 
   useEffect(() => {
     if (first.current) {
@@ -72,6 +91,22 @@ export function OverviewClient({
           />
         </h1>
         <div className="dfa-overview-actions">
+          {data.sites.length > 1 && (
+            <Dropdown
+              align="right"
+              width={170}
+              value={sort}
+              onSelect={(k) => setSort(k as SortKey)}
+              trigger={
+                <span className="dfa-period-trigger">
+                  <ArrowDownUp size={14} className="dfa-faint" />
+                  {SORT_LABELS[sort]}
+                  <ChevronDown size={14} className="dfa-faint" />
+                </span>
+              }
+              items={SORT_OPTS.map((o) => ({ key: o.key, label: o.label }))}
+            />
+          )}
           <AddWebsite />
         </div>
       </div>
@@ -86,7 +121,7 @@ export function OverviewClient({
           className="dfa-site-grid"
           style={{ opacity: loading ? 0.5 : 1, transition: "opacity 150ms ease" }}
         >
-          {data.sites.map((s) => (
+          {sortedSites.map((s) => (
             <Link
               key={s.publicId}
               href={`/analytics/${s.publicId}`}
