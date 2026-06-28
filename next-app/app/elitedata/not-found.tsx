@@ -7,7 +7,7 @@ export default function AnalyticsNotFound() {
       <Compass size={28} className="dfa-faint" />
       <h3>Site negăsit</h3>
       <p>Site-ul căutat nu există sau a fost șters.</p>
-      <Link href="/analytics" className="dfa-btn dfa-btn-primary">
+      <Link href="/elitedata" className="dfa-btn dfa-btn-primary">
         ← Toate site-urile
       </Link>
     </div>

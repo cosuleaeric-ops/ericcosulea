@@ -65,7 +65,7 @@ export function KeywordTab({
       <div className="dfa-connect-note">
         <Search size={20} className="dfa-faint" />
         <p>Conectează Google Search Console ca să vezi keywords.</p>
-        <a className="dfa-btn dfa-btn-primary" href={`/analytics/${site}/settings`}>
+        <a className="dfa-btn dfa-btn-primary" href={`/elitedata/${site}/settings`}>
           Connect
         </a>
       </div>
@@ -77,7 +77,7 @@ export function KeywordTab({
       <div className="dfa-connect-note">
         <Search size={20} className="dfa-faint" />
         <p>Alege proprietatea GSC în Settings.</p>
-        <a className="dfa-btn" href={`/analytics/${site}/settings`}>
+        <a className="dfa-btn" href={`/elitedata/${site}/settings`}>
           Settings
         </a>
       </div>

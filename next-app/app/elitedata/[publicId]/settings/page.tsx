@@ -26,7 +26,7 @@ export default async function SettingsPage({
 
   return (
     <div className="dfa-settings">
-      <a className="dfa-back" href={`/analytics/${website.publicId}`}>
+      <a className="dfa-back" href={`/elitedata/${website.publicId}`}>
         <ArrowLeft size={15} /> {website.domain}
       </a>
       <h1 className="dfa-settings-title">Settings</h1>

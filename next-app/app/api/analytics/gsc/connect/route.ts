@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   }
   if (!gscConfigured()) {
     return NextResponse.redirect(
-      new URL(`/analytics/${site}/settings?gsc=not_configured`, req.url),
+      new URL(`/elitedata/${site}/settings?gsc=not_configured`, req.url),
     );
   }
 

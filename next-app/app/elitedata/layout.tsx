@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import "./analytics.css";
+import "./elitedata.css";
 
 export const metadata: Metadata = {
   title: { default: "EliteData", template: "%s · EliteData" },
@@ -32,7 +32,7 @@ export default async function AnalyticsLayout({
     <div className="dfa">
       <div className="dfa-shell">
         <header className="dfa-topbar">
-          <a href="/analytics" className="dfa-brand">
+          <a href="/elitedata" className="dfa-brand">
             <span className="dfa-brand-mark">E</span>
             EliteData
           </a>

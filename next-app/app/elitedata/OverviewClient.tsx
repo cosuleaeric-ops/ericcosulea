@@ -124,7 +124,7 @@ export function OverviewClient({
           {sortedSites.map((s) => (
             <Link
               key={s.publicId}
-              href={`/analytics/${s.publicId}`}
+              href={`/elitedata/${s.publicId}`}
               className="dfa-card dfa-site-card"
             >
               <div className="dfa-site-card-head">

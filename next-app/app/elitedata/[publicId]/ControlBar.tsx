@@ -75,7 +75,7 @@ export function ControlBar({
           align="left"
           width={220}
           value={site.publicId}
-          onSelect={(key) => key !== site.publicId && router.push(`/analytics/${key}`)}
+          onSelect={(key) => key !== site.publicId && router.push(`/elitedata/${key}`)}
           trigger={
             <span className="dfa-site-trigger">
               <Favicon site={site} />
@@ -89,7 +89,7 @@ export function ControlBar({
             icon: <Favicon site={s} />,
           }))}
         />
-        <a className="dfa-btn dfa-btn-icon" href={`/analytics/${site.publicId}/settings`} title="Settings">
+        <a className="dfa-btn dfa-btn-icon" href={`/elitedata/${site.publicId}/settings`} title="Settings">
           <Settings size={16} />
         </a>
       </div>

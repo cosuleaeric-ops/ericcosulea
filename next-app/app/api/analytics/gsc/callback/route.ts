@@ -19,26 +19,26 @@ export async function GET(req: Request) {
   const error = url.searchParams.get("error");
 
   if (error || !code || !state) {
-    return NextResponse.redirect(new URL(`/analytics?gsc=error`, req.url));
+    return NextResponse.redirect(new URL(`/elitedata?gsc=error`, req.url));
   }
 
   let parsed: { site: string; nonce: string };
   try {
     parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
   } catch {
-    return NextResponse.redirect(new URL(`/analytics?gsc=error`, req.url));
+    return NextResponse.redirect(new URL(`/elitedata?gsc=error`, req.url));
   }
 
   const cookieNonce = req.headers
     .get("cookie")
     ?.match(/(?:^|;\s*)gsc_oauth_nonce=([^;]+)/)?.[1];
   if (!cookieNonce || cookieNonce !== parsed.nonce) {
-    return NextResponse.redirect(new URL(`/analytics?gsc=csrf`, req.url));
+    return NextResponse.redirect(new URL(`/elitedata?gsc=csrf`, req.url));
   }
 
   const website = await getWebsiteByPublicId(parsed.site);
   if (!website) {
-    return NextResponse.redirect(new URL(`/analytics?gsc=error`, req.url));
+    return NextResponse.redirect(new URL(`/elitedata?gsc=error`, req.url));
   }
 
   let tokens;
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     tokens = await exchangeCode(code);
   } catch {
     return NextResponse.redirect(
-      new URL(`/analytics/${parsed.site}/settings?gsc=error`, req.url),
+      new URL(`/elitedata/${parsed.site}/settings?gsc=error`, req.url),
     );
   }
 
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
   }
 
   const res = NextResponse.redirect(
-    new URL(`/analytics/${parsed.site}/settings?gsc=connected`, req.url),
+    new URL(`/elitedata/${parsed.site}/settings?gsc=connected`, req.url),
   );
   res.cookies.delete("gsc_oauth_nonce");
   return res;

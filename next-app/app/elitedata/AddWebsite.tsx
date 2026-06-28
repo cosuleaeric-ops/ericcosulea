@@ -28,7 +28,7 @@ export function AddWebsite() {
         return;
       }
       setOpen(false);
-      router.push(`/analytics/${j.publicId}/settings`);
+      router.push(`/elitedata/${j.publicId}/settings`);
     } catch {
       setError("Eroare de rețea");
     } finally {
