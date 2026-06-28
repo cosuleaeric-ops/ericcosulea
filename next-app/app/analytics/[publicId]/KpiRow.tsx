@@ -32,7 +32,7 @@ function KpiCard({
 }) {
   const v = useCountUp(raw);
   return (
-    <div className="dfa-card dfa-kpi">
+    <div className="dfa-kpi">
       <div className="dfa-kpi-label">
         {online && <span className="dfa-online-dot" />}
         {label}
@@ -40,10 +40,10 @@ function KpiCard({
       {loading ? (
         <div className="dfa-skeleton dfa-kpi-skel" />
       ) : (
-        <div className="dfa-kpi-value">
-          {empty ? "—" : format(v)}
+        <>
+          <div className="dfa-kpi-value">{empty ? "—" : format(v)}</div>
           {delta && <DeltaChip d={delta} />}
-        </div>
+        </>
       )}
     </div>
   );

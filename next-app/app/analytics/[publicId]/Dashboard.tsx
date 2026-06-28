@@ -238,12 +238,14 @@ export default function Dashboard({
         </div>
       )}
 
-      <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
-      <MainChart
-        series={data?.series ?? []}
-        compareSeries={data?.compareSeries ?? null}
-        loading={noData || refreshing}
-      />
+      <div className="dfa-card dfa-kpi-chart-panel">
+        <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
+        <MainChart
+          series={data?.series ?? []}
+          compareSeries={data?.compareSeries ?? null}
+          loading={noData || refreshing}
+        />
+      </div>
       <Panels
         breakdowns={data?.breakdowns ?? null}
         loading={noData}

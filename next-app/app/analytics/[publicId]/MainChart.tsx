@@ -67,10 +67,10 @@ export function MainChart({
   const hasCompare = !!compareSeries;
 
   return (
-    <div className="dfa-card dfa-chart-card">
+    <div className="dfa-main-chart">
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">

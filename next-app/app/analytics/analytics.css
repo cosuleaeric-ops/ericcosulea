@@ -42,9 +42,9 @@
   --dfa-online: #34d399;
 
   /* ── Forme ── */
-  --dfa-radius: 14px;
-  --dfa-radius-sm: 10px;
-  --dfa-radius-lg: 18px;
+  --dfa-radius: 20px;
+  --dfa-radius-sm: 12px;
+  --dfa-radius-lg: 24px;
   --dfa-gap: 16px;
 
   /* ── Tipografie ── */
@@ -158,9 +158,9 @@
 .dfa-main {
   flex: 1;
   width: 100%;
-  max-width: 1160px;
+  max-width: 1152px;
   margin: 0 auto;
-  padding: 28px 24px 80px;
+  padding: 28px 32px 96px;
 }
 
 /* ============================================================================
@@ -218,12 +218,12 @@
 
 /* ── Headline cu segment subliniat + dropdown ── */
 .dfa-headline {
-  font-size: clamp(22px, 3vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  margin: 6px 0 22px;
-  color: var(--dfa-text);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+  margin: 2px 0 18px;
+  color: var(--dfa-text-2);
 }
 
 .dfa-headline .dfa-pill-period {
@@ -314,6 +314,7 @@
 
 .dfa-headline strong {
   font-weight: 700;
+  color: var(--dfa-text);
 }
 
 .dfa-site-grid {
@@ -672,37 +673,45 @@
 /* ============================================================================
    KPI cards
    ============================================================================ */
+/* KPI-urile și graficul stau într-un singur panou unit (ca DataFast) */
+.dfa-kpi-chart-panel {
+  padding: 0;
+  overflow: hidden;
+}
 .dfa-kpi-row {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: var(--dfa-gap);
+  gap: 0;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--dfa-border);
 }
 .dfa-kpi {
-  padding: 14px 16px;
-  min-height: 86px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
+  padding-right: 14px;
+  min-width: 0;
 }
 .dfa-kpi-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--dfa-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 .dfa-kpi-value {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--dfa-text);
 }
 .dfa-kpi-skel {
-  height: 26px;
-  width: 64px;
+  height: 28px;
+  width: 60px;
+  margin: 2px 0;
 }
 .dfa-online-dot {
   width: 8px;
@@ -711,32 +720,28 @@
   background: var(--dfa-online);
   animation: dfa-pulse 1.8s infinite;
 }
+/* delta sub valoare, text simplu colorat (fără pastilă) */
 .dfa-delta {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
 }
 .dfa-delta-up {
   color: var(--dfa-up);
-  background: color-mix(in srgb, var(--dfa-up) 14%, transparent);
 }
 .dfa-delta-down {
   color: var(--dfa-down);
-  background: color-mix(in srgb, var(--dfa-down) 14%, transparent);
 }
 .dfa-delta-flat,
 .dfa-delta-new {
-  color: var(--dfa-muted);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--dfa-faint);
 }
 
 /* ============================================================================
    Main chart
    ============================================================================ */
-.dfa-chart-card {
+.dfa-main-chart {
   position: relative;
-  padding: 16px 14px 8px;
+  padding: 14px 16px 10px;
   overflow: hidden;
 }
 .dfa-chart-inner {
@@ -839,7 +844,7 @@
   display: flex;
   flex-direction: column;
   padding: 4px 4px 0;
-  min-height: 320px;
+  min-height: 430px;
 }
 .dfa-panel-tabs {
   display: flex;
