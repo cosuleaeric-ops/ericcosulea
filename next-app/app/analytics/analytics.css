@@ -101,18 +101,14 @@
 }
 
 .dfa-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 60px;
-  padding: 0 24px;
-  background: color-mix(in srgb, var(--dfa-bg) 86%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--dfa-border);
+  width: 100%;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 16px 32px 36px;
 }
 
 .dfa-brand {
@@ -160,7 +156,7 @@
   width: 100%;
   max-width: 1152px;
   margin: 0 auto;
-  padding: 28px 32px 96px;
+  padding: 0 32px 96px;
 }
 
 /* ============================================================================
@@ -1433,10 +1429,10 @@
 
 @media (max-width: 640px) {
   .dfa-topbar {
-    padding: 0 14px;
+    padding: 14px 16px 22px;
   }
   .dfa-main {
-    padding: 20px 14px 64px;
+    padding: 0 16px 64px;
   }
   .dfa-site-grid {
     grid-template-columns: 1fr;
