@@ -10,6 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate-data": "tsx scripts/migrate-data.ts",
+    "db:seed-analytics": "tsx scripts/seed-analytics.ts",
     "blob:upload": "tsx scripts/upload-blob.ts",
     "admin:secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
