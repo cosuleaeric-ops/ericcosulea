@@ -186,7 +186,9 @@ export function bucketStarts(r: Range, g: Granularity): Date[] {
       cur = startOfMonth(cur, 1);
     }
   } else if (g === "daily") {
-    let cur = startOfDay(r.from);
+    // r.from vine deja aliniat la miezul nopții local (client) — NU re-floora pe
+    // server (UTC), altfel apare o zi-bucket în plus la stânga și se decalează.
+    let cur = new Date(r.from);
     while (cur.getTime() < r.to.getTime()) {
       out.push(new Date(cur));
       cur = addDays(cur, 1);
