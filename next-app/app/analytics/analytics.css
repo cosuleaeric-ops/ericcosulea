@@ -1348,6 +1348,40 @@
 }
 
 /* ============================================================================
+   World map (Geography)
+   ============================================================================ */
+.dfa-map {
+  position: relative;
+  padding: 6px;
+}
+.dfa-map-country {
+  transition: fill 160ms ease, opacity 140ms ease;
+}
+.dfa-map-country.has-data {
+  cursor: default;
+}
+.dfa-map-country.has-data:hover {
+  opacity: 0.82;
+  stroke: var(--dfa-text-2);
+  stroke-width: 0.8;
+}
+.dfa-map-tip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--dfa-panel-2);
+  border: 1px solid var(--dfa-border-strong);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dfa-map-skel {
+  padding: 20px;
+}
+
+/* ============================================================================
    Responsive
    ============================================================================ */
 @media (max-width: 1080px) {
@@ -1383,5 +1417,23 @@
   }
   .dfa-controlbar-right {
     justify-content: space-between;
+  }
+  .dfa-bottom-body {
+    overflow-x: auto;
+  }
+  .dfa-utable,
+  .dfa-utable-head,
+  .dfa-utable-row {
+    min-width: 480px;
+  }
+  .dfa-modal-table {
+    overflow-x: auto;
+  }
+  .dfa-kw-head,
+  .dfa-kw-row {
+    min-width: 460px;
+  }
+  .dfa-overview-head {
+    flex-direction: column;
   }
 }

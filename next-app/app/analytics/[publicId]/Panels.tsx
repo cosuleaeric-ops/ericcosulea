@@ -1,9 +1,10 @@
 "use client";
 import { useState, type ReactNode } from "react";
-import { Monitor, Smartphone, Tablet, Globe, Map as MapIcon } from "lucide-react";
+import { Monitor, Smartphone, Tablet, Globe } from "lucide-react";
 import { BreakdownPanel, type TabDef } from "./BreakdownPanel";
 import { BreakdownModal } from "./BreakdownModal";
 import { KeywordTab } from "./KeywordTab";
+import { WorldMap } from "./WorldMap";
 import type { Breakdowns, BreakdownRow, Filters } from "@/lib/analytics/queries";
 import { countryName, countryFlag, sourceFavicon } from "@/lib/analytics/labels";
 
@@ -53,18 +54,7 @@ const PAGES_TABS: TabDef[] = [
   { key: "exit", label: "Exit page", dim: "exit", filterKey: "path", renderRow: (k) => ({ label: k }) },
 ];
 
-const GEO_TABS: TabDef[] = [
-  {
-    key: "map",
-    label: "Map",
-    placeholder: (
-      <div className="dfa-connect-note">
-        <MapIcon size={20} className="dfa-faint" />
-        <p>Harta interactivă world vine în M7 (polish).</p>
-        <span className="dfa-muted">Folosește tab-ul Country între timp.</span>
-      </div>
-    ),
-  },
+const GEO_REST: TabDef[] = [
   {
     key: "country",
     label: "Country",
@@ -122,12 +112,21 @@ export function Panels({
     },
   ];
 
+  const geoTabs: TabDef[] = [
+    {
+      key: "map",
+      label: "Map",
+      node: <WorldMap data={breakdowns?.country ?? []} />,
+    },
+    ...GEO_REST,
+  ];
+
   return (
     <>
       <div className="dfa-panels-grid">
         <BreakdownPanel tabs={sourcesTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
         <BreakdownPanel tabs={PAGES_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
-        <BreakdownPanel tabs={GEO_TABS} breakdowns={breakdowns} loading={loading} defaultTab={1} onFilter={onFilter} onDetails={openDetails} />
+        <BreakdownPanel tabs={geoTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
         <BreakdownPanel tabs={TECH_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
       </div>
       <BreakdownModal
