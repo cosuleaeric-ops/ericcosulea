@@ -47,6 +47,7 @@ export function OverviewClient({
   const [data, setData] = useState<Data>(initial);
   const [loading, setLoading] = useState(false);
   const [sort, setSort] = useState<SortKey>("views");
+  const [drawGen, setDrawGen] = useState(0);
   const first = useRef(true);
 
   const sortedSites = useMemo(() => {
@@ -71,7 +72,12 @@ export function OverviewClient({
     setLoading(true);
     fetch(`/api/analytics/overview?${params}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((j) => j && setData(j))
+      .then((j) => {
+        if (j) {
+          setData(j);
+          setDrawGen((g) => g + 1); // re-animă draw-in când sosesc datele noi, nu la schimbarea perioadei
+        }
+      })
       .finally(() => setLoading(false));
   }, [period]);
 
@@ -136,8 +142,8 @@ export function OverviewClient({
                 )}
                 {s.domain}
               </div>
-              {/* key include perioada -> re-animă draw-in la refresh / schimbare perioadă (fără stagger, ca DataFast) */}
-              <Sparkline key={`${period}-${s.publicId}`} data={s.spark} />
+              {/* key se schimbă când sosesc datele noi -> draw-in pe datele corecte (la fel ca la încărcarea inițială, fără stagger ca DataFast) */}
+              <Sparkline key={`${drawGen}-${s.publicId}`} data={s.spark} />
               <div className="dfa-site-card-foot">
                 <strong>{formatNumber(s.visitors)}</strong> visitors
               </div>

@@ -467,6 +467,7 @@
   border: 0;
   padding: 0;
   color: inherit;
+  font-size: inherit;
   display: inline-flex;
 }
 .dfa-dd-menu {
