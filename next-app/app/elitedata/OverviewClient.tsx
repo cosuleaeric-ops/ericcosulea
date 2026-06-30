@@ -28,6 +28,7 @@ type Site = {
 type Data = { totalVisitors: number; sites: Site[] };
 
 const OPTS: { key: PeriodKey; label: string }[] = [
+  { key: "today", label: "today" },
   { key: "last24h", label: "last 24 hours" },
   { key: "last7", label: "last 7 days" },
   { key: "last30", label: "last 30 days" },
@@ -63,7 +64,7 @@ export function OverviewClient({
       return; // randarea inițială folosește datele de la server
     }
     const r = computeRange(period);
-    const granularity = period === "last24h" ? "hourly" : "daily";
+    const granularity = period === "last24h" || period === "today" ? "hourly" : "daily";
     const params = new URLSearchParams({
       from: r.from.toISOString(),
       to: r.to.toISOString(),
