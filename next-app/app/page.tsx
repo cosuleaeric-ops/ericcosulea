@@ -45,7 +45,7 @@ export default async function Home() {
       </header>
 
       <section className="section">
-        <h2>proiectele mele</h2>
+        <h2>La ce lucrez</h2>
         <div className="projects">
           {projects.map((proj) => (
             <a key={proj.id} className="project" href={proj.url} target="_blank" rel="noopener noreferrer">
