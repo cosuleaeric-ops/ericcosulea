@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 
 export type DropdownItem = {
@@ -51,34 +50,28 @@ export function Dropdown({
       >
         {trigger}
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="dfa-dd-menu"
-            style={{ [align]: 0, width } as React.CSSProperties}
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.14, ease: "easeOut" }}
-          >
-            {items.map((it) => (
-              <button
-                key={it.key}
-                type="button"
-                className={`dfa-dd-item${it.key === value ? " is-active" : ""}`}
-                onClick={() => {
-                  onSelect(it.key);
-                  setOpen(false);
-                }}
-              >
-                {it.icon && <span className="dfa-dd-ico">{it.icon}</span>}
-                <span className="dfa-dd-label">{it.label}</span>
-                {it.key === value && <Check size={14} className="dfa-dd-check" />}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <div
+          className="dfa-dd-menu dfa-anim-in"
+          style={{ [align]: 0, width } as React.CSSProperties}
+        >
+          {items.map((it) => (
+            <button
+              key={it.key}
+              type="button"
+              className={`dfa-dd-item${it.key === value ? " is-active" : ""}`}
+              onClick={() => {
+                onSelect(it.key);
+                setOpen(false);
+              }}
+            >
+              {it.icon && <span className="dfa-dd-ico">{it.icon}</span>}
+              <span className="dfa-dd-label">{it.label}</span>
+              {it.key === value && <Check size={14} className="dfa-dd-check" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 import { useId } from "react";
-import { motion } from "framer-motion";
 
 // Spline cubic MONOTON (Fritsch–Carlson): neted, dar nu depășește valorile punctelor.
 function monotoneLine(pts: [number, number][]): string {
@@ -73,9 +72,7 @@ export function Sparkline({
   const line = monotoneLine(pts);
   const area = n > 0 ? `${line} L${x(n - 1).toFixed(1)},${h} L${x(0).toFixed(1)},${h} Z` : "";
 
-  // draw-in EXACT ca Recharts/DataFast: clip-wipe stânga→dreapta, 1500ms, easing "ease"
-  const reveal = { duration: 1.5, delay, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] };
-
+  // draw-in EXACT ca Recharts/DataFast: clip-wipe stânga→dreapta, 1500ms, easing "ease" — pur CSS
   return (
     <svg className="dfa-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" width="100%" height={h}>
       <defs>
@@ -84,7 +81,14 @@ export function Sparkline({
           <stop offset="100%" stopColor="var(--dfa-chart)" stopOpacity={0} />
         </linearGradient>
         <clipPath id={clipId}>
-          <motion.rect x={0} y={0} height={h} initial={{ width: 0 }} animate={{ width: w }} transition={reveal} />
+          <rect
+            className="dfa-spark-clip"
+            x={0}
+            y={0}
+            width={w}
+            height={h}
+            style={{ ["--dfa-spark-w"]: `${w}px`, ["--dfa-spark-delay"]: `${delay}s` } as React.CSSProperties}
+          />
         </clipPath>
       </defs>
       <g clipPath={`url(#${clipId})`}>

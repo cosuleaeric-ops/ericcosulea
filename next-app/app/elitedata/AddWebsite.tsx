@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import { Plus, X } from "lucide-react";
 
 export function AddWebsite() {
@@ -42,25 +41,16 @@ export function AddWebsite() {
         <Plus size={15} /> Website
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="dfa-modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            onClick={() => setOpen(false)}
+      {open && (
+        <div
+          className="dfa-modal-backdrop dfa-anim-in"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="dfa-modal dfa-anim-in"
+            style={{ maxWidth: 420 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              className="dfa-modal"
-              style={{ maxWidth: 420 }}
-              initial={{ opacity: 0, scale: 0.97, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              onClick={(e) => e.stopPropagation()}
-            >
               <div className="dfa-modal-head">
                 <h3>Add website</h3>
                 <button className="dfa-btn dfa-btn-icon" onClick={() => setOpen(false)}>
@@ -95,10 +85,9 @@ export function AddWebsite() {
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </>
   );
 }

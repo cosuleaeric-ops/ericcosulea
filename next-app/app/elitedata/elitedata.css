@@ -515,6 +515,45 @@
   color: var(--dfa-accent);
 }
 
+/* ── Animații CSS (înlocuiesc framer-motion pe ruta overview) ── */
+@keyframes dfa-spark-wipe {
+  from { width: 0; }
+  to { width: var(--dfa-spark-w, 240px); }
+}
+.dfa-spark-clip {
+  animation: dfa-spark-wipe 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  animation-delay: var(--dfa-spark-delay, 0s);
+}
+@keyframes dfa-menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dfa-dd-menu.dfa-anim-in {
+  animation: dfa-menu-in 0.14s ease-out both;
+}
+@keyframes dfa-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dfa-modal-in {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.dfa-modal-backdrop.dfa-anim-in {
+  animation: dfa-backdrop-in 0.16s ease both;
+}
+.dfa-modal.dfa-anim-in {
+  animation: dfa-modal-in 0.18s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dfa-spark-clip,
+  .dfa-dd-menu.dfa-anim-in,
+  .dfa-modal-backdrop.dfa-anim-in,
+  .dfa-modal.dfa-anim-in {
+    animation: none;
+  }
+}
+
 /* ── Period picker ── */
 .dfa-period-menu {
   width: 256px;
