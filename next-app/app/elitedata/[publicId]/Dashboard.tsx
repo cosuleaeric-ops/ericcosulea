@@ -69,9 +69,11 @@ const EMPTY_DELTAS: Deltas = {
 export default function Dashboard({
   website,
   sites,
+  initialData,
 }: {
   website: WebsiteProp;
   sites: SiteLite[];
+  initialData: StatsPayload;
 }) {
   const [period, setPeriod] = useState<PeriodKey>("last7");
   const [offset, setOffset] = useState(0);
@@ -81,10 +83,11 @@ export default function Dashboard({
   );
   const [compare, setCompare] = useState(false);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
-  const [data, setData] = useState<StatsPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<StatsPayload | null>(initialData);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const reqId = useRef(0);
+  const first = useRef(true);
 
   const range = computeRange(period, offset, custom ?? undefined);
   const tz = website.timezone;
@@ -125,6 +128,12 @@ export default function Dashboard({
   );
 
   useEffect(() => {
+    // Prima randare folosește initialData de la server (last7/daily); evităm
+    // un fetch redundant. Refetch doar când userul schimbă ceva.
+    if (first.current) {
+      first.current = false;
+      return;
+    }
     load("full");
   }, [load]);
 
