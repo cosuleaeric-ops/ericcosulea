@@ -33,7 +33,20 @@ export default async function AnalyticsLayout({
       <div className="dfa-shell">
         <header className="dfa-topbar">
           <a href="/elitedata" className="dfa-brand">
-            <span className="dfa-brand-mark">E</span>
+            <span className="dfa-brand-mark" aria-hidden="true">
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="5" y="4" width="3" height="16" rx="1.5" />
+                <rect x="7" y="4" width="11" height="3" rx="1.5" />
+                <rect x="7" y="10.5" width="7" height="3" rx="1.5" />
+                <rect x="7" y="17" width="9" height="3" rx="1.5" />
+              </svg>
+            </span>
             EliteData
           </a>
           <div className="dfa-user">
