@@ -5,6 +5,45 @@ import { Search } from "lucide-react";
 import { formatNumber } from "@/lib/analytics/format";
 import { KeywordModal } from "./KeywordModal";
 
+function ordinal(n: number): string {
+  const v = n % 100;
+  const s = v >= 11 && v <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th";
+  return `${n}${s}`;
+}
+
+type Hover = { row: KeywordRow; x: number; y: number };
+
+function KeywordHoverCard({ row, x, y }: Hover) {
+  const flip = typeof window !== "undefined" && x > window.innerWidth - 240;
+  return (
+    <div
+      className="dfa-kw-tip"
+      style={{
+        left: flip ? x - 16 : x + 16,
+        top: y + 16,
+        transform: flip ? "translateX(-100%)" : undefined,
+      }}
+    >
+      <div className="dfa-kw-tip-title">{row.query}</div>
+      <div className="dfa-kw-tip-head">
+        <span className="dfa-dot dfa-dot-sq" style={{ background: "var(--dfa-chart)" }} />
+        Visitors
+        <strong>{formatNumber(row.clicks)}</strong>
+      </div>
+      <div className="dfa-kw-tip-metrics">
+        <span>Position</span>
+        <b>{ordinal(Math.round(row.position))}</b>
+        <span>Impressions</span>
+        <b>{formatNumber(row.impressions)}</b>
+        <span>Clicks</span>
+        <b>{formatNumber(row.clicks)}</b>
+        <span>CTR</span>
+        <b>{(row.ctr * 100).toFixed(1)}%</b>
+      </div>
+    </div>
+  );
+}
+
 export type KeywordRow = {
   query: string;
   clicks: number;
@@ -34,6 +73,7 @@ export function KeywordTab({
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
+  const [hover, setHover] = useState<Hover | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +137,13 @@ export function KeywordTab({
       {shown.map((r) => {
         const pct = (r.clicks / max) * 100;
         return (
-          <div key={r.query} className="dfa-row">
+          <div
+            key={r.query}
+            className="dfa-row"
+            onMouseEnter={(e) => setHover({ row: r, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))}
+            onMouseLeave={() => setHover(null)}
+          >
             <motion.span
               className="dfa-row-bar"
               initial={{ width: 0 }}
@@ -114,6 +160,7 @@ export function KeywordTab({
       <button className="dfa-panel-details dfa-keyword-details" onClick={() => setModal(true)}>
         DETAILS
       </button>
+      {hover && <KeywordHoverCard {...hover} />}
       {modal && <KeywordModal rows={rows} path={path} onClose={() => setModal(false)} />}
     </>
   );

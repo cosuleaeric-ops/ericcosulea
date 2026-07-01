@@ -11,7 +11,13 @@ import {
 import type { SeriesPoint } from "@/lib/analytics/queries";
 import { formatNumber } from "@/lib/analytics/format";
 
-type Row = { label: string; value: number; compareValue?: number };
+type Row = {
+  label: string;
+  value: number;
+  compareValue?: number;
+  newValue?: number;
+  returningValue?: number;
+};
 
 function buildData(
   series: SeriesPoint[],
@@ -20,6 +26,8 @@ function buildData(
   return series.map((p, i) => ({
     label: p.label,
     value: p.value,
+    newValue: p.newValue,
+    returningValue: p.returningValue,
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
   }));
 }
@@ -37,6 +45,10 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
+  const hasSplit =
+    row.value > 0 &&
+    row.newValue !== undefined &&
+    row.returningValue !== undefined;
   return (
     <div className="dfa-chart-tip">
       <div className="dfa-chart-tip-label">{label}</div>
@@ -44,6 +56,24 @@ function ChartTooltip({
         <span className="dfa-dot" style={{ background: "var(--dfa-chart)" }} />
         <strong>{formatNumber(row.value)}</strong> visitors
       </div>
+      {hasSplit && (
+        <>
+          <div className="dfa-tip-bar">
+            <span
+              className="dfa-tip-bar-new"
+              style={{ flexBasis: `${(row.newValue! / row.value) * 100}%` }}
+            />
+            <span
+              className="dfa-tip-bar-ret"
+              style={{ flexBasis: `${(row.returningValue! / row.value) * 100}%` }}
+            />
+          </div>
+          <div className="dfa-tip-split">
+            <span>{formatNumber(row.newValue!)} new</span>
+            <span>{formatNumber(row.returningValue!)} returning</span>
+          </div>
+        </>
+      )}
       {hasCompare && row.compareValue !== undefined && (
         <div className="dfa-chart-tip-row dfa-muted">
           <span className="dfa-dot" style={{ background: "var(--dfa-chart-compare)" }} />

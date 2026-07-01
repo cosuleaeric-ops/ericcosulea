@@ -116,7 +116,13 @@ export type Deltas = {
   kpi1: number | null;
 };
 
-export type SeriesPoint = { t: string; label: string; value: number };
+export type SeriesPoint = {
+  t: string;
+  label: string;
+  value: number;
+  newValue?: number;
+  returningValue?: number;
+};
 export type BreakdownRow = { key: string; value: number };
 export type Breakdowns = {
   channel: BreakdownRow[];
@@ -312,21 +318,36 @@ WITH ev AS (
   SELECT visitor_id, created_at FROM events
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
 ),
+firsts AS (
+  SELECT visitor_id, min(created_at) AS first_seen FROM events
+  WHERE website_id=$1 AND visitor_id IS NOT NULL
+  GROUP BY visitor_id
+),
 bnd AS (
   SELECT ord-1 AS idx, lo::timestamptz AS lo,
          coalesce(lead(lo) OVER (ORDER BY ord), $${toIdx}::timestamptz) AS hi
   FROM unnest($${bndIdx}::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
 )
-SELECT b.idx, count(DISTINCT ev.visitor_id)::int AS value
-FROM bnd b LEFT JOIN ev ON ev.created_at >= b.lo AND ev.created_at < b.hi
+SELECT b.idx,
+  count(DISTINCT ev.visitor_id)::int AS value,
+  count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen >= b.lo)::int AS newv,
+  count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen < b.lo)::int AS retv
+FROM bnd b
+LEFT JOIN ev ON ev.created_at >= b.lo AND ev.created_at < b.hi
+LEFT JOIN firsts f ON f.visitor_id = ev.visitor_id
 GROUP BY b.idx ORDER BY b.idx`;
-  const rows = await q<{ idx: number; value: number }>(text, params);
-  const byIdx = new Map(rows.map((r) => [Number(r.idx), Number(r.value)]));
-  return starts.map((d, i) => ({
-    t: d.toISOString(),
-    label: formatBucketLabel(d, g, tz),
-    value: byIdx.get(i) ?? 0,
-  }));
+  const rows = await q<{ idx: number; value: number; newv: number; retv: number }>(text, params);
+  const byIdx = new Map(rows.map((r) => [Number(r.idx), r]));
+  return starts.map((d, i) => {
+    const r = byIdx.get(i);
+    return {
+      t: d.toISOString(),
+      label: formatBucketLabel(d, g, tz),
+      value: r ? Number(r.value) : 0,
+      newValue: r ? Number(r.newv) : 0,
+      returningValue: r ? Number(r.retv) : 0,
+    };
+  });
 }
 
 // ───────────────────────── Breakdowns + goals (un singur scan materializat) ─────────────────────────

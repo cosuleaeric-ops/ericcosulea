@@ -833,6 +833,78 @@
   border-radius: 50%;
   display: inline-block;
 }
+.dfa-dot-sq {
+  border-radius: 3px;
+}
+
+/* Bară new/returning în tooltip-ul graficului */
+.dfa-tip-bar {
+  display: flex;
+  height: 6px;
+  min-width: 155px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--dfa-panel);
+  margin: 8px 0 5px;
+}
+.dfa-tip-bar-new {
+  background: var(--dfa-chart);
+}
+.dfa-tip-bar-ret {
+  background: var(--dfa-chart-compare);
+}
+.dfa-tip-split {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--dfa-muted);
+}
+
+/* Tooltip keyword (SEO) — poziționat lângă cursor */
+.dfa-kw-tip {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  min-width: 190px;
+  background: var(--dfa-panel-2);
+  border: 1px solid var(--dfa-border-strong);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.dfa-kw-tip-title {
+  font-weight: 600;
+  font-size: 13px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid var(--dfa-border);
+}
+.dfa-kw-tip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--dfa-text-2);
+}
+.dfa-kw-tip-head strong {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--dfa-text);
+}
+.dfa-kw-tip-metrics {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 16px;
+  margin-top: 11px;
+  font-size: 12.5px;
+  color: var(--dfa-muted);
+}
+.dfa-kw-tip-metrics b {
+  font-weight: 600;
+  color: var(--dfa-text-2);
+  text-align: right;
+}
 
 /* ============================================================================
    Filter chips
