@@ -5,6 +5,7 @@ import "./elitedata.css";
 
 export const metadata: Metadata = {
   title: { default: "EliteData", template: "%s · EliteData" },
+  icons: { icon: "/elitedata/favicon.svg" },
 };
 
 function ownerName(): string {
