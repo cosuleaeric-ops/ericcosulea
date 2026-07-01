@@ -21,11 +21,11 @@ export async function GET(req: Request) {
   const website = await getWebsiteByPublicId(site);
   if (!website) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const deploys = await fetchDeploys(website.domain, from, to);
-  if (!deploys) return NextResponse.json({ connected: false });
+  const result = await fetchDeploys(website.domain, from, to);
+  if (!result.ok) return NextResponse.json({ connected: false, reason: result.reason });
 
   const byDay: Record<string, Deploy[]> = {};
-  for (const d of deploys) {
+  for (const d of result.deploys) {
     const k = dayKeyInTz(d.ts, website.timezone);
     (byDay[k] ??= []).push(d);
   }

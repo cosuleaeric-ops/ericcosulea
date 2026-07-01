@@ -31,15 +31,20 @@ type VercelDeployment = {
   meta?: { githubCommitMessage?: string; gitCommitMessage?: string };
 };
 
-// Întoarce deploy-urile de producție din interval, sau null dacă nu e configurat.
+export type DeployResult =
+  | { ok: true; deploys: Deploy[] }
+  | { ok: false; reason: string }; // reason nu conține secrete — sigur de expus
+
+// Întoarce deploy-urile de producție din interval, sau motivul pentru care nu.
 export async function fetchDeploys(
   domain: string,
   fromIso: string,
   toIso: string,
-): Promise<Deploy[] | null> {
+): Promise<DeployResult> {
   const token = process.env.VERCEL_TOKEN;
+  if (!token) return { ok: false, reason: "no-token" };
   const projectId = projectIdFor(domain);
-  if (!token || !projectId) return null;
+  if (!projectId) return { ok: false, reason: `no-project-for:${domain}` };
 
   const params = new URLSearchParams({
     projectId,
@@ -54,10 +59,10 @@ export async function fetchDeploys(
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  if (!res.ok) return null;
+  if (!res.ok) return { ok: false, reason: `vercel-${res.status}` };
 
   const json = (await res.json()) as { deployments?: VercelDeployment[] };
-  return (json.deployments ?? [])
+  const deploys = (json.deployments ?? [])
     .filter((d) => (d.readyState ?? d.state) === "READY")
     .map((d) => {
       const raw =
@@ -69,4 +74,5 @@ export async function fetchDeploys(
         url: d.url ? `https://${d.url}` : null,
       };
     });
+  return { ok: true, deploys };
 }
