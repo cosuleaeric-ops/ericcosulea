@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import {
   Area,
   AreaChart,
@@ -12,6 +13,7 @@ import type { SeriesPoint } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { formatNumber, dayKeyInTz } from "@/lib/analytics/format";
 import { sourceFavicon } from "@/lib/analytics/labels";
+import { DeployPanel } from "./DeployPanel";
 
 type Row = {
   label: string;
@@ -81,7 +83,8 @@ function ChartMarker(props: {
         </>
       )}
       {hasDeploy && (
-        <>
+        <g style={{ cursor: "pointer" }}>
+          <circle cx={cx} cy={deployCY} r={14} fill="transparent" />
           <circle
             cx={cx}
             cy={deployCY}
@@ -103,7 +106,7 @@ function ChartMarker(props: {
             strokeWidth={1.7}
             strokeLinecap="round"
           />
-        </>
+        </g>
       )}
     </g>
   );
@@ -200,13 +203,24 @@ export function MainChart({
 }) {
   const data = buildData(series, compareSeries, deploysByDay, tz);
   const hasCompare = !!compareSeries;
+  const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
+
+  function handleChartClick(state: unknown) {
+    const s = state as { activePayload?: Array<{ payload: Row }> } | null;
+    const row = s?.activePayload?.[0]?.payload;
+    if (row?.deploys?.length) setOpenDeploys(row.deploys);
+  }
 
   return (
     <div className="dfa-main-chart">
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
         <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
+          <AreaChart
+            data={data}
+            margin={{ top: 12, right: 8, bottom: 0, left: -16 }}
+            onClick={handleChartClick}
+          >
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.38} />
@@ -270,6 +284,9 @@ export function MainChart({
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {openDeploys && (
+        <DeployPanel deploys={openDeploys} tz={tz} onClose={() => setOpenDeploys(null)} />
+      )}
     </div>
   );
 }

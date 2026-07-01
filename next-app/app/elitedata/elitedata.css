@@ -878,6 +878,98 @@
   color: var(--dfa-text);
 }
 
+/* Panou commit-uri la click pe markerul de deploy (ca DataFast) */
+.dfa-deploy-panel {
+  width: min(460px, 92vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--dfa-panel);
+  border: 1px solid var(--dfa-border-strong);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+.dfa-deploy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.dfa-deploy-head h3 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--dfa-text-2);
+}
+.dfa-deploy-tabs {
+  margin-bottom: 14px;
+}
+.dfa-deploy-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dfa-text);
+  background: var(--dfa-panel-2);
+  border: 1px solid var(--dfa-border);
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+.dfa-deploy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.dfa-deploy-card {
+  background: var(--dfa-panel-2);
+  border: 1px solid var(--dfa-border);
+  border-radius: 14px;
+  padding: 14px;
+}
+.dfa-deploy-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+  min-height: 18px;
+}
+.dfa-deploy-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--dfa-text-2);
+  background: var(--dfa-panel);
+  border: 1px solid var(--dfa-border);
+  padding: 3px 9px;
+  border-radius: 8px;
+}
+.dfa-deploy-gh {
+  display: inline-flex;
+  color: var(--dfa-muted);
+  margin-left: auto;
+}
+.dfa-deploy-gh:hover {
+  color: var(--dfa-text);
+}
+.dfa-deploy-msg {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--dfa-text);
+}
+.dfa-deploy-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--dfa-muted);
+}
+
 /* Deploy-uri Vercel în tooltip-ul graficului */
 .dfa-tip-deploys {
   margin-top: 9px;

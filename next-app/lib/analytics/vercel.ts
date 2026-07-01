@@ -9,6 +9,9 @@ export type Deploy = {
   ts: string; // ISO — momentul în care deploy-ul a devenit live
   message: string; // mesajul commitului asociat
   url: string | null;
+  branch?: string;
+  author?: string;
+  commitUrl?: string; // link către commit pe GitHub
 };
 
 function projectIdFor(domain: string): string | null {
@@ -28,7 +31,15 @@ type VercelDeployment = {
   ready?: number;
   state?: string;
   readyState?: string;
-  meta?: { githubCommitMessage?: string; gitCommitMessage?: string };
+  meta?: {
+    githubCommitMessage?: string;
+    gitCommitMessage?: string;
+    githubCommitRef?: string;
+    githubCommitAuthorName?: string;
+    githubCommitSha?: string;
+    githubCommitOrg?: string;
+    githubCommitRepo?: string;
+  };
 };
 
 export type DeployResult =
@@ -65,13 +76,20 @@ export async function fetchDeploys(
   const deploys = (json.deployments ?? [])
     .filter((d) => (d.readyState ?? d.state) === "READY")
     .map((d) => {
-      const raw =
-        d.meta?.githubCommitMessage || d.meta?.gitCommitMessage || d.name || "Deployment";
+      const m = d.meta ?? {};
+      const raw = m.githubCommitMessage || m.gitCommitMessage || d.name || "Deployment";
+      const commitUrl =
+        m.githubCommitOrg && m.githubCommitRepo && m.githubCommitSha
+          ? `https://github.com/${m.githubCommitOrg}/${m.githubCommitRepo}/commit/${m.githubCommitSha}`
+          : undefined;
       return {
         id: d.uid,
         ts: new Date(d.ready ?? d.created ?? Date.now()).toISOString(),
         message: raw.split("\n")[0].slice(0, 100),
         url: d.url ? `https://${d.url}` : null,
+        branch: m.githubCommitRef,
+        author: m.githubCommitAuthorName,
+        commitUrl,
       };
     });
   return { ok: true, deploys };
