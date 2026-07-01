@@ -14,13 +14,32 @@ export type Deploy = {
   commitUrl?: string; // link către commit pe GitHub
 };
 
-function projectIdFor(domain: string): string | null {
+// Valoarea din VERCEL_PROJECTS poate fi ID (prj_...) SAU numele proiectului.
+function projectRefFor(domain: string): string | null {
   try {
     const map = JSON.parse(process.env.VERCEL_PROJECTS || "{}") as Record<string, string>;
     return map[domain] ?? null;
   } catch {
     return null;
   }
+}
+
+// Rezolvă un nume de proiect la ID-ul lui (prj_...). Dacă e deja un ID, îl întoarce.
+async function resolveProjectId(
+  ref: string,
+  token: string,
+  teamId: string | undefined,
+): Promise<string | null> {
+  if (ref.startsWith("prj_")) return ref;
+  const params = new URLSearchParams();
+  if (teamId) params.set("teamId", teamId);
+  const res = await fetch(
+    `https://api.vercel.com/v9/projects/${encodeURIComponent(ref)}?${params}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+  );
+  if (!res.ok) return null;
+  const j = (await res.json()) as { id?: string };
+  return j.id ?? null;
 }
 
 type VercelDeployment = {
@@ -54,8 +73,11 @@ export async function fetchDeploys(
 ): Promise<DeployResult> {
   const token = process.env.VERCEL_TOKEN;
   if (!token) return { ok: false, reason: "no-token" };
-  const projectId = projectIdFor(domain);
-  if (!projectId) return { ok: false, reason: `no-project-for:${domain}` };
+  const teamId = process.env.VERCEL_TEAM_ID;
+  const ref = projectRefFor(domain);
+  if (!ref) return { ok: false, reason: `no-project-for:${domain}` };
+  const projectId = await resolveProjectId(ref, token, teamId);
+  if (!projectId) return { ok: false, reason: `project-not-found:${ref}` };
 
   const params = new URLSearchParams({
     projectId,
@@ -64,7 +86,7 @@ export async function fetchDeploys(
     since: String(new Date(fromIso).getTime()),
     until: String(new Date(toIso).getTime()),
   });
-  if (process.env.VERCEL_TEAM_ID) params.set("teamId", process.env.VERCEL_TEAM_ID);
+  if (teamId) params.set("teamId", teamId);
 
   const res = await fetch(`https://api.vercel.com/v6/deployments?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
