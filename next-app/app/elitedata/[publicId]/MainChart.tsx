@@ -40,9 +40,8 @@ function buildData(
   }));
 }
 
-// Marcaje pe grafic: favicon-ul sursei în zilele cu spike + badge de deploy, doar
-// iconițe mici sus în coloana zilei (ca DataFast) — FĂRĂ linie verticală permanentă;
-// linia apare doar la hover (cursorul recharts).
+// Marcaje PE grafic: favicon-ul sursei (spike) + badge de deploy, așezate chiar
+// deasupra punctului zilei — se mișcă odată cu linia, nu plutesc sus (ca DataFast).
 function ChartMarker(props: {
   cx?: number;
   cy?: number;
@@ -55,9 +54,11 @@ function ChartMarker(props: {
   const fav = spike ? sourceFavicon(spike) : null;
   if (!hasDeploy && !spike) return null;
 
-  // Badge-urile stau sus în coloană (top ≥ margin.top=12 ca să nu le taie clip-ul).
-  const spikeY = 24;
-  const deployY = spike ? 48 : 24;
+  // Ancorat la valoarea zilei (cy), chiar deasupra punctului. Clamp la top ca să
+  // nu iasă din plot când valoarea e mare.
+  const clampY = (y: number) => Math.max(14, y);
+  const deployCY = clampY(cy - 15);
+  const spikeCY = clampY(hasDeploy ? cy - 37 : cy - 15);
 
   return (
     <g>
@@ -65,7 +66,7 @@ function ChartMarker(props: {
         <>
           <rect
             x={cx - 11}
-            y={spikeY - 11}
+            y={spikeCY - 11}
             width={22}
             height={22}
             rx={7}
@@ -73,9 +74,9 @@ function ChartMarker(props: {
             stroke="var(--dfa-border-strong)"
           />
           {fav ? (
-            <image href={fav} x={cx - 7} y={spikeY - 7} width={14} height={14} />
+            <image href={fav} x={cx - 7} y={spikeCY - 7} width={14} height={14} />
           ) : (
-            <circle cx={cx} cy={spikeY} r={3.5} fill="var(--dfa-chart)" />
+            <circle cx={cx} cy={spikeCY} r={3.5} fill="var(--dfa-chart)" />
           )}
         </>
       )}
@@ -83,21 +84,21 @@ function ChartMarker(props: {
         <>
           <circle
             cx={cx}
-            cy={deployY}
+            cy={deployCY}
             r={11}
             fill="var(--dfa-panel-2)"
             stroke="var(--dfa-border-strong)"
           />
           <circle
             cx={cx}
-            cy={deployY}
+            cy={deployCY}
             r={2.6}
             fill="none"
             stroke="var(--dfa-accent)"
             strokeWidth={1.7}
           />
           <path
-            d={`M${cx - 6} ${deployY} h3 M${cx + 3} ${deployY} h3`}
+            d={`M${cx - 6} ${deployCY} h3 M${cx + 3} ${deployCY} h3`}
             stroke="var(--dfa-accent)"
             strokeWidth={1.7}
             strokeLinecap="round"
