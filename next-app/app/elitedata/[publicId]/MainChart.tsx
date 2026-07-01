@@ -40,8 +40,9 @@ function buildData(
   }));
 }
 
-// Marcaje persistente pe grafic: favicon-ul sursei în zilele cu spike + badge de
-// deploy, sus în coloana zilei, legate de linie printr-un fir subtil (ca DataFast).
+// Marcaje pe grafic: favicon-ul sursei în zilele cu spike + badge de deploy, doar
+// iconițe mici sus în coloana zilei (ca DataFast) — FĂRĂ linie verticală permanentă;
+// linia apare doar la hover (cursorul recharts).
 function ChartMarker(props: {
   cx?: number;
   cy?: number;
@@ -54,22 +55,12 @@ function ChartMarker(props: {
   const fav = spike ? sourceFavicon(spike) : null;
   if (!hasDeploy && !spike) return null;
 
-  // Ținem badge-urile în interiorul zonei de plot (top ≥ margin.top=12) ca să nu
-  // fie tăiate de clip-ul recharts, dar sus în coloană (ca DataFast).
+  // Badge-urile stau sus în coloană (top ≥ margin.top=12 ca să nu le taie clip-ul).
   const spikeY = 24;
   const deployY = spike ? 48 : 24;
-  const anchorY = (hasDeploy ? deployY : spikeY) + 11;
 
   return (
     <g>
-      <line
-        x1={cx}
-        y1={anchorY}
-        x2={cx}
-        y2={cy}
-        stroke="rgba(255,255,255,0.16)"
-        strokeWidth={1}
-      />
       {spike && (
         <>
           <rect
