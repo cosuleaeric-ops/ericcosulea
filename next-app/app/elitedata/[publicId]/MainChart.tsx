@@ -11,6 +11,7 @@ import {
 import type { SeriesPoint } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { formatNumber, dayKeyInTz } from "@/lib/analytics/format";
+import { sourceFavicon } from "@/lib/analytics/labels";
 
 type Row = {
   label: string;
@@ -19,6 +20,7 @@ type Row = {
   newValue?: number;
   returningValue?: number;
   deploys?: Deploy[];
+  spikeSource?: string | null;
 };
 
 function buildData(
@@ -34,7 +36,85 @@ function buildData(
     returningValue: p.returningValue,
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
     deploys: deploysByDay[dayKeyInTz(p.t, tz)],
+    spikeSource: p.spikeSource,
   }));
+}
+
+// Marcaje persistente pe grafic: favicon-ul sursei în zilele cu spike + badge de
+// deploy, sus în coloana zilei, legate de linie printr-un fir subtil (ca DataFast).
+function ChartMarker(props: {
+  cx?: number;
+  cy?: number;
+  payload?: Row;
+}) {
+  const { cx, cy, payload } = props;
+  if (cx == null || cy == null || !payload) return null;
+  const hasDeploy = !!payload.deploys?.length;
+  const spike = payload.spikeSource;
+  const fav = spike ? sourceFavicon(spike) : null;
+  if (!hasDeploy && !spike) return null;
+
+  // Ținem badge-urile în interiorul zonei de plot (top ≥ margin.top=12) ca să nu
+  // fie tăiate de clip-ul recharts, dar sus în coloană (ca DataFast).
+  const spikeY = 24;
+  const deployY = spike ? 48 : 24;
+  const anchorY = (hasDeploy ? deployY : spikeY) + 11;
+
+  return (
+    <g>
+      <line
+        x1={cx}
+        y1={anchorY}
+        x2={cx}
+        y2={cy}
+        stroke="rgba(255,255,255,0.16)"
+        strokeWidth={1}
+      />
+      {spike && (
+        <>
+          <rect
+            x={cx - 11}
+            y={spikeY - 11}
+            width={22}
+            height={22}
+            rx={7}
+            fill="var(--dfa-panel-2)"
+            stroke="var(--dfa-border-strong)"
+          />
+          {fav ? (
+            <image href={fav} x={cx - 7} y={spikeY - 7} width={14} height={14} />
+          ) : (
+            <circle cx={cx} cy={spikeY} r={3.5} fill="var(--dfa-chart)" />
+          )}
+        </>
+      )}
+      {hasDeploy && (
+        <>
+          <circle
+            cx={cx}
+            cy={deployY}
+            r={11}
+            fill="var(--dfa-panel-2)"
+            stroke="var(--dfa-border-strong)"
+          />
+          <circle
+            cx={cx}
+            cy={deployY}
+            r={2.6}
+            fill="none"
+            stroke="var(--dfa-accent)"
+            strokeWidth={1.7}
+          />
+          <path
+            d={`M${cx - 6} ${deployY} h3 M${cx + 3} ${deployY} h3`}
+            stroke="var(--dfa-accent)"
+            strokeWidth={1.7}
+            strokeLinecap="round"
+          />
+        </>
+      )}
+    </g>
+  );
 }
 
 function ChartTooltip({
@@ -83,6 +163,17 @@ function ChartTooltip({
         <div className="dfa-chart-tip-row dfa-muted">
           <span className="dfa-dot" style={{ background: "var(--dfa-chart-compare)" }} />
           {formatNumber(row.compareValue)} previous
+        </div>
+      )}
+      {row.spikeSource && (
+        <div className="dfa-tip-spike">
+          {sourceFavicon(row.spikeSource) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={sourceFavicon(row.spikeSource)!} alt="" width={14} height={14} />
+          ) : (
+            <span className="dfa-dot" style={{ background: "var(--dfa-chart)" }} />
+          )}
+          Traffic spike from <strong>{row.spikeSource}</strong>
         </div>
       )}
       {row.deploys && row.deploys.length > 0 && (
@@ -173,7 +264,7 @@ export function MainChart({
               stroke="var(--dfa-chart)"
               strokeWidth={2.4}
               fill="url(#dfa-grad)"
-              dot={false}
+              dot={<ChartMarker />}
               activeDot={{
                 r: 4,
                 fill: "var(--dfa-chart)",

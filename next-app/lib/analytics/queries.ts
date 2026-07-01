@@ -122,6 +122,7 @@ export type SeriesPoint = {
   value: number;
   newValue?: number;
   returningValue?: number;
+  spikeSource?: string | null; // sursa dominantă în zilele cu spike de trafic
 };
 export type BreakdownRow = { key: string; value: number };
 export type Breakdowns = {
@@ -348,6 +349,65 @@ GROUP BY b.idx ORDER BY b.idx`;
       returningValue: r ? Number(r.retv) : 0,
     };
   });
+}
+
+// ───────────────────────── Spike-uri de trafic (sursa dominantă/zi) ─────────────────────────
+// Un bucket e „spike" dacă depășește clar mediana seriei. Adnotăm cu sursa
+// referrer dominantă din ziua aia (ca „Traffic spike from LinkedIn" în DataFast).
+function detectSpikeIdx(values: number[]): number[] {
+  const nz = values.filter((v) => v > 0).sort((a, b) => a - b);
+  if (nz.length < 4) return [];
+  const median = nz[Math.floor(nz.length / 2)];
+  const threshold = Math.max(12, median * 1.8);
+  const out: number[] = [];
+  values.forEach((v, i) => {
+    if (v >= threshold) out.push(i);
+  });
+  return out;
+}
+
+async function enrichSpikes(
+  websiteId: number,
+  range: Range,
+  g: Granularity,
+  filters: Filters,
+  series: SeriesPoint[],
+): Promise<void> {
+  const spikeIdx = detectSpikeIdx(series.map((p) => p.value));
+  if (!spikeIdx.length) return;
+
+  const starts = bucketStarts(range, g);
+  const params: unknown[] = [websiteId, range.from.toISOString(), range.to.toISOString()];
+  const fc = buildFilterClause(filters, params);
+  params.push(starts.map((d) => d.toISOString()));
+  const bndIdx = params.length;
+  params.push(range.to.toISOString());
+  const toIdx = params.length;
+  const text = `
+WITH ev AS (
+  SELECT visitor_id, created_at, coalesce(referrer_source,'Direct/None') AS src FROM events
+  WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
+),
+bnd AS (
+  SELECT ord-1 AS idx, lo::timestamptz AS lo,
+         coalesce(lead(lo) OVER (ORDER BY ord), $${toIdx}::timestamptz) AS hi
+  FROM unnest($${bndIdx}::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
+)
+SELECT b.idx, ev.src, count(DISTINCT ev.visitor_id)::int AS v
+FROM bnd b JOIN ev ON ev.created_at >= b.lo AND ev.created_at < b.hi
+WHERE ev.src <> 'Direct/None'
+GROUP BY b.idx, ev.src`;
+  const rows = await q<{ idx: number; src: string; v: number }>(text, params);
+  const top = new Map<number, { src: string; v: number }>();
+  for (const r of rows) {
+    const i = Number(r.idx);
+    const cur = top.get(i);
+    if (!cur || Number(r.v) > cur.v) top.set(i, { src: r.src, v: Number(r.v) });
+  }
+  for (const i of spikeIdx) {
+    const t = top.get(i);
+    if (t) series[i].spikeSource = t.src;
+  }
 }
 
 // ───────────────────────── Breakdowns + goals (un singur scan materializat) ─────────────────────────
@@ -587,6 +647,10 @@ export async function getStats(opts: {
     ]);
 
   const breakdowns: Breakdowns = { ...bg.breakdowns, entry: entryExit.entry, exit: entryExit.exit };
+
+  if (granularity === "daily") {
+    await enrichSpikes(websiteId, range, granularity, filters, series);
+  }
 
   return {
     kpis: kpiPair.cur,

@@ -861,6 +861,23 @@
   color: var(--dfa-muted);
 }
 
+/* Spike de trafic în tooltip-ul graficului */
+.dfa-tip-spike {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--dfa-text-2);
+}
+.dfa-tip-spike img {
+  border-radius: 3px;
+}
+.dfa-tip-spike strong {
+  font-weight: 600;
+  color: var(--dfa-text);
+}
+
 /* Deploy-uri Vercel în tooltip-ul graficului */
 .dfa-tip-deploys {
   margin-top: 9px;
