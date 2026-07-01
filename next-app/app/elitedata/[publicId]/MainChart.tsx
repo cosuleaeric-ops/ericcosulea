@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -21,14 +21,15 @@ type Row = {
   compareValue?: number;
   newValue?: number;
   returningValue?: number;
-  deploys?: Deploy[];
   spikeSource?: string | null;
+  dayKey: string; // pentru lookup deploys (ținut în afara datelor animate)
 };
 
+// Datele graficului NU conțin deploy-urile (acelea vin async și ar reporni
+// animația). Deploy-urile se caută separat, după dayKey.
 function buildData(
   series: SeriesPoint[],
   compare: SeriesPoint[] | null,
-  deploysByDay: Record<string, Deploy[]>,
   tz: string,
 ): Row[] {
   return series.map((p, i) => ({
@@ -37,8 +38,8 @@ function buildData(
     newValue: p.newValue,
     returningValue: p.returningValue,
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
-    deploys: deploysByDay[dayKeyInTz(p.t, tz)],
     spikeSource: p.spikeSource,
+    dayKey: dayKeyInTz(p.t, tz),
   }));
 }
 
@@ -48,10 +49,11 @@ function ChartMarker(props: {
   cx?: number;
   cy?: number;
   payload?: Row;
+  deploysByDay?: Record<string, Deploy[]>;
 }) {
-  const { cx, cy, payload } = props;
+  const { cx, cy, payload, deploysByDay } = props;
   if (cx == null || cy == null || !payload) return null;
-  const hasDeploy = !!payload.deploys?.length;
+  const hasDeploy = !!(payload.dayKey && deploysByDay?.[payload.dayKey]?.length);
   const spike = payload.spikeSource;
   const fav = spike ? sourceFavicon(spike) : null;
   if (!hasDeploy && !spike) return null;
@@ -117,14 +119,17 @@ function ChartTooltip({
   payload,
   label,
   hasCompare,
+  deploysByDay,
 }: {
   active?: boolean;
   payload?: Array<{ value: number; payload: Row }>;
   label?: string;
   hasCompare: boolean;
+  deploysByDay?: Record<string, Deploy[]>;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
+  const deploys = row.dayKey ? deploysByDay?.[row.dayKey] : undefined;
   const hasSplit =
     row.value > 0 &&
     row.newValue !== undefined &&
@@ -171,16 +176,16 @@ function ChartTooltip({
           Traffic spike from <strong>{row.spikeSource}</strong>
         </div>
       )}
-      {row.deploys && row.deploys.length > 0 && (
+      {deploys && deploys.length > 0 && (
         <div className="dfa-tip-deploys">
-          {row.deploys.slice(0, 4).map((d) => (
+          {deploys.slice(0, 4).map((d) => (
             <div className="dfa-tip-deploy" key={d.id}>
               <span className="dfa-tip-deploy-mark" />
               <span className="dfa-tip-deploy-msg">{d.message}</span>
             </div>
           ))}
-          {row.deploys.length > 4 && (
-            <div className="dfa-tip-deploy-more">+{row.deploys.length - 4} more</div>
+          {deploys.length > 4 && (
+            <div className="dfa-tip-deploy-more">+{deploys.length - 4} more</div>
           )}
         </div>
       )}
@@ -201,14 +206,20 @@ export function MainChart({
   tz: string;
   loading: boolean;
 }) {
-  const data = buildData(series, compareSeries, deploysByDay, tz);
+  // Memoizat pe serie/compare/tz — NU pe deploysByDay. Așa sosirea async a
+  // deploy-urilor nu schimbă referința `data` și recharts nu repornește animația.
+  const data = useMemo(
+    () => buildData(series, compareSeries, tz),
+    [series, compareSeries, tz],
+  );
   const hasCompare = !!compareSeries;
   const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
 
   function handleChartClick(state: unknown) {
     const s = state as { activePayload?: Array<{ payload: Row }> } | null;
     const row = s?.activePayload?.[0]?.payload;
-    if (row?.deploys?.length) setOpenDeploys(row.deploys);
+    const deploys = row?.dayKey ? deploysByDay[row.dayKey] : undefined;
+    if (deploys?.length) setOpenDeploys(deploys);
   }
 
   return (
@@ -247,7 +258,7 @@ export function MainChart({
               tick={{ fill: "var(--dfa-faint)", fontSize: 11 }}
             />
             <Tooltip
-              content={<ChartTooltip hasCompare={hasCompare} />}
+              content={<ChartTooltip hasCompare={hasCompare} deploysByDay={deploysByDay} />}
               cursor={{ stroke: "rgba(255,255,255,0.22)", strokeWidth: 1 }}
             />
             {hasCompare && (
@@ -270,7 +281,7 @@ export function MainChart({
               stroke="var(--dfa-chart)"
               strokeWidth={2.4}
               fill="url(#dfa-grad)"
-              dot={<ChartMarker />}
+              dot={<ChartMarker deploysByDay={deploysByDay} />}
               activeDot={{
                 r: 4,
                 fill: "var(--dfa-chart)",
