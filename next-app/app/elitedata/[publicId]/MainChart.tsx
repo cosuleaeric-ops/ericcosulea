@@ -50,10 +50,12 @@ function ChartMarker(props: {
   cy?: number;
   payload?: Row;
   deploysByDay?: Record<string, Deploy[]>;
+  onOpen?: (deploys: Deploy[]) => void;
 }) {
-  const { cx, cy, payload, deploysByDay } = props;
+  const { cx, cy, payload, deploysByDay, onOpen } = props;
   if (cx == null || cy == null || !payload) return null;
-  const hasDeploy = !!(payload.dayKey && deploysByDay?.[payload.dayKey]?.length);
+  const deploys = payload.dayKey ? deploysByDay?.[payload.dayKey] : undefined;
+  const hasDeploy = !!deploys?.length;
   const spike = payload.spikeSource;
   const fav = spike ? sourceFavicon(spike) : null;
   if (!hasDeploy && !spike) return null;
@@ -85,7 +87,13 @@ function ChartMarker(props: {
         </>
       )}
       {hasDeploy && (
-        <g style={{ cursor: "pointer" }}>
+        <g
+          style={{ cursor: "pointer", pointerEvents: "all" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (deploys?.length) onOpen?.(deploys);
+          }}
+        >
           <circle cx={cx} cy={deployCY} r={14} fill="transparent" />
           <circle
             cx={cx}
@@ -215,23 +223,12 @@ export function MainChart({
   const hasCompare = !!compareSeries;
   const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
 
-  function handleChartClick(state: unknown) {
-    const s = state as { activePayload?: Array<{ payload: Row }> } | null;
-    const row = s?.activePayload?.[0]?.payload;
-    const deploys = row?.dayKey ? deploysByDay[row.dayKey] : undefined;
-    if (deploys?.length) setOpenDeploys(deploys);
-  }
-
   return (
     <div className="dfa-main-chart">
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
         <ResponsiveContainer width="100%" height={400}>
-          <AreaChart
-            data={data}
-            margin={{ top: 12, right: 8, bottom: 0, left: -16 }}
-            onClick={handleChartClick}
-          >
+          <AreaChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.38} />
@@ -281,7 +278,7 @@ export function MainChart({
               stroke="var(--dfa-chart)"
               strokeWidth={2.4}
               fill="url(#dfa-grad)"
-              dot={<ChartMarker deploysByDay={deploysByDay} />}
+              dot={<ChartMarker deploysByDay={deploysByDay} onOpen={setOpenDeploys} />}
               activeDot={{
                 r: 4,
                 fill: "var(--dfa-chart)",
