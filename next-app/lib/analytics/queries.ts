@@ -355,13 +355,15 @@ GROUP BY b.idx ORDER BY b.idx`;
 // Un bucket e „spike" dacă depășește clar mediana seriei. Adnotăm cu sursa
 // referrer dominantă din ziua aia (ca „Traffic spike from LinkedIn" în DataFast).
 function detectSpikeIdx(values: number[]): number[] {
-  const nz = values.filter((v) => v > 0).sort((a, b) => a - b);
-  if (nz.length < 4) return [];
-  const median = nz[Math.floor(nz.length / 2)];
-  const threshold = Math.max(12, median * 1.8);
+  if (values.filter((v) => v > 0).length < 4) return [];
+  const n = values.length;
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const std = Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+  // Outlier clar: peste mean+2σ, cu un prag minim absolut ca să nu marcăm zgomot.
+  const threshold = Math.max(12, mean + 2 * std);
   const out: number[] = [];
   values.forEach((v, i) => {
-    if (v >= threshold) out.push(i);
+    if (v > 0 && v >= threshold) out.push(i);
   });
   return out;
 }
