@@ -9,7 +9,8 @@ import {
   YAxis,
 } from "recharts";
 import type { SeriesPoint } from "@/lib/analytics/queries";
-import { formatNumber } from "@/lib/analytics/format";
+import type { Deploy } from "@/lib/analytics/vercel";
+import { formatNumber, dayKeyInTz } from "@/lib/analytics/format";
 
 type Row = {
   label: string;
@@ -17,11 +18,14 @@ type Row = {
   compareValue?: number;
   newValue?: number;
   returningValue?: number;
+  deploys?: Deploy[];
 };
 
 function buildData(
   series: SeriesPoint[],
   compare: SeriesPoint[] | null,
+  deploysByDay: Record<string, Deploy[]>,
+  tz: string,
 ): Row[] {
   return series.map((p, i) => ({
     label: p.label,
@@ -29,6 +33,7 @@ function buildData(
     newValue: p.newValue,
     returningValue: p.returningValue,
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
+    deploys: deploysByDay[dayKeyInTz(p.t, tz)],
   }));
 }
 
@@ -80,6 +85,19 @@ function ChartTooltip({
           {formatNumber(row.compareValue)} previous
         </div>
       )}
+      {row.deploys && row.deploys.length > 0 && (
+        <div className="dfa-tip-deploys">
+          {row.deploys.slice(0, 4).map((d) => (
+            <div className="dfa-tip-deploy" key={d.id}>
+              <span className="dfa-tip-deploy-mark" />
+              <span className="dfa-tip-deploy-msg">{d.message}</span>
+            </div>
+          ))}
+          {row.deploys.length > 4 && (
+            <div className="dfa-tip-deploy-more">+{row.deploys.length - 4} more</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -87,13 +105,17 @@ function ChartTooltip({
 export function MainChart({
   series,
   compareSeries,
+  deploysByDay,
+  tz,
   loading,
 }: {
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
+  deploysByDay: Record<string, Deploy[]>;
+  tz: string;
   loading: boolean;
 }) {
-  const data = buildData(series, compareSeries);
+  const data = buildData(series, compareSeries, deploysByDay, tz);
   const hasCompare = !!compareSeries;
 
   return (

@@ -4,6 +4,16 @@ export function formatNumber(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
+// "YYYY-MM-DD" în timezone-ul dat — cheie de grupare pe zi (deploys pe grafic).
+export function dayKeyInTz(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   const m = Math.floor(s / 60);

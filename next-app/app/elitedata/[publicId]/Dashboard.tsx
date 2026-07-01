@@ -17,6 +17,7 @@ import {
   type PeriodKey,
 } from "@/lib/analytics/range";
 import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
+import type { Deploy } from "@/lib/analytics/vercel";
 import { countryName } from "@/lib/analytics/labels";
 
 const FILTER_LABEL: Record<string, string> = {
@@ -84,6 +85,7 @@ export default function Dashboard({
   const [compare, setCompare] = useState(false);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
   const [data, setData] = useState<StatsPayload | null>(initialData);
+  const [deploysByDay, setDeploysByDay] = useState<Record<string, Deploy[]>>({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const reqId = useRef(0);
@@ -143,6 +145,25 @@ export default function Dashboard({
     const id = setInterval(() => load("silent"), 10_000);
     return () => clearInterval(id);
   }, [period, load]);
+
+  // Deploy-uri Vercel pe grafic — doar pe granularitate zilnică (marcaje/zi).
+  useEffect(() => {
+    if (granularity !== "daily") return;
+    let cancelled = false;
+    const r = computeRange(period, offset, custom ?? undefined);
+    const params = new URLSearchParams({
+      site: website.publicId,
+      from: r.from.toISOString(),
+      to: r.to.toISOString(),
+    });
+    fetch(`/api/analytics/vercel/deploys?${params}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { connected: false }))
+      .then((j) => !cancelled && setDeploysByDay(j.connected ? j.byDay : {}))
+      .catch(() => !cancelled && setDeploysByDay({}));
+    return () => {
+      cancelled = true;
+    };
+  }, [website.publicId, period, offset, custom, granularity]);
 
   // Scurtături de tastatură (ca în DataFast).
   useEffect(() => {
@@ -252,6 +273,8 @@ export default function Dashboard({
         <MainChart
           series={data?.series ?? []}
           compareSeries={data?.compareSeries ?? null}
+          deploysByDay={granularity === "daily" ? deploysByDay : {}}
+          tz={tz}
           loading={noData || refreshing}
         />
       </div>
