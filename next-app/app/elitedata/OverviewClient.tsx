@@ -37,6 +37,10 @@ const LABELS: Record<string, string> = Object.fromEntries(
   OPTS.map((o) => [o.key, o.label]),
 );
 
+// Perioada aleasă persistă peste reload (localStorage).
+const PERIOD_STORE_KEY = "dfa_ov_period";
+const isValidPeriod = (k: string): k is PeriodKey => OPTS.some((o) => o.key === k);
+
 export function OverviewClient({
   ownerName,
   initial,
@@ -50,6 +54,27 @@ export function OverviewClient({
   const [sort, setSort] = useState<SortKey>("views");
   const [drawGen, setDrawGen] = useState(0);
   const first = useRef(true);
+
+  function selectPeriod(k: PeriodKey) {
+    setPeriod(k);
+    try {
+      localStorage.setItem(PERIOD_STORE_KEY, k);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Restaurează ultima perioadă aleasă (persistă peste reload).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PERIOD_STORE_KEY);
+      // Restore intenționat din localStorage la mount (nu SSR — evită mismatch de hidratare).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved && isValidPeriod(saved)) setPeriod(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const sortedSites = useMemo(() => {
     const arr = [...data.sites];
@@ -92,7 +117,7 @@ export function OverviewClient({
             align="left"
             width={170}
             value={period}
-            onSelect={(k) => setPeriod(k as PeriodKey)}
+            onSelect={(k) => selectPeriod(k as PeriodKey)}
             trigger={<span className="dfa-pill-period">{LABELS[period]}</span>}
             items={OPTS.map((o) => ({ key: o.key, label: o.label }))}
           />

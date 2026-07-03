@@ -13,6 +13,7 @@ import {
   isNavigable,
   isLive,
   PERIOD_LABELS,
+  PERIOD_ORDER,
   type Granularity,
   type PeriodKey,
 } from "@/lib/analytics/range";
@@ -47,6 +48,9 @@ type WebsiteProp = SiteLite & {
   kpiGoalName: string | null;
 };
 type Custom = { from: string; to: string };
+
+// Perioada aleasă persistă peste reload (localStorage). Doar preset-uri, nu "custom".
+const PERIOD_STORE_KEY = "dfa_dash_period";
 
 const EMPTY_KPIS: Kpis = {
   visitors: 0,
@@ -139,6 +143,16 @@ export default function Dashboard({
     load("full");
   }, [load]);
 
+  // Restaurează ultima perioadă aleasă (persistă peste reload).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PERIOD_STORE_KEY) as PeriodKey | null;
+      if (saved && PERIOD_ORDER.includes(saved)) changePeriod(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // Mod live: la "Now" reîmprospătează silențios la fiecare 10s.
   useEffect(() => {
     if (!isLive(period)) return;
@@ -195,6 +209,11 @@ export default function Dashboard({
     setOffset(0);
     setCustom(null);
     setGranularity(defaultGranularity(p));
+    try {
+      localStorage.setItem(PERIOD_STORE_KEY, p);
+    } catch {
+      /* ignore */
+    }
   }
 
   function applyCustom(from: string, to: string) {
