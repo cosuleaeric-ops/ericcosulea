@@ -31,6 +31,17 @@ function clientIp(h: Headers): string | null {
   return fwd ? fwd.split(",")[0].trim() : h.get("x-real-ip");
 }
 
+// Path-uri excluse (ca DataFast Settings → Exclusions). Default /admin; override CSV în env.
+// Fiecare intrare exclude atât path-ul exact, cât și subpaginile lui (ex. /admin/users).
+const EXCLUDED_PATHS = (process.env.ANALYTICS_EXCLUDE_PATHS ?? "/admin")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function isExcludedPath(path: string): boolean {
+  return EXCLUDED_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -95,6 +106,11 @@ export async function POST(req: NextRequest) {
     hostname = u.hostname || site.domain;
   } catch {
     /* păstrăm default */
+  }
+
+  // Path exclus (ex. /admin) → nu contorizăm, drop înainte de sesiune/insert.
+  if (isExcludedPath(path)) {
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
   const refSource = referrerSource(body.referrer, site.domain);
