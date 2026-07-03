@@ -12,7 +12,7 @@ function resolveKey(name: string): RestaurantKey {
   const l = name.toLowerCase();
   if (l.includes("dogu")) return "dogu";
   if (l.includes("turmerizza")) return "turmerizza";
-  if (l.includes("gustoria")) return "gustoria";
+  if (l.includes("gustoria") || l.includes("domenii")) return "gustoria";
   if (l.includes("hotdog") || l.includes("hot dog")) return "hotdog";
   return "other";
 }

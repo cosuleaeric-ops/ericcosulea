@@ -4,7 +4,7 @@ export type RestaurantKey = (typeof RESTAURANT_KEYS)[number];
 export const LABELS: Record<RestaurantKey, string> = {
   dogu: "DOGU",
   turmerizza: "Turmerizza",
-  gustoria: "Gustoria",
+  gustoria: "Domenii Bistro",
   hotdog: "HotDog de Bucuresti",
   other: "Altele",
 };
