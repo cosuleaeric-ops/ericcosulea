@@ -28,6 +28,11 @@
     /\.local$/.test(host);
   if (isLocal && !includeLocalhost) return;
 
+  // ── Opt-out propriu (ca DataFast): localStorage.datafast_ignore=true ──
+  try {
+    if (localStorage.getItem("datafast_ignore") === "true") return;
+  } catch (e) {}
+
   // ── Visitor id persistent (localStorage, fallback cookie) ──
   var VKEY = "dfa_visitor_id";
   function uuid() {

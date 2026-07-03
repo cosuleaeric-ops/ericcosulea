@@ -18,6 +18,19 @@ function isBot(ua: string | null): boolean {
   return BOT_UA.test(ua);
 }
 
+// IP-uri excluse (ca DataFast Settings → Exclusions). CSV în env: "1.2.3.4, 5.6.7.8".
+const EXCLUDED_IPS = new Set(
+  (process.env.ANALYTICS_EXCLUDE_IPS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+
+function clientIp(h: Headers): string | null {
+  const fwd = h.get("x-vercel-forwarded-for") || h.get("x-forwarded-for");
+  return fwd ? fwd.split(",")[0].trim() : h.get("x-real-ip");
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -51,9 +64,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
   }
 
-  // Filtru boți — respinge înainte de orice DB write (202, ca clientul să nu vadă eroare).
+  // Filtru boți + IP-uri excluse — respinge înainte de orice DB write (202, fără eroare la client).
   if (isBot(req.headers.get("user-agent"))) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
+  }
+  if (EXCLUDED_IPS.size > 0) {
+    const ip = clientIp(req.headers);
+    if (ip && EXCLUDED_IPS.has(ip)) {
+      return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
+    }
   }
 
   // Lookup site — necunoscut → ignorăm silențios (nu stricăm clientul).
