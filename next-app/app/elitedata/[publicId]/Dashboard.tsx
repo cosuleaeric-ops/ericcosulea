@@ -13,13 +13,13 @@ import {
   isNavigable,
   isLive,
   PERIOD_LABELS,
-  PERIOD_ORDER,
   type Granularity,
   type PeriodKey,
 } from "@/lib/analytics/range";
 import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { countryName } from "@/lib/analytics/labels";
+import { DASH_PERIOD_COOKIE } from "../period-persistence";
 
 const FILTER_LABEL: Record<string, string> = {
   path: "Page",
@@ -49,8 +49,15 @@ type WebsiteProp = SiteLite & {
 };
 type Custom = { from: string; to: string };
 
-// Perioada aleasă persistă peste reload (localStorage). Doar preset-uri, nu "custom".
-const PERIOD_STORE_KEY = "dfa_dash_period";
+// Perioada aleasă persistă într-un cookie (citit și pe server, ca să randăm din
+// prima vederea corectă, fără flash last7 → 24h). Doar preset-uri, nu "custom".
+function persistPeriod(p: PeriodKey) {
+  try {
+    document.cookie = `${DASH_PERIOD_COOKIE}=${p};path=/;max-age=31536000;SameSite=Lax`;
+  } catch {
+    /* ignore */
+  }
+}
 
 const EMPTY_KPIS: Kpis = {
   visitors: 0,
@@ -75,16 +82,18 @@ export default function Dashboard({
   website,
   sites,
   initialData,
+  initialPeriod,
 }: {
   website: WebsiteProp;
   sites: SiteLite[];
   initialData: StatsPayload;
+  initialPeriod: PeriodKey;
 }) {
-  const [period, setPeriod] = useState<PeriodKey>("last7");
+  const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
   const [offset, setOffset] = useState(0);
   const [custom, setCustom] = useState<Custom | null>(null);
   const [granularity, setGranularity] = useState<Granularity>(
-    defaultGranularity("last7"),
+    defaultGranularity(initialPeriod),
   );
   const [compare, setCompare] = useState(false);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
@@ -143,16 +152,6 @@ export default function Dashboard({
     load("full");
   }, [load]);
 
-  // Restaurează ultima perioadă aleasă (persistă peste reload).
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(PERIOD_STORE_KEY) as PeriodKey | null;
-      if (saved && PERIOD_ORDER.includes(saved)) changePeriod(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   // Mod live: la "Now" reîmprospătează silențios la fiecare 10s.
   useEffect(() => {
     if (!isLive(period)) return;
@@ -209,11 +208,7 @@ export default function Dashboard({
     setOffset(0);
     setCustom(null);
     setGranularity(defaultGranularity(p));
-    try {
-      localStorage.setItem(PERIOD_STORE_KEY, p);
-    } catch {
-      /* ignore */
-    }
+    persistPeriod(p);
   }
 
   function applyCustom(from: string, to: string) {

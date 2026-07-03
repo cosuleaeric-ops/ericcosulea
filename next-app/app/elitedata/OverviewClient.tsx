@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/analytics/format";
 import { Sparkline } from "./_components/Sparkline";
 import { Dropdown } from "./_components/Dropdown";
 import { AddWebsite } from "./AddWebsite";
+import { OV_PERIOD_COOKIE } from "./period-persistence";
 
 type SortKey = "views" | "alpha";
 const SORT_OPTS: { key: SortKey; label: string }[] = [
@@ -37,18 +38,16 @@ const LABELS: Record<string, string> = Object.fromEntries(
   OPTS.map((o) => [o.key, o.label]),
 );
 
-// Perioada aleasă persistă peste reload (localStorage).
-const PERIOD_STORE_KEY = "dfa_ov_period";
-const isValidPeriod = (k: string): k is PeriodKey => OPTS.some((o) => o.key === k);
-
 export function OverviewClient({
   ownerName,
   initial,
+  initialPeriod,
 }: {
   ownerName: string;
   initial: Data;
+  initialPeriod: PeriodKey;
 }) {
-  const [period, setPeriod] = useState<PeriodKey>("last7");
+  const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
   const [data, setData] = useState<Data>(initial);
   const [loading, setLoading] = useState(false);
   const [sort, setSort] = useState<SortKey>("views");
@@ -58,23 +57,11 @@ export function OverviewClient({
   function selectPeriod(k: PeriodKey) {
     setPeriod(k);
     try {
-      localStorage.setItem(PERIOD_STORE_KEY, k);
+      document.cookie = `${OV_PERIOD_COOKIE}=${k};path=/;max-age=31536000;SameSite=Lax`;
     } catch {
       /* ignore */
     }
   }
-
-  // Restaurează ultima perioadă aleasă (persistă peste reload).
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(PERIOD_STORE_KEY);
-      // Restore intenționat din localStorage la mount (nu SSR — evită mismatch de hidratare).
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved && isValidPeriod(saved)) setPeriod(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const sortedSites = useMemo(() => {
     const arr = [...data.sites];
