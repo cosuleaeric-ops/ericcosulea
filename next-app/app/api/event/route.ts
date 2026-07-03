@@ -9,6 +9,15 @@ export const runtime = "nodejs";
 
 const SESSION_WINDOW_MS = 30 * 60 * 1000;
 
+// Boți/crawlere/monitoare/headless — ca DataFast/Plausible. Traficul lor nu intră în DB.
+const BOT_UA =
+  /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|embedly|quora link preview|pinterest|bitlybot|nuzzel|vkshare|w3c_validator|redditbot|applebot|whatsapp|telegrambot|discordbot|googlebot|bingbot|yandex|duckduckbot|baiduspider|semrush|ahrefs|mj12|dotbot|petalbot|headless|phantomjs|puppeteer|playwright|lighthouse|pagespeed|gtmetrix|pingdom|uptimerobot|statuscake|monitor|preview|prerender|python-requests|axios|curl|wget|okhttp|java\/|go-http|node-fetch|scrapy/i;
+
+function isBot(ua: string | null): boolean {
+  if (!ua) return true; // fără user-agent = aproape sigur bot/script
+  return BOT_UA.test(ua);
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -40,6 +49,11 @@ export async function POST(req: NextRequest) {
   const visitorId = body.visitor_id;
   if (!publicId || !visitorId) {
     return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
+  }
+
+  // Filtru boți — respinge înainte de orice DB write (202, ca clientul să nu vadă eroare).
+  if (isBot(req.headers.get("user-agent"))) {
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
   // Lookup site — necunoscut → ignorăm silențios (nu stricăm clientul).
