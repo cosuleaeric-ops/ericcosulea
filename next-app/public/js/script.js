@@ -108,6 +108,14 @@
     if (name) send("custom", String(name));
   };
 
+  // ── Goal pe click (ca DataFast): orice element cu data-fast-goal="nume" ──
+  // Delegat pe document, prinde și click pe copiii elementului marcat.
+  document.addEventListener("click", function (e) {
+    var el = e.target && e.target.closest && e.target.closest("[data-fast-goal]");
+    var name = el && el.getAttribute("data-fast-goal");
+    if (name) send("custom", name);
+  });
+
   // Pageview inițial
   pageview();
 })();

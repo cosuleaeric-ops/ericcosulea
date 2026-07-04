@@ -2,8 +2,9 @@
 import { useMemo, useState } from "react";
 import {
   Area,
-  AreaChart,
+  Bar,
   CartesianGrid,
+  ComposedChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -21,6 +22,7 @@ type Row = {
   compareValue?: number;
   newValue?: number;
   returningValue?: number;
+  goalValue?: number; // conversii KPI #1 în bucket (bara portocalie)
   spikeSource?: string | null;
   dayKey: string; // pentru lookup deploys (ținut în afara datelor animate)
 };
@@ -37,6 +39,7 @@ function buildData(
     value: p.value,
     newValue: p.newValue,
     returningValue: p.returningValue,
+    goalValue: p.goalValue,
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
     spikeSource: p.spikeSource,
     dayKey: dayKeyInTz(p.t, tz),
@@ -127,12 +130,14 @@ function ChartTooltip({
   payload,
   label,
   hasCompare,
+  goalName,
   deploysByDay,
 }: {
   active?: boolean;
   payload?: Array<{ value: number; payload: Row }>;
   label?: string;
   hasCompare: boolean;
+  goalName?: string | null;
   deploysByDay?: Record<string, Deploy[]>;
 }) {
   if (!active || !payload?.length) return null;
@@ -173,6 +178,12 @@ function ChartTooltip({
           {formatNumber(row.compareValue)} previous
         </div>
       )}
+      {goalName && (row.goalValue ?? 0) > 0 && (
+        <div className="dfa-chart-tip-row">
+          <span className="dfa-dot" style={{ background: "var(--dfa-goal, #f59e0b)" }} />
+          <strong>{formatNumber(row.goalValue!)}</strong> {goalName}
+        </div>
+      )}
       {row.spikeSource && (
         <div className="dfa-tip-spike">
           {sourceFavicon(row.spikeSource) ? (
@@ -207,12 +218,14 @@ export function MainChart({
   deploysByDay,
   tz,
   loading,
+  goalName,
 }: {
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
   deploysByDay: Record<string, Deploy[]>;
   tz: string;
   loading: boolean;
+  goalName?: string | null;
 }) {
   // Memoizat pe serie/compare/tz — NU pe deploysByDay. Așa sosirea async a
   // deploy-urilor nu schimbă referința `data` și recharts nu repornește animația.
@@ -221,6 +234,8 @@ export function MainChart({
     [series, compareSeries, tz],
   );
   const hasCompare = !!compareSeries;
+  // Bara portocalie de conversii apare doar dacă există un KPI cu conversii > 0.
+  const hasGoal = !!goalName && data.some((d) => (d.goalValue ?? 0) > 0);
   const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
 
   return (
@@ -228,7 +243,7 @@ export function MainChart({
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
         <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
+          <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.38} />
@@ -248,18 +263,35 @@ export function MainChart({
               tick={{ fill: "var(--dfa-faint)", fontSize: 11 }}
             />
             <YAxis
+              yAxisId="visitors"
               tickLine={false}
               axisLine={false}
               width={48}
               allowDecimals={false}
               tick={{ fill: "var(--dfa-faint)", fontSize: 11 }}
             />
+            {/* Axă secundară ascunsă pentru conversii — bara își are scala ei. */}
+            <YAxis yAxisId="goal" orientation="right" hide allowDecimals={false} />
             <Tooltip
-              content={<ChartTooltip hasCompare={hasCompare} deploysByDay={deploysByDay} />}
+              content={<ChartTooltip hasCompare={hasCompare} goalName={goalName} deploysByDay={deploysByDay} />}
               cursor={{ stroke: "rgba(255,255,255,0.22)", strokeWidth: 1 }}
             />
+            {hasGoal && (
+              <Bar
+                yAxisId="goal"
+                dataKey="goalValue"
+                fill="var(--dfa-goal, #f59e0b)"
+                fillOpacity={0.85}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={22}
+                isAnimationActive={!loading}
+                animationDuration={900}
+                animationEasing="ease-out"
+              />
+            )}
             {hasCompare && (
               <Area
+                yAxisId="visitors"
                 type="monotone"
                 dataKey="compareValue"
                 stroke="var(--dfa-chart-compare)"
@@ -273,6 +305,7 @@ export function MainChart({
               />
             )}
             <Area
+              yAxisId="visitors"
               type="monotone"
               dataKey="value"
               stroke="var(--dfa-chart)"
@@ -289,7 +322,7 @@ export function MainChart({
               animationDuration={1500}
               animationEasing="ease"
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       {openDeploys && (

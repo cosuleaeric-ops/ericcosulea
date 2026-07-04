@@ -122,6 +122,7 @@ export type SeriesPoint = {
   value: number;
   newValue?: number;
   returningValue?: number;
+  goalValue?: number; // conversii ale KPI-ului #1 în bucket (bara portocalie)
   spikeSource?: string | null; // sursa dominantă în zilele cu spike de trafic
 };
 export type BreakdownRow = { key: string; value: number };
@@ -305,6 +306,7 @@ async function fetchSeries(
   g: Granularity,
   tz: string,
   filters: Filters,
+  kpiGoalName: string | null,
 ): Promise<SeriesPoint[]> {
   const starts = bucketStarts(range, g);
   if (!starts.length) return [];
@@ -314,9 +316,11 @@ async function fetchSeries(
   const bndIdx = params.length;
   params.push(range.to.toISOString());
   const toIdx = params.length;
+  params.push(kpiGoalName);
+  const goalIdx = params.length; // NULL ⇒ goalv = 0 peste tot
   const text = `
 WITH ev AS (
-  SELECT visitor_id, created_at FROM events
+  SELECT visitor_id, created_at, type, name FROM events
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
 ),
 firsts AS (
@@ -332,12 +336,13 @@ bnd AS (
 SELECT b.idx,
   count(DISTINCT ev.visitor_id)::int AS value,
   count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen >= b.lo)::int AS newv,
-  count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen < b.lo)::int AS retv
+  count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen < b.lo)::int AS retv,
+  count(*) FILTER (WHERE $${goalIdx}::text IS NOT NULL AND ev.type='custom' AND ev.name=$${goalIdx})::int AS goalv
 FROM bnd b
 LEFT JOIN ev ON ev.created_at >= b.lo AND ev.created_at < b.hi
 LEFT JOIN firsts f ON f.visitor_id = ev.visitor_id
 GROUP BY b.idx ORDER BY b.idx`;
-  const rows = await q<{ idx: number; value: number; newv: number; retv: number }>(text, params);
+  const rows = await q<{ idx: number; value: number; newv: number; retv: number; goalv: number }>(text, params);
   const byIdx = new Map(rows.map((r) => [Number(r.idx), r]));
   return starts.map((d, i) => {
     const r = byIdx.get(i);
@@ -347,6 +352,7 @@ GROUP BY b.idx ORDER BY b.idx`;
       value: r ? Number(r.value) : 0,
       newValue: r ? Number(r.newv) : 0,
       returningValue: r ? Number(r.retv) : 0,
+      goalValue: r ? Number(r.goalv) : 0,
     };
   });
 }
@@ -637,8 +643,8 @@ export async function getStats(opts: {
   const [kpiPair, series, compareSeries, bg, entryExit, online, funnel, users, journeys, goalDefs] =
     await Promise.all([
       fetchKpis(websiteId, range, prev, kpiGoalName, filters),
-      fetchSeries(websiteId, range, granularity, tz, filters),
-      compare ? fetchSeries(websiteId, prev, granularity, tz, filters) : Promise.resolve(null),
+      fetchSeries(websiteId, range, granularity, tz, filters, kpiGoalName),
+      compare ? fetchSeries(websiteId, prev, granularity, tz, filters, kpiGoalName) : Promise.resolve(null),
       fetchBreakdownsAndGoals(websiteId, range, filters),
       fetchEntryExit(websiteId, range, filters),
       getOnline(websiteId),

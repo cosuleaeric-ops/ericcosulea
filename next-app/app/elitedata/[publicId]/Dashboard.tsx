@@ -292,6 +292,7 @@ export default function Dashboard({
           deploysByDay={granularity === "daily" ? deploysByDay : {}}
           tz={tz}
           loading={noData || refreshing}
+          goalName={kpis.kpi1Name}
         />
       </div>
       <Panels
