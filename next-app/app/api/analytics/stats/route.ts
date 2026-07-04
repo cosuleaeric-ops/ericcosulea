@@ -50,7 +50,6 @@ export async function GET(req: Request) {
 
   const stats = await getStats({
     websiteId: website.id,
-    publicId: site,
     kpiGoalName: website.kpiGoalName,
     tz: website.timezone,
     range: { from, to },

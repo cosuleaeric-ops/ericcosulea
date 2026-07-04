@@ -109,6 +109,21 @@ export function BreakdownPanel({
                         )}
                         <span className="dfa-row-label">{rendered.label}</span>
                       </span>
+                      {row.conv ? (
+                        <span
+                          className="dfa-row-conv"
+                          title={`${row.conv} conversii din această sursă`}
+                          style={{
+                            color: "var(--dfa-goal, #f59e0b)",
+                            fontWeight: 700,
+                            fontSize: "0.82em",
+                            marginRight: 8,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ↗ {formatNumber(row.conv)}
+                        </span>
+                      ) : null}
                       <span className="dfa-row-value">{formatNumber(row.value)}</span>
                     </div>
                   );

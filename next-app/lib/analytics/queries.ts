@@ -10,12 +10,6 @@ import {
   formatBucketLabel,
   previousRange,
 } from "./range";
-import {
-  goalApiFor,
-  fetchExternalClickTimes,
-  bucketCounts,
-  countInRange,
-} from "./external-goal";
 
 // ───────────────────────── raw SQL client (aggregation in DB) ─────────────────────────
 let _raw: ReturnType<typeof neon> | undefined;
@@ -131,7 +125,7 @@ export type SeriesPoint = {
   goalValue?: number; // conversii ale KPI-ului #1 în bucket (bara portocalie)
   spikeSource?: string | null; // sursa dominantă în zilele cu spike de trafic
 };
-export type BreakdownRow = { key: string; value: number };
+export type BreakdownRow = { key: string; value: number; conv?: number };
 export type Breakdowns = {
   channel: BreakdownRow[];
   referrer: BreakdownRow[];
@@ -475,6 +469,76 @@ ${branches.join("\nUNION ALL\n")}`;
   return { breakdowns, goalsRaw };
 }
 
+// ── Atribuirea conversiilor pe dimensiuni („de unde vin cei care convertesc") ──
+// Un vizitator care convertește e numărat o dată pe dimensiune, după FIRST-TOUCH
+// (canal/referrer/campanie = cum a ajuns pe site) și valoarea lui (țară/browser).
+// Pentru „page": total conversii per pagina unde s-a dat click (per-eveniment).
+type ConvMaps = Partial<Record<keyof Breakdowns, Map<string, number>>>;
+async function fetchConversionBreakdowns(
+  websiteId: number,
+  range: Range,
+  filters: Filters,
+  kpiGoalName: string | null,
+): Promise<ConvMaps> {
+  if (!kpiGoalName) return {};
+  const params: unknown[] = [websiteId, range.from.toISOString(), range.to.toISOString()];
+  const fc = buildFilterClause(filters, params);
+  params.push(kpiGoalName);
+  const g = `$${params.length}`;
+  const text = `
+WITH convs AS (
+  SELECT DISTINCT visitor_id FROM events
+  WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
+    AND type='custom' AND name=${g} AND visitor_id IS NOT NULL
+),
+ft AS (
+  SELECT DISTINCT ON (e.visitor_id) e.visitor_id,
+    ${CHANNEL_CASE} AS channel,
+    coalesce(e.referrer_source,'Direct/None') AS referrer,
+    e.utm_campaign AS campaign,
+    e.country, e.region, e.city, e.browser, e.os, e.device
+  FROM events e JOIN convs c ON c.visitor_id=e.visitor_id
+  WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
+  ORDER BY e.visitor_id, e.created_at ASC
+)
+SELECT * FROM ft`;
+  const rows = await q<Record<string, string | null>>(text, params);
+
+  const VISITOR_DIMS: (keyof Breakdowns)[] = [
+    "channel", "referrer", "campaign", "country", "region", "city", "browser", "os", "device",
+  ];
+  const out: ConvMaps = {};
+  for (const d of VISITOR_DIMS) out[d] = new Map();
+  for (const r of rows) {
+    for (const d of VISITOR_DIMS) {
+      const v = r[d];
+      if (v == null || v === "") continue;
+      const m = out[d]!;
+      m.set(String(v), (m.get(String(v)) ?? 0) + 1);
+    }
+  }
+
+  // „page": conversii per pagina unde s-a dat click (total, per-eveniment).
+  const pageRows = await q<{ key: string; n: number }>(
+    `SELECT path AS key, count(*)::int n FROM events
+     WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
+       AND type='custom' AND name=${g} AND path IS NOT NULL AND path <> ''
+     GROUP BY path`,
+    params,
+  );
+  out.page = new Map(pageRows.map((r) => [String(r.key), Number(r.n)]));
+  return out;
+}
+
+function mergeConv(breakdowns: Breakdowns, conv: ConvMaps): void {
+  for (const dim of Object.keys(conv) as (keyof Breakdowns)[]) {
+    const m = conv[dim];
+    const rows = breakdowns[dim];
+    if (!m || !rows) continue;
+    for (const row of rows) row.conv = m.get(row.key) ?? 0;
+  }
+}
+
 async function fetchEntryExit(
   websiteId: number,
   range: Range,
@@ -636,7 +700,6 @@ export async function getOnline(websiteId: number): Promise<number> {
 // ───────────────────────── Payload complet ─────────────────────────
 export async function getStats(opts: {
   websiteId: number;
-  publicId?: string;
   kpiGoalName: string | null;
   tz: string;
   range: Range;
@@ -644,16 +707,17 @@ export async function getStats(opts: {
   compare: boolean;
   filters: Filters;
 }): Promise<StatsPayload> {
-  const { websiteId, publicId, kpiGoalName, tz, range, granularity, compare, filters } = opts;
+  const { websiteId, kpiGoalName, tz, range, granularity, compare, filters } = opts;
   const prev = previousRange(range);
 
-  const [kpiPair, series, compareSeries, bg, entryExit, online, funnel, users, journeys, goalDefs] =
+  const [kpiPair, series, compareSeries, bg, entryExit, convBd, online, funnel, users, journeys, goalDefs] =
     await Promise.all([
       fetchKpis(websiteId, range, prev, kpiGoalName, filters),
       fetchSeries(websiteId, range, granularity, tz, filters, kpiGoalName),
       compare ? fetchSeries(websiteId, prev, granularity, tz, filters, kpiGoalName) : Promise.resolve(null),
       fetchBreakdownsAndGoals(websiteId, range, filters),
       fetchEntryExit(websiteId, range, filters),
+      fetchConversionBreakdowns(websiteId, range, filters, kpiGoalName),
       getOnline(websiteId),
       fetchFunnel(websiteId, range, filters),
       fetchUsers(websiteId, range, filters),
@@ -662,48 +726,20 @@ export async function getStats(opts: {
     ]);
 
   const breakdowns: Breakdowns = { ...bg.breakdowns, entry: entryExit.entry, exit: entryExit.exit };
+  mergeConv(breakdowns, convBd);
 
   if (granularity === "daily") {
     await enrichSpikes(websiteId, range, granularity, filters, series);
   }
 
-  // Sursă externă de conversii (ex. click-uri afiliat reale din cesaicumpar):
-  // suprascrie goalValue/interval + KPI-ul #1 cu numărul autentic din API-ul lui.
-  let cur = kpiPair.cur;
-  let prevK = kpiPair.prev;
-  const goalApi = publicId ? goalApiFor(publicId) : null;
-  if (goalApi) {
-    const times = await fetchExternalClickTimes(goalApi, prev.from, range.to);
-    const curBuckets = bucketCounts(series.map((p) => p.t), range.to.getTime(), times);
-    series.forEach((p, i) => (p.goalValue = curBuckets[i]));
-    if (compareSeries) {
-      const cmp = bucketCounts(compareSeries.map((p) => p.t), prev.to.getTime(), times);
-      compareSeries.forEach((p, i) => (p.goalValue = cmp[i]));
-    }
-    const curTotal = countInRange(times, range.from, range.to);
-    const prevTotal = countInRange(times, prev.from, prev.to);
-    cur = {
-      ...kpiPair.cur,
-      kpi1Value: curTotal,
-      conversions: curTotal,
-      conversionRate: kpiPair.cur.visitors ? (curTotal / kpiPair.cur.visitors) * 100 : 0,
-    };
-    prevK = {
-      ...kpiPair.prev,
-      kpi1Value: prevTotal,
-      conversions: prevTotal,
-      conversionRate: kpiPair.prev.visitors ? (prevTotal / kpiPair.prev.visitors) * 100 : 0,
-    };
-  }
-
   return {
-    kpis: cur,
-    deltas: computeDeltas(cur, prevK),
+    kpis: kpiPair.cur,
+    deltas: computeDeltas(kpiPair.cur, kpiPair.prev),
     online,
     series,
     compareSeries,
     breakdowns,
-    goals: mergeGoals(goalDefs, bg.goalsRaw, cur.visitors),
+    goals: mergeGoals(goalDefs, bg.goalsRaw, kpiPair.cur.visitors),
     funnel,
     users,
     journeys,
