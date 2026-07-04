@@ -47,6 +47,7 @@ export default async function SiteDashboardPage({
   // client de după hidratare — fără el, dashboard-ul stă pe skeleton.
   const initialData = await getStats({
     websiteId: website.id,
+    publicId,
     kpiGoalName: website.kpiGoalName,
     tz: website.timezone,
     range: computeRange(period, 0),

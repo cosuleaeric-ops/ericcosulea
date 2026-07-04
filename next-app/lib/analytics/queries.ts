@@ -10,6 +10,12 @@ import {
   formatBucketLabel,
   previousRange,
 } from "./range";
+import {
+  goalApiFor,
+  fetchExternalClickTimes,
+  bucketCounts,
+  countInRange,
+} from "./external-goal";
 
 // ───────────────────────── raw SQL client (aggregation in DB) ─────────────────────────
 let _raw: ReturnType<typeof neon> | undefined;
@@ -630,6 +636,7 @@ export async function getOnline(websiteId: number): Promise<number> {
 // ───────────────────────── Payload complet ─────────────────────────
 export async function getStats(opts: {
   websiteId: number;
+  publicId?: string;
   kpiGoalName: string | null;
   tz: string;
   range: Range;
@@ -637,7 +644,7 @@ export async function getStats(opts: {
   compare: boolean;
   filters: Filters;
 }): Promise<StatsPayload> {
-  const { websiteId, kpiGoalName, tz, range, granularity, compare, filters } = opts;
+  const { websiteId, publicId, kpiGoalName, tz, range, granularity, compare, filters } = opts;
   const prev = previousRange(range);
 
   const [kpiPair, series, compareSeries, bg, entryExit, online, funnel, users, journeys, goalDefs] =
@@ -660,14 +667,43 @@ export async function getStats(opts: {
     await enrichSpikes(websiteId, range, granularity, filters, series);
   }
 
+  // Sursă externă de conversii (ex. click-uri afiliat reale din cesaicumpar):
+  // suprascrie goalValue/interval + KPI-ul #1 cu numărul autentic din API-ul lui.
+  let cur = kpiPair.cur;
+  let prevK = kpiPair.prev;
+  const goalApi = publicId ? goalApiFor(publicId) : null;
+  if (goalApi) {
+    const times = await fetchExternalClickTimes(goalApi, prev.from, range.to);
+    const curBuckets = bucketCounts(series.map((p) => p.t), range.to.getTime(), times);
+    series.forEach((p, i) => (p.goalValue = curBuckets[i]));
+    if (compareSeries) {
+      const cmp = bucketCounts(compareSeries.map((p) => p.t), prev.to.getTime(), times);
+      compareSeries.forEach((p, i) => (p.goalValue = cmp[i]));
+    }
+    const curTotal = countInRange(times, range.from, range.to);
+    const prevTotal = countInRange(times, prev.from, prev.to);
+    cur = {
+      ...kpiPair.cur,
+      kpi1Value: curTotal,
+      conversions: curTotal,
+      conversionRate: kpiPair.cur.visitors ? (curTotal / kpiPair.cur.visitors) * 100 : 0,
+    };
+    prevK = {
+      ...kpiPair.prev,
+      kpi1Value: prevTotal,
+      conversions: prevTotal,
+      conversionRate: kpiPair.prev.visitors ? (prevTotal / kpiPair.prev.visitors) * 100 : 0,
+    };
+  }
+
   return {
-    kpis: kpiPair.cur,
-    deltas: computeDeltas(kpiPair.cur, kpiPair.prev),
+    kpis: cur,
+    deltas: computeDeltas(cur, prevK),
     online,
     series,
     compareSeries,
     breakdowns,
-    goals: mergeGoals(goalDefs, bg.goalsRaw, kpiPair.cur.visitors),
+    goals: mergeGoals(goalDefs, bg.goalsRaw, cur.visitors),
     funnel,
     users,
     journeys,
