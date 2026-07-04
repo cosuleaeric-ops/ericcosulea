@@ -5,6 +5,7 @@ import { BreakdownPanel, type TabDef } from "./BreakdownPanel";
 import { BreakdownModal } from "./BreakdownModal";
 import { KeywordTab } from "./KeywordTab";
 import { WorldMap } from "./WorldMap";
+import { TAB_COOKIES, type InitialTabs } from "../period-persistence";
 import type { Breakdowns, BreakdownRow, Filters } from "@/lib/analytics/queries";
 import { countryName, countryFlag, sourceFavicon } from "@/lib/analytics/labels";
 
@@ -86,6 +87,7 @@ export function Panels({
   from,
   to,
   pathFilter,
+  initialTabs,
 }: {
   breakdowns: Breakdowns | null;
   loading: boolean;
@@ -94,6 +96,7 @@ export function Panels({
   from: string;
   to: string;
   pathFilter?: string;
+  initialTabs: InitialTabs;
 }) {
   const [modalTab, setModalTab] = useState<TabDef | null>(null);
   const [modalRows, setModalRows] = useState<BreakdownRow[]>([]);
@@ -124,10 +127,10 @@ export function Panels({
   return (
     <>
       <div className="dfa-panels-grid">
-        <BreakdownPanel tabs={sourcesTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
-        <BreakdownPanel tabs={PAGES_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
-        <BreakdownPanel tabs={geoTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
-        <BreakdownPanel tabs={TECH_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} />
+        <BreakdownPanel tabs={sourcesTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} cookieKey={TAB_COOKIES.sources} initialTabKey={initialTabs.sources} />
+        <BreakdownPanel tabs={PAGES_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} cookieKey={TAB_COOKIES.pages} initialTabKey={initialTabs.pages} />
+        <BreakdownPanel tabs={geoTabs} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} cookieKey={TAB_COOKIES.geo} initialTabKey={initialTabs.geo} />
+        <BreakdownPanel tabs={TECH_TABS} breakdowns={breakdowns} loading={loading} onFilter={onFilter} onDetails={openDetails} cookieKey={TAB_COOKIES.tech} initialTabKey={initialTabs.tech} />
       </div>
       <BreakdownModal
         tab={modalTab}

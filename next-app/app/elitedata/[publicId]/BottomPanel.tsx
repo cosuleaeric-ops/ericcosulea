@@ -10,6 +10,7 @@ import type {
 } from "@/lib/analytics/queries";
 import { formatNumber, formatRelative } from "@/lib/analytics/format";
 import { countryFlag } from "@/lib/analytics/labels";
+import { TAB_COOKIES, writeCookie } from "../period-persistence";
 
 type TabKey = "goal" | "funnel" | "user" | "journey";
 const TABS: { key: TabKey; label: string }[] = [
@@ -18,6 +19,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "user", label: "User" },
   { key: "journey", label: "Journey" },
 ];
+const isTabKey = (k: string | undefined): k is TabKey =>
+  TABS.some((t) => t.key === k);
 
 function DeviceIcon({ d }: { d: string | null }) {
   if (d === "mobile") return <Smartphone size={14} />;
@@ -33,6 +36,7 @@ export function BottomPanel({
   journeys,
   loading,
   onGoalAdded,
+  initialTab,
 }: {
   sitePublicId: string;
   goals: GoalRow[];
@@ -41,8 +45,14 @@ export function BottomPanel({
   journeys: JourneyRow[];
   loading: boolean;
   onGoalAdded: () => void;
+  initialTab?: string;
 }) {
-  const [tab, setTab] = useState<TabKey>("goal");
+  // Tab-ul salvat vine din cookie (prop de la server) → randăm din prima corect.
+  const [tab, setTab] = useState<TabKey>(isTabKey(initialTab) ? initialTab : "goal");
+  const select = (k: TabKey) => {
+    setTab(k);
+    writeCookie(TAB_COOKIES.bottom, k);
+  };
 
   return (
     <div className="dfa-card dfa-bottom">
@@ -51,7 +61,7 @@ export function BottomPanel({
           <button
             key={t.key}
             className={`dfa-panel-tab${t.key === tab ? " is-active" : ""}`}
-            onClick={() => setTab(t.key)}
+            onClick={() => select(t.key)}
           >
             {t.label}
           </button>

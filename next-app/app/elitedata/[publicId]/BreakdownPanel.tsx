@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Breakdowns, BreakdownRow, Filters } from "@/lib/analytics/queries";
 import { formatNumber } from "@/lib/analytics/format";
+import { writeCookie } from "../period-persistence";
 
 export type TabDef = {
   key: string;
@@ -24,6 +25,8 @@ export function BreakdownPanel({
   defaultTab = 0,
   onFilter,
   onDetails,
+  cookieKey,
+  initialTabKey,
 }: {
   tabs: TabDef[];
   breakdowns: Breakdowns | null;
@@ -31,8 +34,16 @@ export function BreakdownPanel({
   defaultTab?: number;
   onFilter: (key: keyof Filters, value: string) => void;
   onDetails: (tab: TabDef, rows: BreakdownRow[]) => void;
+  cookieKey?: string;
+  initialTabKey?: string;
 }) {
-  const [active, setActive] = useState(defaultTab);
+  // Tab-ul salvat vine din cookie (prop de la server) → randăm din prima corect.
+  const savedIdx = tabs.findIndex((t) => t.key === initialTabKey);
+  const [active, setActive] = useState(savedIdx >= 0 ? savedIdx : defaultTab);
+  const select = (i: number) => {
+    setActive(i);
+    if (cookieKey) writeCookie(cookieKey, tabs[i].key);
+  };
   const tab = tabs[active];
   const rows = tab.dim && breakdowns ? breakdowns[tab.dim] : [];
   const max = rows.length ? rows[0].value : 0;
@@ -45,7 +56,7 @@ export function BreakdownPanel({
           <button
             key={t.key}
             className={`dfa-panel-tab${i === active ? " is-active" : ""}`}
-            onClick={() => setActive(i)}
+            onClick={() => select(i)}
           >
             {t.label}
           </button>

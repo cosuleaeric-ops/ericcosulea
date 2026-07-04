@@ -19,7 +19,7 @@ import {
 import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { countryName } from "@/lib/analytics/labels";
-import { DASH_PERIOD_COOKIE } from "../period-persistence";
+import { DASH_PERIOD_COOKIE, type InitialTabs } from "../period-persistence";
 
 const FILTER_LABEL: Record<string, string> = {
   path: "Page",
@@ -83,11 +83,13 @@ export default function Dashboard({
   sites,
   initialData,
   initialPeriod,
+  initialTabs,
 }: {
   website: WebsiteProp;
   sites: SiteLite[];
   initialData: StatsPayload;
   initialPeriod: PeriodKey;
+  initialTabs: InitialTabs;
 }) {
   const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
   const [offset, setOffset] = useState(0);
@@ -300,6 +302,7 @@ export default function Dashboard({
         from={range.from.toISOString()}
         to={range.to.toISOString()}
         pathFilter={filters.path}
+        initialTabs={initialTabs}
       />
       <BottomPanel
         sitePublicId={website.publicId}
@@ -309,6 +312,7 @@ export default function Dashboard({
         journeys={data?.journeys ?? []}
         loading={noData}
         onGoalAdded={() => load("refresh")}
+        initialTab={initialTabs.bottom}
       />
     </div>
   );

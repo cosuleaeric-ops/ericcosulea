@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { getStats, getWebsiteByPublicId, listWebsites } from "@/lib/analytics/queries";
 import { computeRange, defaultGranularity, PERIOD_ORDER, type PeriodKey } from "@/lib/analytics/range";
 import Dashboard from "./Dashboard";
-import { DASH_PERIOD_COOKIE } from "../period-persistence";
+import {
+  DASH_PERIOD_COOKIE,
+  TAB_COOKIES,
+  type InitialTabs,
+  type TabGroup,
+} from "../period-persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +28,20 @@ export default async function SiteDashboardPage({
     faviconUrl: s.faviconUrl,
   }));
 
+  const jar = await cookies();
+
   // Perioada salvată e într-un cookie (server-readable) ca să randăm din prima
   // vederea corectă — fără flash last7 → 24h de după hidratare.
-  const saved = (await cookies()).get(DASH_PERIOD_COOKIE)?.value as PeriodKey | undefined;
+  const saved = jar.get(DASH_PERIOD_COOKIE)?.value as PeriodKey | undefined;
   const period: PeriodKey =
     saved && PERIOD_ORDER.includes(saved) ? saved : "last7";
+
+  // Tab-ul selectat în fiecare panou (Channel/Referrer…, Hostname/Page…, etc.).
+  const initialTabs: InitialTabs = {};
+  for (const g of Object.keys(TAB_COOKIES) as TabGroup[]) {
+    const v = jar.get(TAB_COOKIES[g])?.value;
+    if (v) initialTabs[g] = v;
+  }
 
   // Randăm pe server datele pentru perioada salvată ca să eliminăm fetch-ul
   // client de după hidratare — fără el, dashboard-ul stă pe skeleton.
@@ -54,6 +68,7 @@ export default async function SiteDashboardPage({
       sites={sites}
       initialData={initialData}
       initialPeriod={period}
+      initialTabs={initialTabs}
     />
   );
 }
