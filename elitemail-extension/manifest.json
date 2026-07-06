@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "MailTracker (personal)",
-  "version": "1.2.2",
+  "name": "EliteMail (personal)",
+  "version": "1.3.0",
   "description": "Open + click tracking pentru Gmail, self-hosted pe ericcosulea.ro. Uz personal.",
   "permissions": [
     "storage"
@@ -24,6 +24,6 @@
   ],
   "options_page": "options.html",
   "action": {
-    "default_title": "MailTracker — opțiuni în click dreapta → Opțiuni"
+    "default_title": "EliteMail — opțiuni în click dreapta → Opțiuni"
   }
 }

@@ -1,4 +1,4 @@
-// MailTracker — content script Gmail (vanilla, self-contained).
+// EliteMail — content script Gmail (vanilla, self-contained).
 //
 // La trimitere: rescrie linkurile + injectează pixel + înregistrează emailul.
 // În Gmail: bife duble în listă (gri=trimis, verde=citit), badge în compose,
@@ -198,7 +198,7 @@
       btn = document.createElement("div");
       btn.id = "mt-top";
       btn.setAttribute("role", "button");
-      btn.title = "MailTracker";
+      btn.title = "EliteMail";
       btn.innerHTML = `<span class="mt-top-ck">✓✓</span><span class="mt-top-dot"></span>`;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -239,7 +239,7 @@
   // ca să nu se piardă click-ul pe „deschide dashboard" când Gmail agită DOM-ul.
   function buildPanelSkeleton(panel) {
     panel.innerHTML =
-      `<div class="mt-phead"><b>MailTracker</b><span class="mt-pstat"></span></div>` +
+      `<div class="mt-phead"><b>EliteMail</b><span class="mt-pstat"></span></div>` +
       `<div class="mt-pkpi"></div>` +
       `<div class="mt-plist"></div>` +
       `<a class="mt-pfoot" href="#" target="_blank" rel="noopener">Deschide dashboard-ul complet →</a>`;

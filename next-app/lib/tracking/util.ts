@@ -1,4 +1,4 @@
-// Helpere partajate MailTracker.
+// Helpere partajate EliteMail.
 
 // GIF transparent 1×1 (43 bytes) — răspunsul pixelului de open tracking.
 const PIXEL_B64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";

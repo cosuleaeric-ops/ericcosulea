@@ -4,7 +4,7 @@ import "./mail.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function MailTrackerPage() {
+export default async function EliteMailPage() {
   const emails = await getTrackedEmails();
   return <MailClient initial={emails} />;
 }

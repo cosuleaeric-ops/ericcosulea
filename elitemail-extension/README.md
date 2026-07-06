@@ -1,4 +1,4 @@
-# MailTracker (personal)
+# EliteMail (personal)
 
 Extensie Chrome self-contained care adaugă **open + click tracking** la emailurile trimise din Gmail, cu backend self-hosted pe `www.ericcosulea.ro`. Înlocuiește MailSuite. Funcționează pe oricâte conturi Gmail ești logat (compose nou și reply).
 
@@ -24,7 +24,7 @@ Nu blochează niciodată trimiterea — dacă backend-ul e picat sau ceva eșuea
 ## Instalare
 
 1. `chrome://extensions` → activează **Developer mode** (colț dreapta-sus).
-2. **Load unpacked** → selectează folderul `mailtracker-extension/`.
+2. **Load unpacked** → selectează folderul `elitemail-extension/`.
 3. Click dreapta pe iconița extensiei → **Opțiuni** (sau `chrome://extensions` → Details → Extension options):
    - **URL backend**: `www.ericcosulea.ro`
    - **TRACK_SECRET**: exact valoarea din `.env.local` / Vercel (vezi mai jos).

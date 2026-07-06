@@ -96,7 +96,7 @@ export default function MailClient({ initial }: { initial: EmailRow[] }) {
     <div className="mt">
       <div className="mt-head">
         <div>
-          <h1 className="mt-title">MailTracker</h1>
+          <h1 className="mt-title">EliteMail</h1>
           <p className="mt-sub">
             {emails.length} emailuri · {openRate}% deschise · {totalOpened} cu cel puțin o deschidere
           </p>

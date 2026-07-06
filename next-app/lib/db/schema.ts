@@ -189,7 +189,7 @@ export const integrationsGsc = pgTable("integrations_gsc", {
   connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ───────────────────────────── MailTracker (clonă MailSuite, uz personal) ─────────────────────────────
+// ───────────────────────────── EliteMail (clonă MailSuite, uz personal) ─────────────────────────────
 // Extensia Chrome injectează un pixel + rescrie linkurile la trimitere din Gmail.
 // `id` e generat de extensie și apare în URL-urile de pixel (/t/o/{id}) și click (/t/c/{id}?l=N).
 
