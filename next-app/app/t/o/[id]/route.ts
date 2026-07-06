@@ -7,9 +7,10 @@ import { PIXEL, PIXEL_HEADERS, looksLikeBot, clientIp } from "@/lib/tracking/uti
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Fereastră de grație după trimitere: deschiderile din primele 15s sunt aproape sigur
-// prefetch (Gmail pre-încarcă imaginile la primire), nu o citire umană reală.
-const GRACE_MS = 15_000;
+// Fereastră de grație după trimitere: deschiderile din primul minut sunt aproape sigur
+// prefetch (Gmail/GoogleImageProxy pre-încarcă și randează imaginile la primire), nu o
+// citire umană reală. Un destinatar real deschide mult mai târziu, deci nu pierdem nimic.
+const GRACE_MS = 60_000;
 
 // Pixel de open tracking. URL: /t/o/{id}.gif (extensia îl injectează în email).
 // Întotdeauna returnează GIF-ul (chiar dacă logarea eșuează) — un mail rupt e mai rău decât un open pierdut.
