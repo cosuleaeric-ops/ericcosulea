@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { trackedEmails } from "@/lib/db/schema";
+import { clientIp } from "@/lib/tracking/util";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       subject: body.subject ?? null,
       threadId: body.threadId ?? null,
       links,
+      senderIp: clientIp(req.headers),
     })
     .onConflictDoUpdate({
       target: trackedEmails.id,
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
         subject: body.subject ?? null,
         threadId: body.threadId ?? null,
         links,
+        senderIp: clientIp(req.headers),
       },
     });
 

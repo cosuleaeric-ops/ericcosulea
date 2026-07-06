@@ -140,7 +140,7 @@ export default function MailClient({ initial }: { initial: EmailRow[] }) {
                 <div className="mt-detail">
                   {e.botOpens > 0 && (
                     <div className="mt-note">
-                      + {e.botOpens} deschideri de prefetch/scanner (Apple Mail, SafeLinks…) — excluse din total.
+                      + {e.botOpens} deschideri de prefetch/scanner/proprii (Gmail, Apple Mail, SafeLinks, IP-ul tău) — excluse din total.
                     </div>
                   )}
                   <EventTimeline id={e.id} />

@@ -200,6 +200,7 @@ export const trackedEmails = pgTable("tracked_emails", {
   subject: text("subject"),
   threadId: text("thread_id"), // threadId Gmail (reply vs compose nou)
   links: jsonb("links").$type<string[]>().notNull(), // destinațiile reale; indexul = parametrul ?l=
+  senderIp: text("sender_ip"), // IP-ul expeditorului la trimitere — filtrează propriile deschideri
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
