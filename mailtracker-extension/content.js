@@ -124,6 +124,7 @@
     requestAnimationFrame(() => {
       renderScheduled = false;
       try {
+        injectTopWidget();
         renderIndicators();
         decorateComposes();
       } catch {
@@ -165,6 +166,94 @@
       });
       send.parentElement.appendChild(pill);
     });
+  }
+
+  // ── Buton + card în bara de sus Gmail (ca MailSuite) ──────────────────────
+  function headerGear() {
+    return document.querySelector(
+      '[role="button"][aria-label*="Settings" i], [role="button"][aria-label*="Setări" i], [aria-label*="Settings" i][data-tooltip], [aria-label*="Setări" i][data-tooltip]',
+    );
+  }
+
+  function injectTopWidget() {
+    let btn = document.getElementById("mt-top");
+    if (!btn) {
+      const gear = headerGear();
+      if (!gear || !gear.parentElement) return;
+      btn = document.createElement("div");
+      btn.id = "mt-top";
+      btn.setAttribute("role", "button");
+      btn.title = "MailTracker";
+      btn.innerHTML = `<span class="mt-top-ck">✓✓</span><span class="mt-top-dot"></span>`;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePanel(btn);
+      });
+      gear.parentElement.insertBefore(btn, gear);
+    }
+    // starea butonului: punct roșu dacă lipsește secretul
+    const dot = btn.querySelector(".mt-top-dot");
+    if (dot) dot.classList.toggle("mt-bad", !CONFIG.secret);
+    if (document.getElementById("mt-panel")) updatePanel();
+  }
+
+  function togglePanel(btn) {
+    const existing = document.getElementById("mt-panel");
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    const panel = document.createElement("div");
+    panel.id = "mt-panel";
+    const rect = btn.getBoundingClientRect();
+    panel.style.top = `${Math.round(rect.bottom + 8)}px`;
+    panel.style.right = `${Math.round(window.innerWidth - rect.right)}px`;
+    document.body.appendChild(panel);
+    updatePanel();
+    poll();
+    setTimeout(() => {
+      document.addEventListener("click", closePanelOnce, { once: true });
+    }, 0);
+  }
+  function closePanelOnce(e) {
+    const panel = document.getElementById("mt-panel");
+    if (panel && !panel.contains(e.target) && e.target.id !== "mt-top") panel.remove();
+    else if (panel) document.addEventListener("click", closePanelOnce, { once: true });
+  }
+
+  function updatePanel() {
+    const panel = document.getElementById("mt-panel");
+    if (!panel) return;
+    const tracked = STATUS.length;
+    const read = STATUS.filter((e) => e.opens > 0).length;
+    const recent = [...STATUS]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 8);
+
+    const statusLine = CONFIG.secret
+      ? `<span class="mt-ok">●</span> Conectat la ${esc(CONFIG.baseUrl.replace(/^https?:\/\//, ""))}`
+      : `<span class="mt-err">●</span> Secret lipsă — deschide Opțiuni`;
+
+    const rows = recent.length
+      ? recent
+          .map((e) => {
+            const opened = e.opens > 0;
+            return (
+              `<div class="mt-prow">` +
+              `<span class="mt-badge ${opened ? "mt-open" : ""}">✓✓</span>` +
+              `<span class="mt-psubj">${esc(e.subject || "(fără subiect)")}</span>` +
+              `<span class="mt-pmeta">${opened ? timeAgo(e.lastOpenAt) : "necitit"}</span>` +
+              `</div>`
+            );
+          })
+          .join("")
+      : `<div class="mt-empty">Niciun email urmărit încă.<br>Trimite unul din Gmail.</div>`;
+
+    panel.innerHTML =
+      `<div class="mt-phead"><b>MailTracker</b><span class="mt-pstat">${statusLine}</span></div>` +
+      `<div class="mt-pkpi"><div><b>${tracked}</b> urmărite</div><div><b>${read}</b> citite</div></div>` +
+      `<div class="mt-plist">${rows}</div>` +
+      `<a class="mt-pfoot" href="${CONFIG.baseUrl}/admin/mail" target="_blank" rel="noopener">Deschide dashboard-ul complet →</a>`;
   }
 
   // ── Toast „citit" (notificare în pagină) ──────────────────────────────────
@@ -309,6 +398,35 @@
     .mt-toast-ck{font-size:18px;font-weight:800;letter-spacing:-2px;color:#4ade80}
     .mt-toast-body b{display:block;margin-bottom:2px;font-size:13px}
     .mt-toast-body>div{color:#b7bbc2}
+    #mt-top{position:relative;display:inline-flex;align-items:center;justify-content:center;
+      width:40px;height:40px;margin:0 4px;border-radius:50%;cursor:pointer;vertical-align:middle}
+    #mt-top:hover{background:rgba(60,64,67,.08)}
+    #mt-top .mt-top-ck{font:800 15px/1 system-ui,sans-serif;letter-spacing:-2px;color:#1a9d4b}
+    #mt-top .mt-top-dot{position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;
+      background:transparent}
+    #mt-top .mt-top-dot.mt-bad{background:#ea4335}
+    #mt-panel{position:fixed;z-index:99999;width:340px;max-height:70vh;overflow:auto;
+      background:#15161a;color:#ededf0;border:1px solid rgba(255,255,255,.1);border-radius:14px;
+      box-shadow:0 12px 40px rgba(0,0,0,.45);font:400 13px/1.4 system-ui,sans-serif}
+    #mt-panel .mt-phead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:14px 16px 10px}
+    #mt-panel .mt-phead b{font-size:15px}
+    #mt-panel .mt-pstat{font-size:11px;color:#b7bbc2}
+    #mt-panel .mt-ok{color:#4ade80}
+    #mt-panel .mt-err{color:#ea4335}
+    #mt-panel .mt-pkpi{display:flex;gap:20px;padding:0 16px 12px;color:#8b8f98;font-size:12px;
+      border-bottom:1px solid rgba(255,255,255,.06)}
+    #mt-panel .mt-pkpi b{color:#ededf0;font-size:15px;margin-right:3px}
+    #mt-panel .mt-plist{padding:6px 8px}
+    #mt-panel .mt-prow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px}
+    #mt-panel .mt-prow:hover{background:#1d1f25}
+    #mt-panel .mt-psubj{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #mt-panel .mt-pmeta{color:#8b8f98;font-size:11px;white-space:nowrap}
+    #mt-panel .mt-empty{padding:20px 16px;text-align:center;color:#8b8f98;font-size:12px}
+    #mt-panel .mt-pfoot{display:block;padding:12px 16px;border-top:1px solid rgba(255,255,255,.06);
+      color:#6ab0ff;text-decoration:none;font-size:12px}
+    #mt-panel .mt-pfoot:hover{background:#1d1f25}
+    #mt-panel .mt-badge{margin:0}
   `;
   (document.head || document.documentElement).appendChild(style);
 

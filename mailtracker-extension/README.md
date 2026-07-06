@@ -12,6 +12,7 @@ La trimitere, content script-ul (rulează doar pe `mail.google.com`):
 
 Direct în Gmail (interoghează `GET /api/track/status` la 20s):
 
+- **Buton în bara de sus** (lângă rotița de setări): deschide un card cu status conexiune, câte emailuri urmărite/citite, ultimele 8, și link la dashboard-ul complet.
 - **Bife duble în listă** lângă subiect: gri = trimis/necitit, verde = citit. Hover → nr. deschideri + ultima.
 - **Badge „Tracking"** în fereastra de compose; click pe el oprește tracking-ul doar pe emailul curent.
 - **Toast „Email citit"** în colțul din dreapta-jos când cineva deschide un email trimis.
