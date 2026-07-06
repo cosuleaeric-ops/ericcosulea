@@ -10,7 +10,13 @@ La trimitere, content script-ul (rulează doar pe `mail.google.com`):
 2. **Injectează un pixel** `www.ericcosulea.ro/t/o/{id}.gif` → la deschidere se loghează open-ul.
 3. **Înregistrează** emailul (id, destinatar, subiect, cont, linkuri) la `POST /api/track/register`.
 
-Rezultatele se văd în dashboard-ul protejat: **www.ericcosulea.ro/admin/mail**.
+Direct în Gmail (interoghează `GET /api/track/status` la 20s):
+
+- **Bife duble în listă** lângă subiect: gri = trimis/necitit, verde = citit. Hover → nr. deschideri + ultima.
+- **Badge „Tracking"** în fereastra de compose; click pe el oprește tracking-ul doar pe emailul curent.
+- **Toast „Email citit"** în colțul din dreapta-jos când cineva deschide un email trimis.
+
+Rezultatele complete (timeline, click-uri per link) se văd în dashboard-ul protejat: **www.ericcosulea.ro/admin/mail**.
 
 Nu blochează niciodată trimiterea — dacă backend-ul e picat sau ceva eșuează, mailul pleacă normal, doar fără tracking.
 
