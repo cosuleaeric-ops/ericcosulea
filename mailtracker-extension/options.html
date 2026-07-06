@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <title>MailTracker — opțiuni</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0a0a0b;
+        color: #ededf0;
+        max-width: 460px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.sub { color: #8b8f98; font-size: 13px; margin: 0 0 24px; }
+      label { display: block; font-size: 13px; color: #b7bbc2; margin: 16px 0 6px; }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        background: #191a1f;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: #ededf0;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      button {
+        margin-top: 24px;
+        background: #e16540;
+        color: #fff;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 18px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button:hover { background: #ec754f; }
+      .ok { color: #4ade80; font-size: 13px; margin-left: 12px; }
+      .hint { color: #5f636c; font-size: 12px; margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>MailTracker</h1>
+    <p class="sub">Configurare pentru extensia de tracking Gmail (uz personal).</p>
+
+    <label for="baseUrl">URL backend</label>
+    <input id="baseUrl" type="text" placeholder="https://ericcosulea.ro" />
+    <div class="hint">Domeniul unde rulează rutele /t/o, /t/c și /api/track.</div>
+
+    <label for="secret">TRACK_SECRET</label>
+    <input id="secret" type="password" placeholder="secretul din .env.local / Vercel" />
+    <div class="hint">Trebuie să fie identic cu variabila TRACK_SECRET de pe server.</div>
+
+    <div>
+      <button id="save">Salvează</button>
+      <span id="status" class="ok"></span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
