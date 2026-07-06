@@ -175,11 +175,25 @@
     );
   }
 
+  // Rândul flex care ține iconițele din header (ca butonul să fie centrat vertical ca ele).
+  function iconRowFor(el) {
+    let n = el;
+    for (let i = 0; i < 6 && n; i++) {
+      if (getComputedStyle(n).display.includes("flex")) return n;
+      n = n.parentElement;
+    }
+    return el.parentElement;
+  }
+
   function injectTopWidget() {
     let btn = document.getElementById("mt-top");
     if (!btn) {
       const gear = headerGear();
       if (!gear || !gear.parentElement) return;
+      const row = iconRowFor(gear);
+      // ramura directă din rând care conține rotița — inserăm butonul înaintea ei
+      let branch = gear;
+      while (branch.parentElement && branch.parentElement !== row) branch = branch.parentElement;
       btn = document.createElement("div");
       btn.id = "mt-top";
       btn.setAttribute("role", "button");
@@ -189,7 +203,7 @@
         e.stopPropagation();
         togglePanel(btn);
       });
-      gear.parentElement.insertBefore(btn, gear);
+      row.insertBefore(btn, branch);
     }
     // starea butonului: punct roșu dacă lipsește secretul
     const dot = btn.querySelector(".mt-top-dot");
@@ -399,11 +413,12 @@
     .mt-toast-body b{display:block;margin-bottom:2px;font-size:13px}
     .mt-toast-body>div{color:#b7bbc2}
     #mt-top{position:relative;display:inline-flex;align-items:center;justify-content:center;
-      width:40px;height:40px;margin:0 4px;border-radius:50%;cursor:pointer;vertical-align:middle}
-    #mt-top:hover{background:rgba(60,64,67,.08)}
-    #mt-top .mt-top-ck{font:800 15px/1 system-ui,sans-serif;letter-spacing:-2px;color:#1a9d4b}
-    #mt-top .mt-top-dot{position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;
-      background:transparent}
+      align-self:center;flex:0 0 auto;box-sizing:border-box;width:36px;height:36px;margin:0 4px;
+      border-radius:50%;cursor:pointer;vertical-align:middle;background:rgba(26,157,75,.14)}
+    #mt-top:hover{background:rgba(26,157,75,.24)}
+    #mt-top .mt-top-ck{font:800 14px/1 system-ui,sans-serif;letter-spacing:-2px;color:#1a9d4b}
+    #mt-top .mt-top-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;
+      border:1.5px solid #15161a;background:transparent}
     #mt-top .mt-top-dot.mt-bad{background:#ea4335}
     #mt-panel{position:fixed;z-index:99999;width:340px;max-height:70vh;overflow:auto;
       background:#15161a;color:#ededf0;border:1px solid rgba(255,255,255,.1);border-radius:14px;
