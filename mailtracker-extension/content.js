@@ -61,6 +61,7 @@
       STATUS = d.emails || [];
       detectNewOpens();
       scheduleRender();
+      updatePanel(); // dacă panoul e deschis, reîmprospătează conținutul (fără a recrea footer-ul)
     } catch {
       /* offline / backend jos — reîncercăm la următorul tick */
     }
@@ -208,7 +209,6 @@
     // starea butonului: punct roșu dacă lipsește secretul
     const dot = btn.querySelector(".mt-top-dot");
     if (dot) dot.classList.toggle("mt-bad", !CONFIG.secret);
-    if (document.getElementById("mt-panel")) updatePanel();
   }
 
   function togglePanel(btn) {
@@ -235,20 +235,43 @@
     else if (panel) document.addEventListener("click", closePanelOnce, { once: true });
   }
 
+  // Scheletul se construiește O SINGURĂ dată; nodul footer NU se recreează la refresh,
+  // ca să nu se piardă click-ul pe „deschide dashboard" când Gmail agită DOM-ul.
+  function buildPanelSkeleton(panel) {
+    panel.innerHTML =
+      `<div class="mt-phead"><b>MailTracker</b><span class="mt-pstat"></span></div>` +
+      `<div class="mt-pkpi"></div>` +
+      `<div class="mt-plist"></div>` +
+      `<a class="mt-pfoot" href="#" target="_blank" rel="noopener">Deschide dashboard-ul complet →</a>`;
+    // Click-urile din panou nu îl închid (doar cele din afară).
+    panel.addEventListener("click", (e) => e.stopPropagation());
+    const foot = panel.querySelector(".mt-pfoot");
+    foot.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.open(`${CONFIG.baseUrl}/admin/mail`, "_blank", "noopener");
+    });
+    panel.dataset.built = "1";
+  }
+
   function updatePanel() {
     const panel = document.getElementById("mt-panel");
     if (!panel) return;
+    if (!panel.dataset.built) buildPanelSkeleton(panel);
+
     const tracked = STATUS.length;
     const read = STATUS.filter((e) => e.opens > 0).length;
     const recent = [...STATUS]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 8);
 
-    const statusLine = CONFIG.secret
+    panel.querySelector(".mt-pstat").innerHTML = CONFIG.secret
       ? `<span class="mt-ok">●</span> Conectat la ${esc(CONFIG.baseUrl.replace(/^https?:\/\//, ""))}`
       : `<span class="mt-err">●</span> Secret lipsă — deschide Opțiuni`;
 
-    const rows = recent.length
+    panel.querySelector(".mt-pkpi").innerHTML =
+      `<div><b>${tracked}</b> urmărite</div><div><b>${read}</b> citite</div>`;
+
+    panel.querySelector(".mt-plist").innerHTML = recent.length
       ? recent
           .map((e) => {
             const opened = e.opens > 0;
@@ -263,11 +286,7 @@
           .join("")
       : `<div class="mt-empty">Niciun email urmărit încă.<br>Trimite unul din Gmail.</div>`;
 
-    panel.innerHTML =
-      `<div class="mt-phead"><b>MailTracker</b><span class="mt-pstat">${statusLine}</span></div>` +
-      `<div class="mt-pkpi"><div><b>${tracked}</b> urmărite</div><div><b>${read}</b> citite</div></div>` +
-      `<div class="mt-plist">${rows}</div>` +
-      `<a class="mt-pfoot" href="${CONFIG.baseUrl}/admin/mail" target="_blank" rel="noopener">Deschide dashboard-ul complet →</a>`;
+    panel.querySelector(".mt-pfoot").href = `${CONFIG.baseUrl}/admin/mail`;
   }
 
   // ── Toast „citit" (notificare în pagină) ──────────────────────────────────
