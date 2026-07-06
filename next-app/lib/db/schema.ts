@@ -188,3 +188,31 @@ export const integrationsGsc = pgTable("integrations_gsc", {
   tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
   connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ───────────────────────────── MailTracker (clonă MailSuite, uz personal) ─────────────────────────────
+// Extensia Chrome injectează un pixel + rescrie linkurile la trimitere din Gmail.
+// `id` e generat de extensie și apare în URL-urile de pixel (/t/o/{id}) și click (/t/c/{id}?l=N).
+
+export const trackedEmails = pgTable("tracked_emails", {
+  id: text("id").primaryKey(), // generat de extensie (nanoid), public în URL-uri
+  account: text("account"), // adresa expeditor (care dintre conturi)
+  recipient: text("recipient"), // To (poate fi listă separată prin virgulă)
+  subject: text("subject"),
+  threadId: text("thread_id"), // threadId Gmail (reply vs compose nou)
+  links: jsonb("links").$type<string[]>().notNull(), // destinațiile reale; indexul = parametrul ?l=
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const emailEvents = pgTable("email_events", {
+  id: serial("id").primaryKey(),
+  emailId: text("email_id").notNull(),
+  type: text("type").notNull(), // open | click
+  linkIdx: integer("link_idx"), // doar la click
+  linkUrl: text("link_url"), // denormalizat, pentru afișare
+  userAgent: text("user_agent"),
+  ip: text("ip"),
+  isBot: boolean("is_bot").notNull().default(false), // prefetch/scanner (Apple MPP, SafeLinks…)
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("email_events_email_idx").on(t.emailId, t.createdAt),
+]);
