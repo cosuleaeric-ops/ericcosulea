@@ -7,7 +7,7 @@
 (() => {
   "use strict";
 
-  const DEFAULTS = { baseUrl: "https://ericcosulea.ro", secret: "" };
+  const DEFAULTS = { baseUrl: "https://www.ericcosulea.ro", secret: "" };
   let CONFIG = { ...DEFAULTS };
 
   chrome.storage.sync.get(DEFAULTS, (v) => {

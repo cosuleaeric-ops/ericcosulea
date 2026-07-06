@@ -1,16 +1,16 @@
 # MailTracker (personal)
 
-Extensie Chrome self-contained care adaugă **open + click tracking** la emailurile trimise din Gmail, cu backend self-hosted pe `ericcosulea.ro`. Înlocuiește MailSuite. Funcționează pe oricâte conturi Gmail ești logat (compose nou și reply).
+Extensie Chrome self-contained care adaugă **open + click tracking** la emailurile trimise din Gmail, cu backend self-hosted pe `www.ericcosulea.ro`. Înlocuiește MailSuite. Funcționează pe oricâte conturi Gmail ești logat (compose nou și reply).
 
 ## Cum funcționează
 
 La trimitere, content script-ul (rulează doar pe `mail.google.com`):
 
-1. **Rescrie linkurile** din corpul emailului către `ericcosulea.ro/t/c/{id}?l=N` → la click se loghează și se redirecționează la destinația reală.
-2. **Injectează un pixel** `ericcosulea.ro/t/o/{id}.gif` → la deschidere se loghează open-ul.
+1. **Rescrie linkurile** din corpul emailului către `www.ericcosulea.ro/t/c/{id}?l=N` → la click se loghează și se redirecționează la destinația reală.
+2. **Injectează un pixel** `www.ericcosulea.ro/t/o/{id}.gif` → la deschidere se loghează open-ul.
 3. **Înregistrează** emailul (id, destinatar, subiect, cont, linkuri) la `POST /api/track/register`.
 
-Rezultatele se văd în dashboard-ul protejat: **ericcosulea.ro/admin/mail**.
+Rezultatele se văd în dashboard-ul protejat: **www.ericcosulea.ro/admin/mail**.
 
 Nu blochează niciodată trimiterea — dacă backend-ul e picat sau ceva eșuează, mailul pleacă normal, doar fără tracking.
 
@@ -19,7 +19,7 @@ Nu blochează niciodată trimiterea — dacă backend-ul e picat sau ceva eșuea
 1. `chrome://extensions` → activează **Developer mode** (colț dreapta-sus).
 2. **Load unpacked** → selectează folderul `mailtracker-extension/`.
 3. Click dreapta pe iconița extensiei → **Opțiuni** (sau `chrome://extensions` → Details → Extension options):
-   - **URL backend**: `https://ericcosulea.ro`
+   - **URL backend**: `www.ericcosulea.ro`
    - **TRACK_SECRET**: exact valoarea din `.env.local` / Vercel (vezi mai jos).
 4. Reîncarcă tab-urile Gmail deschise.
 
@@ -43,6 +43,6 @@ Tabelele (`tracked_emails`, `email_events`) sunt deja create în Neon prin `npm 
 
 ## Fișiere
 
-- `manifest.json` — MV3, permisiuni minime (storage + host pentru mail.google.com și ericcosulea.ro).
+- `manifest.json` — MV3, permisiuni minime (storage + host pentru mail.google.com și www.ericcosulea.ro).
 - `content.js` — toată logica de injectare la trimitere.
 - `options.html` / `options.js` — configurare URL + secret (în `chrome.storage.sync`).

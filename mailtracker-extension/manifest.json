@@ -6,6 +6,7 @@
   "permissions": ["storage"],
   "host_permissions": [
     "https://mail.google.com/*",
+    "https://www.ericcosulea.ro/*",
     "https://ericcosulea.ro/*"
   ],
   "content_scripts": [

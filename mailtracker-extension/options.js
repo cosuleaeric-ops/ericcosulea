@@ -1,4 +1,4 @@
-const DEFAULTS = { baseUrl: "https://ericcosulea.ro", secret: "" };
+const DEFAULTS = { baseUrl: "https://www.ericcosulea.ro", secret: "" };
 
 const $ = (id) => document.getElementById(id);
 
