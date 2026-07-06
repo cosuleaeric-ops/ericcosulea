@@ -107,10 +107,12 @@
       if (!badge) {
         badge = document.createElement("span");
         badge.className = "mt-badge";
-        subjEl.parentElement.insertBefore(badge, subjEl);
+        // Coloană la stânga: înaintea expeditorului/destinatarului („To:…"), nu lângă subiect.
+        const cell = (row.querySelector(".yW") || subjEl).closest("td") || subjEl.parentElement;
+        cell.insertBefore(badge, cell.firstChild);
       }
       const opened = st.opens > 0;
-      badge.textContent = opened ? "✓✓" : "✓✓";
+      badge.textContent = "✓✓";
       badge.classList.toggle("mt-open", opened);
       badge.title = opened
         ? `Citit · ${st.opens} deschideri${st.lastOpenAt ? " · ultima " + timeAgo(st.lastOpenAt) : ""}`
@@ -343,6 +345,22 @@
     const id = scope.dataset.mtId || (scope.dataset.mtId = newId());
     const base = CONFIG.baseUrl;
 
+    // Imaginile care NU sunt deja link → le facem clickabile (wrap într-un <a> către
+    // imaginea însăși), ca să prindem și clickul pe imagini, nu doar pe linkuri/butoane.
+    body.querySelectorAll("img").forEach((img) => {
+      if (img.hasAttribute("data-mt-pixel")) return; // pixelul nostru de open
+      if (img.closest("a")) return; // deja e link → deja trackat de bucla de mai jos
+      const src = img.getAttribute("src") || "";
+      if (!/^https?:\/\//i.test(src)) return; // inline/data: nu poate fi redirectat
+      const a = document.createElement("a");
+      a.setAttribute("href", src);
+      a.dataset.mtHref = src;
+      a.dataset.mtImg = "1";
+      img.parentNode.insertBefore(a, img);
+      a.appendChild(img);
+    });
+
+    // Rescrie TOATE linkurile: text, butoane, imagini-link și imaginile wrap-uite mai sus.
     const links = [];
     body.querySelectorAll("a[href]").forEach((a) => {
       const original = a.dataset.mtHref || a.getAttribute("href") || "";
@@ -413,8 +431,8 @@
   // ── Stil injectat ─────────────────────────────────────────────────────────
   const style = document.createElement("style");
   style.textContent = `
-    .mt-badge{display:inline-block;margin-right:6px;font-size:12px;font-weight:700;
-      letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;cursor:default}
+    .mt-badge{display:inline-block;min-width:22px;margin-right:6px;font-size:12px;font-weight:700;
+      letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;text-align:center;cursor:default}
     .mt-badge.mt-open{color:#1a9d4b}
     .mt-pill{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:5px 10px;
       border-radius:16px;font:600 12px/1 system-ui,sans-serif;cursor:pointer;user-select:none;
