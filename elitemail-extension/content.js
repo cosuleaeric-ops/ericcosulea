@@ -207,10 +207,9 @@
     }
     if (!st) return;
     const acct = (st.account || "").toLowerCase();
-    // Raportăm „proprietarul vede" DOAR când ești în contul EXPEDITOR (propria copie din Sent).
-    // Dacă deschizi în alt cont (destinatarul), NU raportăm → deschiderea aia se numără.
-    const cur = (readAccount() || "").toLowerCase();
-    if (cur && acct && cur === acct) pingOwnerSeen(st.id);
+    // Orice cont în care ești logat = TU (proprietarul). Raportăm mereu → propriile tale
+    // vizualizări, din ORICE cont, nu se numără. Doar destinatarii reali (fără extensie) contează.
+    pingOwnerSeen(st.id);
 
     // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
     document.querySelectorAll('button[aria-label], [role="button"]').forEach((rep) => {

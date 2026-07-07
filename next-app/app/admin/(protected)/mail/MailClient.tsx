@@ -47,12 +47,14 @@ function EventTimeline({ id }: { id: string }) {
   }, [id]);
 
   if (events === null) return <div className="mt-tl-loading">se încarcă…</div>;
-  if (events.length === 0) return <div className="mt-tl-loading">niciun eveniment încă</div>;
+  // Doar evenimentele REALE — prefetch/scanner/proprii nu se afișează deloc.
+  const real = events.filter((e) => !e.isBot);
+  if (real.length === 0) return <div className="mt-tl-loading">nicio deschidere reală încă</div>;
 
   return (
     <ul className="mt-tl">
-      {events.map((e, i) => (
-        <li key={i} className={`mt-tl-item ${e.isBot ? "mt-tl-bot" : ""}`}>
+      {real.map((e, i) => (
+        <li key={i} className="mt-tl-item">
           <span className={`mt-tag mt-tag-${e.type}`}>{e.type === "open" ? "deschis" : "click"}</span>
           <span className="mt-tl-when">{fmt(e.createdAt)}</span>
           {e.type === "click" && e.linkUrl && (
@@ -60,7 +62,6 @@ function EventTimeline({ id }: { id: string }) {
               → {hostOf(e.linkUrl)}
             </span>
           )}
-          {e.isBot && <span className="mt-tl-flag">prefetch/scanner</span>}
         </li>
       ))}
     </ul>
@@ -138,11 +139,6 @@ export default function MailClient({ initial }: { initial: EmailRow[] }) {
               </button>
               {isOpen && (
                 <div className="mt-detail">
-                  {e.botOpens > 0 && (
-                    <div className="mt-note">
-                      + {e.botOpens} deschideri de prefetch/scanner/proprii (Gmail, Apple Mail, SafeLinks, IP-ul tău) — excluse din total.
-                    </div>
-                  )}
                   <EventTimeline id={e.id} />
                 </div>
               )}
