@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { trackedEmails } from "@/lib/db/schema";
 import { clientIp } from "@/lib/tracking/util";
@@ -44,9 +45,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
   }
 
-  const links = Array.isArray(body.links)
+  const incoming = Array.isArray(body.links)
     ? body.links.filter((l): l is string => typeof l === "string")
     : [];
+
+  // Re-register cu același id (draft redeschis / undo-send / re-send): extensia trimite ""
+  // pe pozițiile linkurilor deja rescrise (nu le mai știe originalul) — le păstrăm pe cele
+  // stocate; pozițiile non-goale (linkuri noi) suprascriu/extind. Altfel am pierde
+  // destinațiile vechi și click-urile lor ar redirecta pe fallback.
+  const prev = await db
+    .select({ links: trackedEmails.links })
+    .from(trackedEmails)
+    .where(eq(trackedEmails.id, body.id))
+    .limit(1);
+  const prevLinks = prev[0]?.links ?? [];
+  const links: string[] = [];
+  for (let i = 0; i < Math.max(prevLinks.length, incoming.length); i++) {
+    links.push(incoming[i] || prevLinks[i] || "");
+  }
 
   await db
     .insert(trackedEmails)

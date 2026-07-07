@@ -183,6 +183,77 @@
     return [...ids];
   }
 
+  // Conține string-ul o referință de tracking a noastră (t/o/{id} sau t/c/{id})? Verifică și
+  // variantele URL-encodate (Gmail rescrie linkurile prin google.com/url la draft-uri redeschise).
+  function hasTrackRef(s) {
+    let v = s || "";
+    for (let i = 0; i < 3 && v; i++) {
+      if (/\bt\/(?:o|c)\/[a-z0-9]{8,20}\b/i.test(v)) return true;
+      if (!v.includes("%")) break;
+      try {
+        const d = decodeURIComponent(v);
+        if (d === v) break;
+        v = d;
+      } catch {
+        break;
+      }
+    }
+    return false;
+  }
+
+  // Caută în corpul compose-ului tracking-ul EXISTENT (draft redeschis, undo-send, re-send):
+  // id-ul pixelului deja injectat + cel mai mare index ?l=N al linkurilor deja rescrise.
+  // Fără asta, un re-send ar genera id NOU → ACELAȘI email înregistrat de 2 ori → 2 rânduri.
+  function existingTrackFrom(body) {
+    let pixelId = null;
+    let maxIdx = -1;
+    body.querySelectorAll("img[src], a[href]").forEach((el) => {
+      let v = `${el.getAttribute("src") || ""} ${el.getAttribute("href") || ""}`;
+      for (let i = 0; i < 3 && v; i++) {
+        const rxO = /\bt\/o\/([a-z0-9]{8,20})\b/gi;
+        const rxC = /\bt\/c\/([a-z0-9]{8,20})\?l=(\d+)/gi;
+        let m;
+        while ((m = rxO.exec(v))) pixelId = pixelId || m[1].toLowerCase();
+        while ((m = rxC.exec(v))) {
+          pixelId = pixelId || m[1].toLowerCase();
+          maxIdx = Math.max(maxIdx, Number(m[2]));
+        }
+        if (!v.includes("%")) break;
+        try {
+          const d = decodeURIComponent(v);
+          if (d === v) break;
+          v = d;
+        } catch {
+          break;
+        }
+      }
+    });
+    return { pixelId, maxIdx };
+  }
+
+  // ── Grupare pe conversație (un thread = UN email în ochii proprietarului) ──
+  // Reply-urile/re-send-urile în același thread au id-uri separate în DB (fiecare mesaj cu
+  // pixelul lui), dar în UI le arătăm ca UNUL: deschideri însumate, ultima deschidere = max.
+  function groupKey(e) {
+    const t = (e.threadId || "").trim();
+    if (t) return `t:${t}`;
+    return `s:${normSubject(e.subject)}|${(e.recipient || "").toLowerCase()}`;
+  }
+  function groupAgg(st) {
+    const key = groupKey(st);
+    const members = STATUS.filter((e) => groupKey(e) === key);
+    if (!members.length) return { ids: [st.id], opens: st.opens || 0, clicks: st.clicks || 0, lastOpenAt: st.lastOpenAt };
+    let lastOpenAt = null;
+    let opens = 0;
+    let clicks = 0;
+    for (const e of members) {
+      opens += e.opens || 0;
+      clicks += e.clicks || 0;
+      if (e.lastOpenAt && (!lastOpenAt || new Date(e.lastOpenAt) > new Date(lastOpenAt))) lastOpenAt = e.lastOpenAt;
+    }
+    return { ids: members.map((e) => e.id), opens, clicks, lastOpenAt };
+  }
+
   function findStatus(subject, recipientHint) {
     const ns = normSubject(subject);
     if (!ns) return null;
@@ -220,11 +291,12 @@
         const cell = (row.querySelector(".yW") || subjEl).closest("td") || subjEl.parentElement;
         cell.insertBefore(badge, cell.firstChild);
       }
-      const opened = st.opens > 0;
+      const g = groupAgg(st); // starea întregii conversații, nu doar a mesajului potrivit
+      const opened = g.opens > 0;
       badge.textContent = "✓✓";
       badge.classList.toggle("mt-open", opened);
       badge.title = opened
-        ? `Citit · ${st.opens} deschideri${st.lastOpenAt ? " · ultima " + timeAgo(st.lastOpenAt) : ""}`
+        ? `Citit · ${g.opens} deschideri${g.lastOpenAt ? " · ultima " + timeAgo(g.lastOpenAt) : ""}`
         : "Trimis · necitit";
     });
   }
@@ -291,17 +363,18 @@
       // Mesaj primit (expeditor cunoscut și diferit de contul nostru) → fără indicator.
       if (acct && senderEmail && senderEmail !== acct) return;
 
-      const opened = st.opens > 0;
+      const g = groupAgg(st);
+      const opened = g.opens > 0;
       const ind = document.createElement("span");
       ind.className = "mt-msg" + (opened ? " mt-open" : "");
       ind.textContent = "✓✓";
       ind.title = opened
-        ? `Citit · ${st.opens} deschideri — click pentru detalii`
+        ? `Citit · ${g.opens} deschideri — click pentru detalii`
         : "Trimis · necitit — click pentru detalii";
       ind.addEventListener("click", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-        openEventsPopup(st.id, st.subject, ind);
+        openEventsPopup(g.ids, st.subject, ind);
       });
       // Aliniere exactă: copiem înălțimea + vertical-align de la butonul Reply de lângă.
       const h = rep.offsetHeight;
@@ -458,11 +531,16 @@
     if (!panel) return;
     if (!panel.dataset.built) buildPanelSkeleton(panel);
 
-    const tracked = STATUS.length;
-    const read = STATUS.filter((e) => e.opens > 0).length;
-    const recent = [...STATUS]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 8);
+    // UN rând per CONVERSAȚIE: reply-urile/re-send-urile din același thread nu apar separat.
+    const groups = new Map();
+    for (const e of [...STATUS].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))) {
+      const k = groupKey(e);
+      if (!groups.has(k)) groups.set(k, { ...e, ...groupAgg(e) }); // reprezentant = cel mai recent
+    }
+    const rows = [...groups.values()];
+    const tracked = rows.length;
+    const read = rows.filter((e) => e.opens > 0).length;
+    const recent = rows.slice(0, 8);
 
     panel.querySelector(".mt-pstat").innerHTML = CONFIG.secret
       ? `<span class="mt-ok">●</span> Conectat la ${esc(CONFIG.baseUrl.replace(/^https?:\/\//, ""))}`
@@ -493,7 +571,8 @@
   }
 
   // ── Popup cu istoricul deschiderilor/click-urilor (la click pe indicator) ──
-  function openEventsPopup(emailId, subject, anchor) {
+  // emailIds: toate id-urile conversației (reply-uri incluse) — istoricul se îmbină.
+  function openEventsPopup(emailIds, subject, anchor) {
     document.getElementById("mt-evpop")?.remove();
     const pop = document.createElement("div");
     pop.id = "mt-evpop";
@@ -514,15 +593,25 @@
       document.addEventListener("click", close, { once: true });
     }, 0);
 
-    fetch(`${CONFIG.baseUrl}/api/track/events?id=${encodeURIComponent(emailId)}`, {
-      headers: { "x-track-secret": CONFIG.secret },
-    })
-      .then((r) => r.json())
-      .then((d) => {
+    const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
+    Promise.all(
+      ids.map((eid) =>
+        fetch(`${CONFIG.baseUrl}/api/track/events?id=${encodeURIComponent(eid)}`, {
+          headers: { "x-track-secret": CONFIG.secret },
+        })
+          .then((r) => r.json())
+          .catch(() => null),
+      ),
+    )
+      .then((all) => {
         const body = pop.querySelector(".mt-ev-body");
         if (!body) return;
         // Doar evenimentele REALE — prefetch-urile și cele proprii nu se afișează deloc.
-        const evs = (d.events || []).filter((e) => !e.isBot);
+        const evs = all
+          .filter(Boolean)
+          .flatMap((d) => d.events || [])
+          .filter((e) => !e.isBot)
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         if (!evs.length) {
           body.innerHTML = `<div class="mt-ev-empty">Încă nicio deschidere reală.</div>`;
           return;
@@ -618,15 +707,21 @@
     const body = findBody(scope);
     if (!body) return;
 
-    const id = scope.dataset.mtId || (scope.dataset.mtId = newId());
+    // Draft redeschis / undo-send / re-send: corpul conține DEJA pixelul nostru (Gmail poate
+    // stripa data-mt-pixel, dar URL-ul rămâne). Refolosim acel id — altfel același email
+    // fizic s-ar înregistra de 2 ori, cu 2 rânduri în listă și un „necitit" fantomă pe veci.
+    const found = existingTrackFrom(body);
+    const id = found.pixelId || scope.dataset.mtId || newId();
+    scope.dataset.mtId = id;
     const base = CONFIG.baseUrl;
 
     // Imaginile care NU sunt deja link → le facem clickabile (wrap într-un <a> către
     // imaginea însăși), ca să prindem și clickul pe imagini, nu doar pe linkuri/butoane.
     body.querySelectorAll("img").forEach((img) => {
       if (img.hasAttribute("data-mt-pixel")) return; // pixelul nostru de open
-      if (img.closest("a")) return; // deja e link → deja trackat de bucla de mai jos
       const src = img.getAttribute("src") || "";
+      if (hasTrackRef(src)) return; // pixel vechi cu atributul stripat — nu-l wrap-ui în link
+      if (img.closest("a")) return; // deja e link → deja trackat de bucla de mai jos
       if (!/^https?:\/\//i.test(src)) return; // inline/data: nu poate fi redirectat
       const a = document.createElement("a");
       a.setAttribute("href", src);
@@ -637,18 +732,23 @@
     });
 
     // Rescrie TOATE linkurile: text, butoane, imagini-link și imaginile wrap-uite mai sus.
+    // Linkurile deja rescrise (inclusiv re-împachetate de Gmail prin google.com/url la
+    // draft-uri) sunt sărite; cele NOI continuă indexarea de la maxIdx+1, iar pozițiile
+    // vechi se trimit ca "" — serverul le păstrează pe cele știute (merge pozițional).
+    const startIdx = found.maxIdx + 1;
     const links = [];
     body.querySelectorAll("a[href]").forEach((a) => {
       const original = a.dataset.mtHref || a.getAttribute("href") || "";
       if (!/^https?:\/\//i.test(original)) return;
-      if (original.startsWith(`${base}/t/c/`)) return;
-      const idx = links.length;
+      if (hasTrackRef(original)) return;
+      const idx = startIdx + links.length;
       links.push(original);
       a.dataset.mtHref = original;
       a.setAttribute("href", `${base}/t/c/${id}?l=${idx}`);
     });
+    const linksPayload = startIdx > 0 ? [...Array(startIdx).fill(""), ...links] : links;
 
-    if (!body.querySelector("img[data-mt-pixel]")) {
+    if (!found.pixelId && !body.querySelector("img[data-mt-pixel]")) {
       const img = document.createElement("img");
       img.setAttribute("data-mt-pixel", "1");
       img.src = `${base}/t/o/${id}.gif`;
@@ -670,7 +770,7 @@
           recipient: readRecipients(scope),
           subject: readSubject(scope),
           threadId: readThreadId(),
-          links,
+          links: linksPayload,
         }),
         keepalive: true,
       }).catch(() => {});
