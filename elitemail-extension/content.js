@@ -131,18 +131,19 @@
   function findStatus(subject, recipientHint) {
     const ns = normSubject(subject);
     if (!ns) return null;
-    let matches = STATUS.filter((e) => normSubject(e.subject) === ns);
+    const matches = STATUS.filter((e) => normSubject(e.subject) === ns);
+    if (!matches.length) return null;
+    const pick = (arr) => arr.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     if (recipientHint) {
       const rh = recipientHint.toLowerCase();
       const narrowed = matches.filter((e) => (e.recipient || "").toLowerCase().includes(rh));
-      // Hint de destinatar prezent dar fără potrivire → nu e un email trimis de noi
-      // (ex. un reply primit cu același subiect). Nu punem bifă.
-      if (!narrowed.length) return null;
-      matches = narrowed;
+      if (narrowed.length) return pick(narrowed);
+      // Hint prezent, dar niciun match pe destinatar. Dacă vreun email cu subiectul ăsta
+      // ARE destinatar înregistrat (și tot nu se potrivește) → nu e al nostru, fără bifă.
+      if (matches.some((e) => (e.recipient || "").trim())) return null;
+      // Altfel (destinatar necunoscut la reply-uri) → cădem pe potrivire doar după subiect.
     }
-    if (!matches.length) return null;
-    matches.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    return matches[0];
+    return pick(matches);
   }
 
   // ── Bife în lista de emailuri ─────────────────────────────────────────────
@@ -384,7 +385,11 @@
     const s = root.querySelector(
       'input[name="subjectbox"], input[aria-label*="Subject" i], input[aria-label*="Subiect" i]',
     );
-    return s ? s.value.trim() : "";
+    const v = s && s.value ? s.value.trim() : "";
+    if (v) return v;
+    // Reply/forward inline: nu există câmp de subiect → luăm subiectul conversației deschise.
+    const h = document.querySelector("h2.hP, h2[data-thread-perm-id], .hP");
+    return h ? (h.textContent || "").trim() : "";
   }
   function readRecipients(scope) {
     const root = composeRoot(scope);
