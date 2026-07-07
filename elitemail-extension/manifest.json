@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EliteMail (personal)",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "Open + click tracking pentru Gmail, self-hosted pe ericcosulea.ro. Uz personal.",
   "permissions": [
     "storage"

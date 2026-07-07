@@ -203,10 +203,11 @@
       if (subject) st = findStatus(subject, "");
     }
     if (!st) return;
-    // Proprietarul are emailul deschis chiar acum → raportăm, ca deschiderile Gmail
-    // din timp ce te uiți tu să nu fie numărate ca ale destinatarului.
-    pingOwnerSeen(st.id);
     const acct = (st.account || "").toLowerCase();
+    // Raportăm „proprietarul vede" DOAR când ești în contul EXPEDITOR (propria copie din Sent).
+    // Dacă deschizi în alt cont (destinatarul), NU raportăm → deschiderea aia se numără.
+    const cur = (readAccount() || "").toLowerCase();
+    if (cur && acct && cur === acct) pingOwnerSeen(st.id);
 
     // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
     document.querySelectorAll('button[aria-label], [role="button"]').forEach((rep) => {
