@@ -374,13 +374,22 @@
   function findBody(scope) {
     return scope.querySelector('[contenteditable="true"][role="textbox"], [contenteditable="true"][aria-label]');
   }
+  // Corpul e uneori într-un <form> îngust care NU conține subiectul/destinatarii.
+  // Urcăm la dialogul de compose complet ca să-i citim corect.
+  function composeRoot(scope) {
+    return scope.closest('[role="dialog"]') || scope;
+  }
   function readSubject(scope) {
-    const s = scope.querySelector('input[name="subjectbox"]');
+    const root = composeRoot(scope);
+    const s = root.querySelector(
+      'input[name="subjectbox"], input[aria-label*="Subject" i], input[aria-label*="Subiect" i]',
+    );
     return s ? s.value.trim() : "";
   }
   function readRecipients(scope) {
+    const root = composeRoot(scope);
     const emails = new Set();
-    scope.querySelectorAll("[email]").forEach((n) => {
+    root.querySelectorAll("[email]").forEach((n) => {
       const e = n.getAttribute("email");
       if (e && e.includes("@")) emails.add(e);
     });
