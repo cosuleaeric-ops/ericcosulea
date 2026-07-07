@@ -188,8 +188,9 @@
       if (!toolbar || toolbar.querySelector(".mt-msg")) return;
       const container = rep.closest(".gs, [role='listitem'], .adn");
       const senderEmail = (container?.querySelector("span[email]")?.getAttribute("email") || "").toLowerCase();
-      // Doar mesajul TRIMIS de noi (sender == contul care a trimis), nu răspunsurile primite.
-      if (senderEmail && st.account && senderEmail !== st.account.toLowerCase()) return;
+      // Doar mesajul TRIMIS de noi: expeditorul trebuie să fie exact contul care a trimis.
+      // (exclude mesajele primite din thread și butonul global Reply de jos, fără expeditor)
+      if (!senderEmail || !st.account || senderEmail !== st.account.toLowerCase()) return;
       const opened = st.opens > 0;
       const ind = document.createElement("span");
       ind.className = "mt-msg" + (opened ? " mt-open" : "");
