@@ -43,6 +43,21 @@
   function esc(s) {
     return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
+  function fmtDT(iso) {
+    return new Date(iso).toLocaleString("ro-RO", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  function hostOf(url) {
+    try {
+      return new URL(url).host;
+    } catch {
+      return url || "";
+    }
+  }
 
   const SEND_WORD = /\b(send|trimite|enviar|envoyer|senden|invia|verzenden|wy[sś]lij|отправить)\b/i;
   const SHORTCUT = /(ctrl|⌘|cmd)[\s+-]*(enter|↵)/i;
@@ -220,8 +235,13 @@
       ind.className = "mt-msg" + (opened ? " mt-open" : "");
       ind.textContent = "✓✓";
       ind.title = opened
-        ? `Citit · ${st.opens} deschideri${st.lastOpenAt ? " · ultima " + timeAgo(st.lastOpenAt) : ""}`
-        : "Trimis · necitit";
+        ? `Citit · ${st.opens} deschideri — click pentru detalii`
+        : "Trimis · necitit — click pentru detalii";
+      ind.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openEventsPopup(st.id, st.subject, ind);
+      });
       toolbar.insertBefore(ind, rep);
     });
   }
@@ -401,6 +421,59 @@
     panel.querySelector(".mt-pfoot").href = `${CONFIG.baseUrl}/admin/mail`;
   }
 
+  // ── Popup cu istoricul deschiderilor/click-urilor (la click pe indicator) ──
+  function openEventsPopup(emailId, subject, anchor) {
+    document.getElementById("mt-evpop")?.remove();
+    const pop = document.createElement("div");
+    pop.id = "mt-evpop";
+    const rect = anchor.getBoundingClientRect();
+    pop.style.top = `${Math.round(rect.bottom + 8)}px`;
+    pop.style.left = `${Math.round(Math.min(rect.left, window.innerWidth - 340))}px`;
+    pop.innerHTML =
+      `<div class="mt-ev-head">${esc(subject || "Detalii")}</div>` +
+      `<div class="mt-ev-body">se încarcă…</div>`;
+    pop.addEventListener("click", (e) => e.stopPropagation());
+    document.body.appendChild(pop);
+    setTimeout(() => {
+      const close = (e) => {
+        if (!pop.isConnected) return;
+        if (!pop.contains(e.target)) pop.remove();
+        else document.addEventListener("click", close, { once: true });
+      };
+      document.addEventListener("click", close, { once: true });
+    }, 0);
+
+    fetch(`${CONFIG.baseUrl}/api/track/events?id=${encodeURIComponent(emailId)}`, {
+      headers: { "x-track-secret": CONFIG.secret },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        const body = pop.querySelector(".mt-ev-body");
+        if (!body) return;
+        const evs = d.events || [];
+        const real = evs.filter((e) => !e.isBot).length;
+        if (!evs.length) {
+          body.innerHTML = `<div class="mt-ev-empty">Încă nicio activitate înregistrată.</div>`;
+          return;
+        }
+        body.innerHTML =
+          `<div class="mt-ev-sum">${real} deschideri/click-uri reale · ${evs.length - real} prefetch/proprii</div>` +
+          evs
+            .map((e) => {
+              const flag = e.isBot ? ` <span class="mt-ev-flag">prefetch/propriu</span>` : "";
+              if (e.type === "click") {
+                return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-click">click</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span><span class="mt-ev-link" title="${esc(e.linkUrl || "")}">→ ${esc(hostOf(e.linkUrl))}</span>${flag}</div>`;
+              }
+              return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-open">deschis</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span>${flag}</div>`;
+            })
+            .join("");
+      })
+      .catch(() => {
+        const body = pop.querySelector(".mt-ev-body");
+        if (body) body.textContent = "eroare la încărcare";
+      });
+  }
+
   // ── Toast „citit" (notificare în pagină) ──────────────────────────────────
   function toast(title, body) {
     const t = document.createElement("div");
@@ -566,9 +639,27 @@
     .mt-badge{display:inline-block;min-width:22px;margin-right:6px;font-size:12px;font-weight:700;
       letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;text-align:center;cursor:default}
     .mt-badge.mt-open{color:#1a9d4b}
-    .mt-msg{display:inline-flex;align-items:center;margin:0 8px;font-size:14px;font-weight:700;
-      letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;cursor:default}
+    .mt-msg{display:inline-flex;align-items:center;justify-content:center;height:24px;margin:0 4px;
+      padding:0 2px;font:800 13px/1 system-ui,sans-serif;letter-spacing:-1px;color:#9aa0a6;
+      vertical-align:middle;cursor:pointer;border-radius:6px}
+    .mt-msg:hover{background:rgba(0,0,0,.06)}
     .mt-msg.mt-open{color:#1a9d4b}
+    #mt-evpop{position:fixed;z-index:100000;width:320px;max-height:60vh;overflow:auto;
+      background:#15161a;color:#ededf0;border:1px solid rgba(255,255,255,.12);border-radius:12px;
+      box-shadow:0 12px 40px rgba(0,0,0,.5);font:400 12px/1.4 system-ui,sans-serif}
+    #mt-evpop .mt-ev-head{padding:12px 14px;font-weight:700;font-size:13px;
+      border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #mt-evpop .mt-ev-sum{padding:8px 14px 4px;color:#8b8f98;font-size:11px}
+    #mt-evpop .mt-ev-body{padding:2px 8px 10px}
+    #mt-evpop .mt-ev-row{display:flex;align-items:center;gap:8px;padding:6px;white-space:nowrap}
+    #mt-evpop .mt-ev-tag{font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 6px;
+      border-radius:5px;flex:0 0 auto}
+    #mt-evpop .mt-ev-open{background:rgba(77,159,255,.16);color:#6ab0ff}
+    #mt-evpop .mt-ev-click{background:rgba(74,222,128,.16);color:#4ade80}
+    #mt-evpop .mt-ev-when{color:#b7bbc2;font-variant-numeric:tabular-nums;flex:0 0 auto}
+    #mt-evpop .mt-ev-link{color:#8b8f98;overflow:hidden;text-overflow:ellipsis}
+    #mt-evpop .mt-ev-flag{color:#5f636c;font-style:italic}
+    #mt-evpop .mt-ev-empty{padding:16px;text-align:center;color:#8b8f98}
     .mt-pill{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:5px 10px;
       border-radius:16px;font:600 12px/1 system-ui,sans-serif;cursor:pointer;user-select:none;
       vertical-align:middle}
