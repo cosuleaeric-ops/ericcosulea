@@ -175,7 +175,8 @@
   }
 
   // Indicator inline în emailul DESCHIS — lângă steluță/emoji/reply/more, pe mesajul nostru.
-  const REPLY_WORD = /^(reply|răspunde|raspunde|responder|répondre|antworten|rispondi|responder)\b/i;
+  const REPLY_WORD = /\b(reply|răspunde|raspunde|responder|répondre|antworten|rispondi)\b/i;
+  const FORWARD_WORD = /\b(forward|redirect|înaint|inaint|transfé|weiterleit)/i;
   function decorateOpenMessages() {
     // Potrivire EXACTĂ după thread ID; subiectul e doar rezervă.
     const tid = readThreadId();
@@ -186,15 +187,33 @@
       if (subject) st = findStatus(subject, "");
     }
     if (!st) return;
-    document.querySelectorAll('[role="button"][aria-label]').forEach((rep) => {
-      if (!REPLY_WORD.test(rep.getAttribute("aria-label") || "")) return;
+    const acct = (st.account || "").toLowerCase();
+
+    document.querySelectorAll('[role="button"]').forEach((rep) => {
+      const label = `${rep.getAttribute("aria-label") || ""} ${rep.getAttribute("data-tooltip") || ""}`;
+      if (!REPLY_WORD.test(label)) return;
       const toolbar = rep.parentElement;
       if (!toolbar || toolbar.querySelector(".mt-msg")) return;
-      const container = rep.closest(".gs, [role='listitem'], .adn");
-      const senderEmail = (container?.querySelector("span[email]")?.getAttribute("email") || "").toLowerCase();
-      // Doar mesajul TRIMIS de noi: expeditorul trebuie să fie exact contul care a trimis.
-      // (exclude mesajele primite din thread și butonul global Reply de jos, fără expeditor)
-      if (!senderEmail || !st.account || senderEmail !== st.account.toLowerCase()) return;
+      // Excludem bara de acțiuni de jos (are buton Forward alături) — vrem antetul mesajului.
+      const near = [...toolbar.querySelectorAll("[aria-label],[data-tooltip]")].map(
+        (n) => `${n.getAttribute("aria-label") || ""} ${n.getAttribute("data-tooltip") || ""}`,
+      );
+      if (near.some((b) => FORWARD_WORD.test(b))) return;
+
+      // Expeditorul acestui mesaj = primul [email] urcând în sus (fără a depinde de clase Gmail).
+      let node = rep;
+      let senderEmail = "";
+      for (let i = 0; i < 12 && node; i++) {
+        const em = node.querySelector && node.querySelector("[email]");
+        if (em) {
+          senderEmail = (em.getAttribute("email") || "").toLowerCase();
+          break;
+        }
+        node = node.parentElement;
+      }
+      // Mesaj primit (expeditor cunoscut și diferit de contul nostru) → fără indicator.
+      if (acct && senderEmail && senderEmail !== acct) return;
+
       const opened = st.opens > 0;
       const ind = document.createElement("span");
       ind.className = "mt-msg" + (opened ? " mt-open" : "");
