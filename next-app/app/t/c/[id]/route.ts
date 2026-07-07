@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const FALLBACK = "https://ericcosulea.ro";
 const GRACE_MS = 60_000; // click în primul minut de la trimitere = scaner (SafeLinks etc.)
-const OWNER_SEEN_MS = 30_000; // click în 30s de când proprietarul vede emailul = al lui
+const OWNER_SEEN_MS = 45_000; // click în 45s de când proprietarul vede emailul = al lui (aliniat cu /t/o, > re-ping 20s)
 
 // Click tracking. URL: /t/c/{id}?l={idx}. Loghează click-ul și redirecționează la destinația reală.
 export async function GET(

@@ -136,20 +136,51 @@
     // Doar când tab-ul e CHIAR activ/vizibil — nu din fundal, altfel tab-ul expeditor
     // ținut deschis ar suprima la nesfârșit deschiderile destinatarului.
     if (document.visibilityState !== "visible") return;
-    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
     const now = Date.now();
-    for (const id of list) {
-      // Throttle sub fereastra de re-ping din poll (20s) ca deschiderea/reîntoarcerea pe email
-      // să reîmprospăteze mereu ownerSeenAt — altfel un reopen la 10-19s ar fi numărat ca „citit".
-      if (now - (seenPing.get(id) || 0) < 8000) continue;
-      seenPing.set(id, now);
-      fetch(`${CONFIG.baseUrl}/api/track/seen`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
-        body: JSON.stringify({ id }),
-        keepalive: true,
-      }).catch(() => {});
-    }
+    // Throttle per id, sub fereastra de re-ping din poll (20s), ca reîntoarcerea pe email
+    // să reîmprospăteze mereu ownerSeenAt — altfel un reopen la 10-19s ar fi numărat ca „citit".
+    const due = [...new Set((Array.isArray(ids) ? ids : [ids]).filter(Boolean))].filter(
+      (id) => now - (seenPing.get(id) || 0) >= 8000,
+    );
+    if (!due.length) return;
+    due.forEach((id) => seenPing.set(id, now));
+    // UN singur request pentru toate id-urile — mai puține șanse să se piardă unul.
+    fetch(`${CONFIG.baseUrl}/api/track/seen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
+      body: JSON.stringify({ ids: due }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
+  // ID-urile emailurilor trackate ale căror pixeli/linkuri sunt CHIAR ACUM în DOM (thread deschis
+  // sau compose). Sursa de adevăr EXACTĂ: dacă pixelul e randat la tine, orice hit e al TĂU —
+  // nu depinde de STATUS/subiect/threadId, merge și înainte de primul poll. Gmail proxează
+  // imaginile prin googleusercontent dar păstrează URL-ul original în src (uneori URL-encodat).
+  const RX_TRACK = /\bt\/(?:o|c)\/([a-z0-9]{8,20})\b/gi;
+  function domTrackedIds() {
+    const ids = new Set();
+    const els = document.querySelectorAll(
+      'img[src*="t/o/" i], img[src*="t%2fo%2f" i], a[href*="t/c/" i], a[href*="t%2fc%2f" i]',
+    );
+    els.forEach((el) => {
+      let v = `${el.getAttribute("src") || ""} ${el.getAttribute("href") || ""}`;
+      // Extrage din forma brută + până la 2 niveluri de URL-decoding (proxy dublu-encodat).
+      for (let i = 0; i < 3 && v; i++) {
+        RX_TRACK.lastIndex = 0;
+        let m;
+        while ((m = RX_TRACK.exec(v))) ids.add(m[1].toLowerCase());
+        if (!v.includes("%")) break;
+        try {
+          const d = decodeURIComponent(v);
+          if (d === v) break;
+          v = d;
+        } catch {
+          break;
+        }
+      }
+    });
+    return [...ids];
   }
 
   function findStatus(subject, recipientHint) {
@@ -210,19 +241,29 @@
       const subject = subjEl ? (subjEl.textContent || "").trim() : "";
       if (subject) st = findStatus(subject, "");
     }
-    if (!st) return;
-    const acct = (st.account || "").toLowerCase();
+
     // Orice cont în care ești logat = TU (proprietarul). Raportăm mereu → propriile tale
     // vizualizări, din ORICE cont, nu se numără. Doar destinatarii reali (fără extensie) contează.
-    //
-    // Pe subiecte DUPLICATE (mai multe emailuri „Propunere colaborare…"), pixelul care se aprinde
-    // poate fi al altui id decât cel ales de findStatus. Toate cu același thread/subiect sunt ALE
-    // TALE, deci le suprimăm pe toate — altfel duplicatul „greșit" apare fals ca „citit".
-    const ns = normSubject(st.subject);
-    const ownIds = STATUS.filter(
-      (e) => (tid && e.threadId === tid) || (ns && normSubject(e.subject) === ns),
-    ).map((e) => e.id);
-    pingOwnerSeen(ownIds.length ? ownIds : [st.id]);
+    // Trei straturi, de la exact la aproximativ:
+    //  1) DOM: pixelii/linkurile randate acum pe ecran — exact acele id-uri se pot aprinde. Nu
+    //     depinde de STATUS/subiect, deci merge și înainte de primul poll (deep-link în thread).
+    //  2) Duplicate după thread/subiect: pixelul aprins poate fi al altui id decât cel ales de
+    //     findStatus (subiecte identice) — le suprimăm pe toate, sunt toate ale tale.
+    //  3) st.id — emailul identificat.
+    const domIds = domTrackedIds();
+    let ownIds = [];
+    if (st) {
+      const ns = normSubject(st.subject);
+      ownIds = STATUS.filter(
+        (e) => (tid && e.threadId === tid) || (ns && normSubject(e.subject) === ns),
+      ).map((e) => e.id);
+      ownIds.push(st.id);
+    }
+    const allOwn = [...new Set([...domIds, ...ownIds])];
+    if (allOwn.length) pingOwnerSeen(allOwn);
+
+    if (!st) return;
+    const acct = (st.account || "").toLowerCase();
 
     // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
     document.querySelectorAll('button[aria-label], [role="button"]').forEach((rep) => {
