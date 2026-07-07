@@ -85,7 +85,10 @@
     if (recipientHint) {
       const rh = recipientHint.toLowerCase();
       const narrowed = matches.filter((e) => (e.recipient || "").toLowerCase().includes(rh));
-      if (narrowed.length) matches = narrowed;
+      // Hint de destinatar prezent dar fără potrivire → nu e un email trimis de noi
+      // (ex. un reply primit cu același subiect). Nu punem bifă.
+      if (!narrowed.length) return null;
+      matches = narrowed;
     }
     if (!matches.length) return null;
     matches.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -280,7 +283,10 @@
             return (
               `<div class="mt-prow">` +
               `<span class="mt-badge ${opened ? "mt-open" : ""}">✓✓</span>` +
+              `<span class="mt-pcol">` +
               `<span class="mt-psubj">${esc(e.subject || "(fără subiect)")}</span>` +
+              `<span class="mt-pto">${esc(e.recipient || "—")}</span>` +
+              `</span>` +
               `<span class="mt-pmeta">${opened ? timeAgo(e.lastOpenAt) : "necitit"}</span>` +
               `</div>`
             );
@@ -472,7 +478,9 @@
     #mt-panel .mt-plist{padding:6px 8px}
     #mt-panel .mt-prow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px}
     #mt-panel .mt-prow:hover{background:#1d1f25}
-    #mt-panel .mt-psubj{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #mt-panel .mt-pcol{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+    #mt-panel .mt-psubj{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #mt-panel .mt-pto{font-size:11px;color:#8b8f98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #mt-panel .mt-pmeta{color:#8b8f98;font-size:11px;white-space:nowrap}
     #mt-panel .mt-empty{padding:20px 16px;text-align:center;color:#8b8f98;font-size:12px}
     #mt-panel .mt-pfoot{display:block;padding:12px 16px;border-top:1px solid rgba(255,255,255,.06);
