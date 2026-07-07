@@ -213,6 +213,7 @@ export const emailEvents = pgTable("email_events", {
   userAgent: text("user_agent"),
   ip: text("ip"),
   isBot: boolean("is_bot").notNull().default(false), // prefetch/scanner (Apple MPP, SafeLinks…)
+  alert: text("alert"), // null | reopen_week | high_count — semnal notificabil pe deschiderea asta
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("email_events_email_idx").on(t.emailId, t.createdAt),

@@ -1,4 +1,4 @@
-import { sql, eq, desc, asc } from "drizzle-orm";
+import { sql, eq, desc, asc, and, gt, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
 
@@ -88,6 +88,41 @@ export async function getEmailEvents(emailId: string): Promise<EmailEvent[]> {
     linkUrl: r.linkUrl,
     isBot: r.isBot,
     userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+export type Alert = {
+  id: number; // id-ul event-ului (stabil, folosit de extensie pentru dedup)
+  emailId: string;
+  subject: string | null;
+  alert: string; // reopen_week | high_count
+  createdAt: string;
+};
+
+// Alertele recente (deschideri notificabile) pentru extensie. Fereastră de 14 zile
+// ca extensia să le poată arăta chiar dacă Gmail-ul a fost închis câteva zile.
+export async function getRecentAlerts(days = 14): Promise<Alert[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      id: emailEvents.id,
+      emailId: emailEvents.emailId,
+      alert: emailEvents.alert,
+      createdAt: emailEvents.createdAt,
+      subject: trackedEmails.subject,
+    })
+    .from(emailEvents)
+    .leftJoin(trackedEmails, eq(emailEvents.emailId, trackedEmails.id))
+    .where(and(isNotNull(emailEvents.alert), gt(emailEvents.createdAt, since)))
+    .orderBy(desc(emailEvents.createdAt))
+    .limit(100);
+
+  return rows.map((r) => ({
+    id: r.id,
+    emailId: r.emailId,
+    subject: r.subject,
+    alert: r.alert as string,
     createdAt: r.createdAt.toISOString(),
   }));
 }

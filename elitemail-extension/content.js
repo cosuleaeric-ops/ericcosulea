@@ -52,6 +52,26 @@
   const seenOpens = new Map();
   let firstPoll = true;
 
+  // Alerte notificabile (redeschidere după o săptămână / 5+ deschideri). Dedup persistent
+  // în chrome.storage.local, ca să nu re-notifice aceeași alertă la fiecare reload.
+  let shownAlerts = new Set();
+  let alertsReady = false;
+  let firstAlertsRun = false;
+  chrome.storage.local.get({ mtShownAlerts: null }, (v) => {
+    if (v.mtShownAlerts === null) {
+      firstAlertsRun = true; // prima instalare: seed fără notificări (fără burst istoric)
+    } else {
+      shownAlerts = new Set(v.mtShownAlerts);
+    }
+    alertsReady = true;
+  });
+  function persistAlerts() {
+    // păstrăm ultimele ~300 id-uri ca să nu crească la infinit
+    const arr = [...shownAlerts].slice(-300);
+    shownAlerts = new Set(arr);
+    chrome.storage.local.set({ mtShownAlerts: arr });
+  }
+
   async function poll() {
     if (!CONFIG.secret) return;
     try {
@@ -60,10 +80,40 @@
       const d = await r.json();
       STATUS = d.emails || [];
       detectNewOpens();
+      detectAlerts(d.alerts || []);
       scheduleRender();
       updatePanel(); // dacă panoul e deschis, reîmprospătează conținutul (fără a recrea footer-ul)
     } catch {
       /* offline / backend jos — reîncercăm la următorul tick */
+    }
+  }
+
+  function detectAlerts(alerts) {
+    if (!alertsReady) return; // așteptăm încărcarea din storage
+    if (firstAlertsRun) {
+      alerts.forEach((a) => shownAlerts.add(a.id));
+      firstAlertsRun = false;
+      persistAlerts();
+      return;
+    }
+    let changed = false;
+    for (const a of alerts) {
+      if (shownAlerts.has(a.id)) continue;
+      shownAlerts.add(a.id);
+      changed = true;
+      alertToast(a);
+    }
+    if (changed) persistAlerts();
+  }
+
+  function alertToast(a) {
+    const subj = a.subject || "(fără subiect)";
+    if (a.alert === "reopen_week") {
+      toast("Redeschis după o săptămână", subj);
+    } else if (a.alert === "high_count") {
+      const em = STATUS.find((e) => e.id === a.emailId);
+      const n = em ? em.opens : 5;
+      toast("Deschis de multe ori", `${subj} — ${n} deschideri`);
     }
   }
 
@@ -72,7 +122,7 @@
       const prev = seenOpens.get(e.id);
       seenOpens.set(e.id, e.opens);
       if (!firstPoll && prev !== undefined && e.opens > prev) {
-        toast(e.subject);
+        toast("Email citit", e.subject);
       }
     }
     firstPoll = false;
@@ -298,12 +348,12 @@
   }
 
   // ── Toast „citit" (notificare în pagină) ──────────────────────────────────
-  function toast(subject) {
+  function toast(title, body) {
     const t = document.createElement("div");
     t.className = "mt-toast";
     t.innerHTML =
       `<div class="mt-toast-ck">✓✓</div>` +
-      `<div class="mt-toast-body"><b>Email citit</b><div>${esc(subject || "(fără subiect)")}</div></div>`;
+      `<div class="mt-toast-body"><b>${esc(title)}</b><div>${esc(body || "")}</div></div>`;
     document.body.appendChild(t);
     requestAnimationFrame(() => t.classList.add("mt-show"));
     setTimeout(() => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTrackedEmails } from "@/lib/tracking/queries";
+import { getTrackedEmails, getRecentAlerts } from "@/lib/tracking/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: CORS });
   }
 
-  const all = await getTrackedEmails();
+  const [all, alerts] = await Promise.all([getTrackedEmails(), getRecentAlerts()]);
   // Doar câmpurile de care are nevoie extensia (fără lista de linkuri).
   const emails = all.map((e) => ({
     id: e.id,
@@ -35,5 +35,5 @@ export async function GET(req: NextRequest) {
     lastOpenAt: e.lastOpenAt,
   }));
 
-  return NextResponse.json({ emails }, { headers: CORS });
+  return NextResponse.json({ emails, alerts }, { headers: CORS });
 }
