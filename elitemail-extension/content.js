@@ -131,20 +131,25 @@
   // Raportează backendului că PROPRIETARUL vede acum emailul (throttle 20s/email),
   // ca deschiderile Gmail declanșate în timp ce te uiți tu să nu se numere ca fiind ale destinatarului.
   const seenPing = new Map();
-  function pingOwnerSeen(id) {
-    if (!CONFIG.secret || !id) return;
+  function pingOwnerSeen(ids) {
+    if (!CONFIG.secret) return;
     // Doar când tab-ul e CHIAR activ/vizibil — nu din fundal, altfel tab-ul expeditor
     // ținut deschis ar suprima la nesfârșit deschiderile destinatarului.
     if (document.visibilityState !== "visible") return;
+    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
     const now = Date.now();
-    if (now - (seenPing.get(id) || 0) < 20000) return;
-    seenPing.set(id, now);
-    fetch(`${CONFIG.baseUrl}/api/track/seen`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
-      body: JSON.stringify({ id }),
-      keepalive: true,
-    }).catch(() => {});
+    for (const id of list) {
+      // Throttle sub fereastra de re-ping din poll (20s) ca deschiderea/reîntoarcerea pe email
+      // să reîmprospăteze mereu ownerSeenAt — altfel un reopen la 10-19s ar fi numărat ca „citit".
+      if (now - (seenPing.get(id) || 0) < 8000) continue;
+      seenPing.set(id, now);
+      fetch(`${CONFIG.baseUrl}/api/track/seen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
+        body: JSON.stringify({ id }),
+        keepalive: true,
+      }).catch(() => {});
+    }
   }
 
   function findStatus(subject, recipientHint) {
@@ -209,7 +214,15 @@
     const acct = (st.account || "").toLowerCase();
     // Orice cont în care ești logat = TU (proprietarul). Raportăm mereu → propriile tale
     // vizualizări, din ORICE cont, nu se numără. Doar destinatarii reali (fără extensie) contează.
-    pingOwnerSeen(st.id);
+    //
+    // Pe subiecte DUPLICATE (mai multe emailuri „Propunere colaborare…"), pixelul care se aprinde
+    // poate fi al altui id decât cel ales de findStatus. Toate cu același thread/subiect sunt ALE
+    // TALE, deci le suprimăm pe toate — altfel duplicatul „greșit" apare fals ca „citit".
+    const ns = normSubject(st.subject);
+    const ownIds = STATUS.filter(
+      (e) => (tid && e.threadId === tid) || (ns && normSubject(e.subject) === ns),
+    ).map((e) => e.id);
+    pingOwnerSeen(ownIds.length ? ownIds : [st.id]);
 
     // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
     document.querySelectorAll('button[aria-label], [role="button"]').forEach((rep) => {

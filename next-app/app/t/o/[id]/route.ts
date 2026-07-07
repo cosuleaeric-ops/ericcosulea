@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // prefetch (Gmail/GoogleImageProxy pre-încarcă și randează imaginile la primire), nu o
 // citire umană reală. Un destinatar real deschide mult mai târziu, deci nu pierdem nimic.
 const GRACE_MS = 60_000;
-const OWNER_SEEN_MS = 30_000; // deschideri în 30s de când proprietarul a văzut emailul = propriile lui vizualizări
+const OWNER_SEEN_MS = 45_000; // deschideri în 45s de când proprietarul a văzut emailul = propriile lui vizualizări (> intervalul de re-ping de 20s al extensiei)
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const HIGH_COUNT = 5; // prag „deschis de un nr anormal de ori"
 
