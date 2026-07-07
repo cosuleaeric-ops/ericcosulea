@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   GitCompare,
+  BarChart3,
 } from "lucide-react";
 import { Dropdown } from "../_components/Dropdown";
 import { PeriodPicker } from "./PeriodPicker";
@@ -38,6 +39,9 @@ export function ControlBar({
   compare,
   refreshing,
   filterCount,
+  hasGoal,
+  showGoalBars,
+  onToggleGoalBars,
   onPeriod,
   onCustom,
   onShift,
@@ -57,6 +61,9 @@ export function ControlBar({
   compare: boolean;
   refreshing: boolean;
   filterCount: number;
+  hasGoal: boolean;
+  showGoalBars: boolean;
+  onToggleGoalBars: () => void;
   onPeriod: (p: PeriodKey) => void;
   onCustom: (from: string, to: string) => void;
   onShift: (dir: -1 | 1) => void;
@@ -129,6 +136,16 @@ export function ControlBar({
         >
           <GitCompare size={15} /> Compare
         </button>
+
+        {hasGoal && (
+          <button
+            className={`dfa-btn dfa-btn-icon${showGoalBars ? " is-active" : ""}`}
+            onClick={onToggleGoalBars}
+            title={showGoalBars ? "Ascunde barele de conversii" : "Arată barele de conversii"}
+          >
+            <BarChart3 size={16} />
+          </button>
+        )}
 
         <Dropdown
           align="right"

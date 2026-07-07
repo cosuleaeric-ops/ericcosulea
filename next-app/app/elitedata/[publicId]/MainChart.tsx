@@ -219,6 +219,7 @@ export function MainChart({
   tz,
   loading,
   goalName,
+  showGoal = true,
 }: {
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
@@ -226,6 +227,7 @@ export function MainChart({
   tz: string;
   loading: boolean;
   goalName?: string | null;
+  showGoal?: boolean;
 }) {
   // Memoizat pe serie/compare/tz — NU pe deploysByDay. Așa sosirea async a
   // deploy-urilor nu schimbă referința `data` și recharts nu repornește animația.
@@ -235,7 +237,8 @@ export function MainChart({
   );
   const hasCompare = !!compareSeries;
   // Bara portocalie de conversii apare doar dacă există un KPI cu conversii > 0.
-  const hasGoal = !!goalName && data.some((d) => (d.goalValue ?? 0) > 0);
+  const hasGoal =
+    showGoal && !!goalName && data.some((d) => (d.goalValue ?? 0) > 0);
   const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
 
   return (
@@ -273,7 +276,7 @@ export function MainChart({
             {/* Axă secundară ascunsă pentru conversii — bara își are scala ei. */}
             <YAxis yAxisId="goal" orientation="right" hide allowDecimals={false} />
             <Tooltip
-              content={<ChartTooltip hasCompare={hasCompare} goalName={goalName} deploysByDay={deploysByDay} />}
+              content={<ChartTooltip hasCompare={hasCompare} goalName={hasGoal ? goalName : null} deploysByDay={deploysByDay} />}
               cursor={{ stroke: "rgba(255,255,255,0.22)", strokeWidth: 1 }}
             />
             {hasGoal && (

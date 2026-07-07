@@ -98,6 +98,7 @@ export default function Dashboard({
     defaultGranularity(initialPeriod),
   );
   const [compare, setCompare] = useState(false);
+  const [showGoalBars, setShowGoalBars] = useState(true);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
   const [data, setData] = useState<StatsPayload | null>(initialData);
   const [deploysByDay, setDeploysByDay] = useState<Record<string, Deploy[]>>({});
@@ -105,6 +106,26 @@ export default function Dashboard({
   const [refreshing, setRefreshing] = useState(false);
   const reqId = useRef(0);
   const first = useRef(true);
+
+  // Preferința „arată barele de conversii" persistă în localStorage (per browser).
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("elitedata:showGoalBars") === "0")
+        setShowGoalBars(false);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggleGoalBars = () =>
+    setShowGoalBars((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("elitedata:showGoalBars", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
 
   const range = computeRange(period, offset, custom ?? undefined);
   const tz = website.timezone;
@@ -253,6 +274,9 @@ export default function Dashboard({
         compare={compare}
         refreshing={refreshing}
         filterCount={Object.values(filters).filter(Boolean).length}
+        hasGoal={!!kpis.kpi1Name}
+        showGoalBars={showGoalBars}
+        onToggleGoalBars={toggleGoalBars}
         onPeriod={changePeriod}
         onCustom={applyCustom}
         onShift={(dir) => setOffset((o) => Math.min(0, o + dir))}
@@ -293,6 +317,7 @@ export default function Dashboard({
           tz={tz}
           loading={noData || refreshing}
           goalName={kpis.kpi1Name}
+          showGoal={showGoalBars}
         />
       </div>
       <Panels
