@@ -540,9 +540,12 @@
     return Array.from(emails).join(", ");
   }
   function readAccount() {
-    const a = document.querySelector('a[aria-label*="@"], [aria-label*="Google Account"][aria-label*="@"]');
+    // Butonul „Google Account" arată contul curent (confirmat). Rezervă: titlul tab-ului.
+    const a = document.querySelector('[aria-label*="Google Account"]');
     const m = a?.getAttribute("aria-label")?.match(/[\w.+-]+@[\w.-]+\.\w+/);
-    return m ? m[0] : null;
+    if (m) return m[0];
+    const t = (document.title || "").match(/[\w.+-]+@[\w.-]+\.\w+/);
+    return t ? t[0] : null;
   }
   // ID-ul threadului Gmail — identificator EXACT (din URL când o conversație e deschisă).
   // Îl folosim ca să potrivim emailul fără să ne bazăm pe subiect.

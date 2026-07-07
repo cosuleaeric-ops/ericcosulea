@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { trackedEmails } from "@/lib/db/schema";
+import { emailEvents, trackedEmails } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,5 +32,19 @@ export async function POST(req: NextRequest) {
   if (!id) return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
 
   await db.update(trackedEmails).set({ ownerSeenAt: new Date() }).where(eq(trackedEmails.id, id));
+
+  // Cursă: pixelul se poate declanșa cu ~o secundă înainte ca extensia să raporteze.
+  // Marcăm retroactiv deschiderile/click-urile din ultimele 45s ca proprii (excluse).
+  await db
+    .update(emailEvents)
+    .set({ isBot: true })
+    .where(
+      and(
+        eq(emailEvents.emailId, id),
+        eq(emailEvents.isBot, false),
+        gt(emailEvents.createdAt, sql`now() - interval '45 seconds'`),
+      ),
+    );
+
   return NextResponse.json({ ok: true }, { headers: CORS });
 }
