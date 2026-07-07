@@ -174,6 +174,33 @@
     });
   }
 
+  // Indicator inline în emailul DESCHIS — lângă steluță/emoji/reply/more, pe mesajul nostru.
+  const REPLY_WORD = /^(reply|răspunde|raspunde|responder|répondre|antworten|rispondi|responder)\b/i;
+  function decorateOpenMessages() {
+    const subjEl = document.querySelector("h2.hP, .hP");
+    const subject = subjEl ? (subjEl.textContent || "").trim() : "";
+    if (!subject) return;
+    const st = findStatus(subject, "");
+    if (!st) return;
+    document.querySelectorAll('[role="button"][aria-label]').forEach((rep) => {
+      if (!REPLY_WORD.test(rep.getAttribute("aria-label") || "")) return;
+      const toolbar = rep.parentElement;
+      if (!toolbar || toolbar.querySelector(".mt-msg")) return;
+      const container = rep.closest(".gs, [role='listitem'], .adn");
+      const senderEmail = (container?.querySelector("span[email]")?.getAttribute("email") || "").toLowerCase();
+      // Doar mesajul TRIMIS de noi (sender == contul care a trimis), nu răspunsurile primite.
+      if (senderEmail && st.account && senderEmail !== st.account.toLowerCase()) return;
+      const opened = st.opens > 0;
+      const ind = document.createElement("span");
+      ind.className = "mt-msg" + (opened ? " mt-open" : "");
+      ind.textContent = "✓✓";
+      ind.title = opened
+        ? `Citit · ${st.opens} deschideri${st.lastOpenAt ? " · ultima " + timeAgo(st.lastOpenAt) : ""}`
+        : "Trimis · necitit";
+      toolbar.insertBefore(ind, rep);
+    });
+  }
+
   let renderScheduled = false;
   function scheduleRender() {
     if (renderScheduled) return;
@@ -184,6 +211,7 @@
         injectTopWidget();
         renderIndicators();
         decorateComposes();
+        decorateOpenMessages();
       } catch {
         /* DOM Gmail schimbat — ignorăm, nu stricăm pagina */
       }
@@ -504,6 +532,9 @@
     .mt-badge{display:inline-block;min-width:22px;margin-right:6px;font-size:12px;font-weight:700;
       letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;text-align:center;cursor:default}
     .mt-badge.mt-open{color:#1a9d4b}
+    .mt-msg{display:inline-flex;align-items:center;margin:0 8px;font-size:14px;font-weight:700;
+      letter-spacing:-1px;color:#9aa0a6;vertical-align:middle;cursor:default}
+    .mt-msg.mt-open{color:#1a9d4b}
     .mt-pill{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:5px 10px;
       border-radius:16px;font:600 12px/1 system-ui,sans-serif;cursor:pointer;user-select:none;
       vertical-align:middle}
