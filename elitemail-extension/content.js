@@ -280,7 +280,7 @@
     );
   }
   function findSendButton(scope) {
-    return [...scope.querySelectorAll('[role="button"]')].find((b) => {
+    return [...scope.querySelectorAll('button, [role="button"]')].find((b) => {
       const hint = `${b.getAttribute("data-tooltip") || ""} ${b.getAttribute("aria-label") || ""}`;
       return SHORTCUT.test(hint) || SEND_WORD.test(hint);
     });
@@ -304,7 +304,11 @@
         pill.querySelector(".mt-ck").textContent = off ? "✓✓" : "○";
         pill.querySelector(".mt-pill-t").textContent = off ? "Tracking" : "Fără tracking";
       });
-      send.parentElement.appendChild(pill);
+      // Inserăm DUPĂ grupul butonului Send (nu în interiorul lui), altfel hover-ul
+      // albastru al butonului Send apare în spatele pill-ului.
+      const group = send.parentElement;
+      if (group.parentElement) group.parentElement.insertBefore(pill, group.nextSibling);
+      else group.appendChild(pill);
     });
   }
 
@@ -666,11 +670,13 @@
     #mt-evpop .mt-ev-when{color:#b7bbc2;font-variant-numeric:tabular-nums;flex:0 0 auto}
     #mt-evpop .mt-ev-link{color:#8b8f98;overflow:hidden;text-overflow:ellipsis}
     #mt-evpop .mt-ev-empty{padding:16px;text-align:center;color:#8b8f98}
-    .mt-pill{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:5px 10px;
-      border-radius:16px;font:600 12px/1 system-ui,sans-serif;cursor:pointer;user-select:none;
-      vertical-align:middle}
-    .mt-pill.mt-on{background:#e6f4ea;color:#1a9d4b}
-    .mt-pill.mt-pill-off{background:#f1f3f4;color:#80868b}
+    .mt-pill{position:relative;z-index:1;display:inline-flex;align-items:center;gap:5px;
+      margin-left:10px;padding:5px 10px;border-radius:16px;font:600 12px/1 system-ui,sans-serif;
+      cursor:pointer;user-select:none;vertical-align:middle}
+    .mt-pill.mt-on{background:#e6f4ea !important;color:#1a9d4b !important}
+    .mt-pill.mt-on:hover{background:#d7ecdd !important}
+    .mt-pill.mt-pill-off{background:#f1f3f4 !important;color:#80868b !important}
+    .mt-pill.mt-pill-off:hover{background:#e6e8ea !important}
     .mt-pill .mt-ck{font-weight:800;letter-spacing:-1px}
     .mt-toast{position:fixed;right:20px;bottom:20px;z-index:99999;display:flex;gap:12px;
       align-items:center;max-width:340px;padding:14px 16px;border-radius:12px;
