@@ -189,7 +189,8 @@
     if (!st) return;
     const acct = (st.account || "").toLowerCase();
 
-    document.querySelectorAll('[role="button"]').forEach((rep) => {
+    // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
+    document.querySelectorAll('button[aria-label], [role="button"]').forEach((rep) => {
       const label = `${rep.getAttribute("aria-label") || ""} ${rep.getAttribute("data-tooltip") || ""}`;
       if (!REPLY_WORD.test(label)) return;
       const toolbar = rep.parentElement;
