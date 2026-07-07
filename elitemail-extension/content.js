@@ -246,6 +246,12 @@
         ev.stopPropagation();
         openEventsPopup(st.id, st.subject, ind);
       });
+      // Aliniere exactă: copiem înălțimea + vertical-align de la butonul Reply de lângă.
+      const h = rep.offsetHeight;
+      if (h) {
+        ind.style.height = `${h}px`;
+        ind.style.verticalAlign = getComputedStyle(rep).verticalAlign;
+      }
       toolbar.insertBefore(ind, rep);
     });
   }
@@ -454,23 +460,20 @@
       .then((d) => {
         const body = pop.querySelector(".mt-ev-body");
         if (!body) return;
-        const evs = d.events || [];
-        const real = evs.filter((e) => !e.isBot).length;
+        // Doar evenimentele REALE — prefetch-urile și cele proprii nu se afișează deloc.
+        const evs = (d.events || []).filter((e) => !e.isBot);
         if (!evs.length) {
-          body.innerHTML = `<div class="mt-ev-empty">Încă nicio activitate înregistrată.</div>`;
+          body.innerHTML = `<div class="mt-ev-empty">Încă nicio deschidere reală.</div>`;
           return;
         }
-        body.innerHTML =
-          `<div class="mt-ev-sum">${real} deschideri/click-uri reale · ${evs.length - real} prefetch/proprii</div>` +
-          evs
-            .map((e) => {
-              const flag = e.isBot ? ` <span class="mt-ev-flag">prefetch/propriu</span>` : "";
-              if (e.type === "click") {
-                return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-click">click</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span><span class="mt-ev-link" title="${esc(e.linkUrl || "")}">→ ${esc(hostOf(e.linkUrl))}</span>${flag}</div>`;
-              }
-              return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-open">deschis</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span>${flag}</div>`;
-            })
-            .join("");
+        body.innerHTML = evs
+          .map((e) => {
+            if (e.type === "click") {
+              return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-click">click</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span><span class="mt-ev-link" title="${esc(e.linkUrl || "")}">→ ${esc(hostOf(e.linkUrl))}</span></div>`;
+            }
+            return `<div class="mt-ev-row"><span class="mt-ev-tag mt-ev-open">deschis</span><span class="mt-ev-when">${fmtDT(e.createdAt)}</span></div>`;
+          })
+          .join("");
       })
       .catch(() => {
         const body = pop.querySelector(".mt-ev-body");
@@ -653,8 +656,7 @@
       box-shadow:0 12px 40px rgba(0,0,0,.5);font:400 12px/1.4 system-ui,sans-serif}
     #mt-evpop .mt-ev-head{padding:12px 14px;font-weight:700;font-size:13px;
       border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #mt-evpop .mt-ev-sum{padding:8px 14px 4px;color:#8b8f98;font-size:11px}
-    #mt-evpop .mt-ev-body{padding:2px 8px 10px}
+    #mt-evpop .mt-ev-body{padding:6px 8px 10px}
     #mt-evpop .mt-ev-row{display:flex;align-items:center;gap:8px;padding:6px;white-space:nowrap}
     #mt-evpop .mt-ev-tag{font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 6px;
       border-radius:5px;flex:0 0 auto}
@@ -662,7 +664,6 @@
     #mt-evpop .mt-ev-click{background:rgba(74,222,128,.16);color:#4ade80}
     #mt-evpop .mt-ev-when{color:#b7bbc2;font-variant-numeric:tabular-nums;flex:0 0 auto}
     #mt-evpop .mt-ev-link{color:#8b8f98;overflow:hidden;text-overflow:ellipsis}
-    #mt-evpop .mt-ev-flag{color:#5f636c;font-style:italic}
     #mt-evpop .mt-ev-empty{padding:16px;text-align:center;color:#8b8f98}
     .mt-pill{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:5px 10px;
       border-radius:16px;font:600 12px/1 system-ui,sans-serif;cursor:pointer;user-select:none;
