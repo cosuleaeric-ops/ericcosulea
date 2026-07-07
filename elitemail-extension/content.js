@@ -231,13 +231,13 @@
     renderScheduled = true;
     requestAnimationFrame(() => {
       renderScheduled = false;
-      try {
-        injectTopWidget();
-        renderIndicators();
-        decorateComposes();
-        decorateOpenMessages();
-      } catch {
-        /* DOM Gmail schimbat — ignorăm, nu stricăm pagina */
+      // Fiecare izolat: dacă una aruncă (DOM Gmail schimbat), celelalte tot rulează.
+      for (const fn of [injectTopWidget, renderIndicators, decorateComposes, decorateOpenMessages]) {
+        try {
+          fn();
+        } catch {
+          /* ignorăm, nu stricăm pagina */
+        }
       }
     });
   }
