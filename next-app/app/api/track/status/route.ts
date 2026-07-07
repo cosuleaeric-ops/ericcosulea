@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
     account: e.account,
     recipient: e.recipient,
     subject: e.subject,
+    threadId: e.threadId,
     createdAt: e.createdAt,
     opens: e.opens,
     clicks: e.clicks,

@@ -177,10 +177,14 @@
   // Indicator inline în emailul DESCHIS — lângă steluță/emoji/reply/more, pe mesajul nostru.
   const REPLY_WORD = /^(reply|răspunde|raspunde|responder|répondre|antworten|rispondi|responder)\b/i;
   function decorateOpenMessages() {
-    const subjEl = document.querySelector("h2.hP, .hP");
-    const subject = subjEl ? (subjEl.textContent || "").trim() : "";
-    if (!subject) return;
-    const st = findStatus(subject, "");
+    // Potrivire EXACTĂ după thread ID; subiectul e doar rezervă.
+    const tid = readThreadId();
+    let st = tid ? STATUS.find((e) => e.threadId && e.threadId === tid) : null;
+    if (!st) {
+      const subjEl = document.querySelector("h2.hP, .hP");
+      const subject = subjEl ? (subjEl.textContent || "").trim() : "";
+      if (subject) st = findStatus(subject, "");
+    }
     if (!st) return;
     document.querySelectorAll('[role="button"][aria-label]').forEach((rep) => {
       if (!REPLY_WORD.test(rep.getAttribute("aria-label") || "")) return;
@@ -434,6 +438,14 @@
     const m = a?.getAttribute("aria-label")?.match(/[\w.+-]+@[\w.-]+\.\w+/);
     return m ? m[0] : null;
   }
+  // ID-ul threadului Gmail — identificator EXACT (din URL când o conversație e deschisă).
+  // Îl folosim ca să potrivim emailul fără să ne bazăm pe subiect.
+  function readThreadId() {
+    const m = (location.hash || "").match(/[A-Za-z0-9_-]{22,}/);
+    if (m) return m[0];
+    const el = document.querySelector("[data-thread-perm-id]");
+    return el ? el.getAttribute("data-thread-perm-id") : null;
+  }
 
   function processCompose(scope) {
     if (!CONFIG.secret) return;
@@ -492,6 +504,7 @@
           account: readAccount(),
           recipient: readRecipients(scope),
           subject: readSubject(scope),
+          threadId: readThreadId(),
           links,
         }),
         keepalive: true,
