@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 // prefetch (Gmail/GoogleImageProxy pre-încarcă și randează imaginile la primire), nu o
 // citire umană reală. Un destinatar real deschide mult mai târziu, deci nu pierdem nimic.
 const GRACE_MS = 60_000;
+const OWNER_SEEN_MS = 90_000; // deschideri în 90s de când proprietarul a văzut emailul = propriile lui vizualizări
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const HIGH_COUNT = 5; // prag „deschis de un nr anormal de ori"
 
@@ -33,7 +34,11 @@ export async function GET(
     //  - emailul nu e încă înregistrat (pixelul s-a încărcat în compose, înainte de register).
     let excluded = looksLikeBot(ua);
     const rows = await db
-      .select({ senderIp: trackedEmails.senderIp, createdAt: trackedEmails.createdAt })
+      .select({
+        senderIp: trackedEmails.senderIp,
+        createdAt: trackedEmails.createdAt,
+        ownerSeenAt: trackedEmails.ownerSeenAt,
+      })
       .from(trackedEmails)
       .where(eq(trackedEmails.id, emailId))
       .limit(1);
@@ -43,6 +48,10 @@ export async function GET(
     } else {
       if (row.senderIp && ip && row.senderIp === ip) excluded = true;
       if (Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
+      // Proprietarul se uita chiar acum la email (extensia a raportat) → propria vizualizare.
+      if (row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {
+        excluded = true;
+      }
     }
 
     // Alerte notificabile — doar pe deschideri umane reale.

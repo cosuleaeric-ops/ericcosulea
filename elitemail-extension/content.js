@@ -17,7 +17,6 @@
   chrome.storage.onChanged.addListener((c) => {
     if (c.baseUrl) CONFIG.baseUrl = (c.baseUrl.newValue || DEFAULTS.baseUrl).replace(/\/+$/, "");
     if (c.secret) CONFIG.secret = c.secret.newValue || "";
-    firstPoll = true;
     poll();
   });
 
@@ -64,8 +63,6 @@
 
   // ── Starea de la backend ──────────────────────────────────────────────────
   let STATUS = [];
-  const seenOpens = new Map();
-  let firstPoll = true;
 
   // Alerte notificabile (redeschidere după o săptămână / 5+ deschideri). Dedup persistent
   // în chrome.storage.local, ca să nu re-notifice aceeași alertă la fiecare reload.
@@ -94,7 +91,6 @@
       if (!r.ok) return;
       const d = await r.json();
       STATUS = d.emails || [];
-      detectNewOpens();
       detectAlerts(d.alerts || []);
       scheduleRender();
       updatePanel(); // dacă panoul e deschis, reîmprospătează conținutul (fără a recrea footer-ul)
@@ -132,15 +128,20 @@
     }
   }
 
-  function detectNewOpens() {
-    for (const e of STATUS) {
-      const prev = seenOpens.get(e.id);
-      seenOpens.set(e.id, e.opens);
-      if (!firstPoll && prev !== undefined && e.opens > prev) {
-        toast("Email citit", e.subject);
-      }
-    }
-    firstPoll = false;
+  // Raportează backendului că PROPRIETARUL vede acum emailul (throttle 20s/email),
+  // ca deschiderile Gmail declanșate în timp ce te uiți tu să nu se numere ca fiind ale destinatarului.
+  const seenPing = new Map();
+  function pingOwnerSeen(id) {
+    if (!CONFIG.secret || !id) return;
+    const now = Date.now();
+    if (now - (seenPing.get(id) || 0) < 20000) return;
+    seenPing.set(id, now);
+    fetch(`${CONFIG.baseUrl}/api/track/seen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
+      body: JSON.stringify({ id }),
+      keepalive: true,
+    }).catch(() => {});
   }
 
   function findStatus(subject, recipientHint) {
@@ -202,6 +203,9 @@
       if (subject) st = findStatus(subject, "");
     }
     if (!st) return;
+    // Proprietarul are emailul deschis chiar acum → raportăm, ca deschiderile Gmail
+    // din timp ce te uiți tu să nu fie numărate ca ale destinatarului.
+    pingOwnerSeen(st.id);
     const acct = (st.account || "").toLowerCase();
 
     // Butonul de Reply e un <button> NATIV (fără role="button") — includem ambele.
