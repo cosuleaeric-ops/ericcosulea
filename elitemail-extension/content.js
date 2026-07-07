@@ -498,7 +498,8 @@
 
   // ── Interceptarea trimiterii (injectare pixel + rescriere linkuri) ─────────
   function isSendButton(el) {
-    const btn = el.closest?.('[role="button"]');
+    // Butonul Send poate fi <div role=button> SAU <button> nativ — le prindem pe ambele.
+    const btn = el.closest?.('button, [role="button"]');
     if (!btn) return null;
     const scope = btn.closest('[role="dialog"], form, .iN, .aoI');
     if (!scope) return null;
