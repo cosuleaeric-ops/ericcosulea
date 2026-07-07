@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   await db.update(trackedEmails).set({ ownerSeenAt: new Date() }).where(eq(trackedEmails.id, id));
 
   // Cursă: pixelul se poate declanșa cu ~o secundă înainte ca extensia să raporteze.
-  // Marcăm retroactiv deschiderile/click-urile din ultimele 45s ca proprii (excluse).
+  // Marcăm retroactiv deschiderile/click-urile din ultimele 20s ca proprii (excluse).
   await db
     .update(emailEvents)
     .set({ isBot: true })
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       and(
         eq(emailEvents.emailId, id),
         eq(emailEvents.isBot, false),
-        gt(emailEvents.createdAt, sql`now() - interval '45 seconds'`),
+        gt(emailEvents.createdAt, sql`now() - interval '20 seconds'`),
       ),
     );
 

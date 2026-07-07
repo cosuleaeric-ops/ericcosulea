@@ -133,6 +133,9 @@
   const seenPing = new Map();
   function pingOwnerSeen(id) {
     if (!CONFIG.secret || !id) return;
+    // Doar când tab-ul e CHIAR activ/vizibil — nu din fundal, altfel tab-ul expeditor
+    // ținut deschis ar suprima la nesfârșit deschiderile destinatarului.
+    if (document.visibilityState !== "visible") return;
     const now = Date.now();
     if (now - (seenPing.get(id) || 0) < 20000) return;
     seenPing.set(id, now);
