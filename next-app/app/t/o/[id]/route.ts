@@ -30,7 +30,7 @@ export async function GET(
     // Marcăm ca „propriu/prefetch" (exclus din total) dacă:
     //  - UA e scanner/bot cunoscut, SAU
     //  - IP-ul == IP-ul expeditorului (load din compose sau tu îți deschizi propriul mail), SAU
-    //  - e în primele 15s de la trimitere (prefetch Gmail), SAU
+    //  - e în primul minut de la trimitere (prefetch Gmail, GRACE_MS), SAU
     //  - emailul nu e încă înregistrat (pixelul s-a încărcat în compose, înainte de register).
     let excluded = looksLikeBot(ua);
     const rows = await db
