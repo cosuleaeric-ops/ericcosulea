@@ -17,6 +17,13 @@ Direct în Gmail (interoghează `GET /api/track/status` la 20s):
 - **Badge „Tracking"** în fereastra de compose; click pe el oprește tracking-ul doar pe emailul curent.
 - **Toast „Email citit"** în colțul din dreapta-jos când cineva deschide un email trimis.
 
+**Propriile vizualizări nu se numără:** când deschizi un thread cu emailuri trackate, extensia
+blochează la nivel de rețea (declarativeNetRequest, prin `background.js`) cererile browserului
+tău către proprii pixeli — serverul nu le mai vede deloc. Rămâne doar cursa primului render,
+acoperită de un ping `owner-seen` trimis o singură dată la deschiderea threadului (serverul
+suprimă hit-urile ambigue prin proxy Google din ±20s). Deschiderile destinatarilor contează
+chiar dacă tu stai pe thread.
+
 Rezultatele complete (timeline, click-uri per link) se văd în dashboard-ul protejat: **www.ericcosulea.ro/admin/mail**.
 
 Nu blochează niciodată trimiterea — dacă backend-ul e picat sau ceva eșuează, mailul pleacă normal, doar fără tracking.
@@ -50,6 +57,9 @@ Tabelele (`tracked_emails`, `email_events`) sunt deja create în Neon prin `npm 
 
 ## Fișiere
 
-- `manifest.json` — MV3, permisiuni minime (storage + host pentru mail.google.com și www.ericcosulea.ro).
-- `content.js` — toată logica de injectare la trimitere.
+- `manifest.json` — MV3, permisiuni minime (storage + declarativeNetRequest + host pentru mail.google.com și www.ericcosulea.ro).
+- `content.js` — toată logica de injectare la trimitere + UI-ul din Gmail.
+- `background.js` — service worker: blochează fetch-urile propriilor pixeli (reguli DNR de sesiune).
 - `options.html` / `options.js` — configurare URL + secret (în `chrome.storage.sync`).
+
+După modificări de `manifest.json`/`background.js`: `chrome://extensions` → ⟳ Reload pe extensie, apoi reîncarcă tab-urile Gmail.

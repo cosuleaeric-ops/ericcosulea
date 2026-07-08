@@ -12,7 +12,10 @@ export const dynamic = "force-dynamic";
 // load din Sent. Nu se aplică fetch-urilor directe de pe IP străin — alea sunt destinatarul,
 // chiar și la 30s după trimitere (se întâmplă constant în conversații active).
 const GRACE_MS = 60_000;
-const OWNER_SEEN_MS = 45_000; // deschideri în 45s de când proprietarul a văzut emailul = propriile lui vizualizări (> intervalul de re-ping de 20s al extensiei)
+// Extensia pinguie owner-seen O DATĂ la deschiderea threadului (nu rolling) și blochează
+// prin DNR fetch-urile proprii ulterioare. Fereastra mai acoperă doar cursa primului
+// render (pixelul pornit înainte de armarea regulii DNR / de sosirea pingului).
+const OWNER_SEEN_MS = 20_000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const HIGH_COUNT = 5; // prag „deschis de un nr anormal de ori"
 

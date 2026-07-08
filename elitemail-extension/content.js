@@ -129,22 +129,30 @@
     }
   }
 
-  // Raportează backendului că PROPRIETARUL vede acum emailul (throttle 20s/email),
-  // ca deschiderile Gmail declanșate în timp ce te uiți tu să nu se numere ca fiind ale destinatarului.
+  // Raportează backendului că PROPRIETARUL vede acum emailul — O DATĂ per thread deschis,
+  // NU rolling: serverul suprimă hit-urile ambigue (proxy Google) doar ±20s în jurul
+  // pingului, cât să acopere cursa primului render (pixelul poate porni înainte ca regula
+  // DNR din blockOwnPixels să fie armată). Fetch-urile proprii ulterioare sunt blocate la
+  // nivel de rețea, deci ping continuu nu mai trebuie — și ar ține fereastra de suprimare
+  // deschisă la nesfârșit cât stai pe thread, înghițind deschiderile reale ale
+  // destinatarilor care folosesc Gmail (bug-ul iaBilet).
   const seenPing = new Map();
+  const SEEN_REPING_MS = 10 * 60 * 1000; // plasă de siguranță dacă blocarea DNR pică
   function pingOwnerSeen(ids) {
     if (!CONFIG.secret) return;
     // Doar când tab-ul e CHIAR activ/vizibil — nu din fundal, altfel tab-ul expeditor
     // ținut deschis ar suprima la nesfârșit deschiderile destinatarului.
     if (document.visibilityState !== "visible") return;
     const now = Date.now();
-    // Throttle per id, sub fereastra de re-ping din poll (20s), ca reîntoarcerea pe email
-    // să reîmprospăteze mereu ownerSeenAt — altfel un reopen la 10-19s ar fi numărat ca „citit".
+    // Cheia include view-ul curent: revizitarea threadului (posibil refetch propriu dacă
+    // cache-ul a expirat) re-pinguie; statul pe el nu.
+    const viewKey = readThreadId() || location.hash || "";
     const due = [...new Set((Array.isArray(ids) ? ids : [ids]).filter(Boolean))].filter(
-      (id) => now - (seenPing.get(id) || 0) >= 8000,
+      (id) => now - (seenPing.get(`${viewKey}|${id}`) || 0) >= SEEN_REPING_MS,
     );
     if (!due.length) return;
-    due.forEach((id) => seenPing.set(id, now));
+    if (seenPing.size > 500) seenPing.clear(); // Gmail e SPA long-lived — nu creștem la infinit
+    due.forEach((id) => seenPing.set(`${viewKey}|${id}`, now));
     // UN singur request pentru toate id-urile — mai puține șanse să se piardă unul.
     fetch(`${CONFIG.baseUrl}/api/track/seen`, {
       method: "POST",

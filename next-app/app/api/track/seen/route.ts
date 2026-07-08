@@ -43,10 +43,11 @@ export async function POST(req: NextRequest) {
 
   await db.update(trackedEmails).set({ ownerSeenAt: new Date() }).where(inArray(trackedEmails.id, ids));
 
-  // Cursă: pixelul se poate declanșa cu câteva secunde înainte ca extensia să raporteze.
-  // Marcăm retroactiv deschiderile/click-urile din ultimele 45s ca proprii (excluse) și
-  // ANULĂM alerta — altfel un „high_count/reopen_week" declanșat de propria vizualizare
-  // rămâne în events și extensia îl toastează deși open-ul a fost suprimat.
+  // Cursă: pixelul se poate declanșa cu câteva secunde înainte ca extensia să raporteze
+  // (pingul e one-shot la deschiderea threadului; fetch-urile proprii ulterioare sunt
+  // blocate prin DNR în browser). Marcăm retroactiv deschiderile/click-urile din ultimele
+  // 20s ca proprii (excluse) și ANULĂM alerta — altfel un „high_count/reopen_week"
+  // declanșat de propria vizualizare rămâne în events și extensia îl toastează.
   // DOAR evenimentele care pot fi ale proprietarului (GoogleImageProxy sau IP-ul lui) —
   // un hit direct de pe IP străin e al destinatarului chiar dacă pică în fereastră.
   const ambiguous = or(
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       and(
         inArray(emailEvents.emailId, ids),
         eq(emailEvents.isBot, false),
-        gt(emailEvents.createdAt, sql`now() - interval '45 seconds'`),
+        gt(emailEvents.createdAt, sql`now() - interval '20 seconds'`),
         ambiguous,
       ),
     );
