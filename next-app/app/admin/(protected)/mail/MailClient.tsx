@@ -79,6 +79,8 @@ export default function MailClient({ initial }: { initial: EmailRow[] }) {
       const r = await fetch("/api/track/emails");
       const d = await r.json();
       if (d.emails) setEmails(d.emails);
+    } catch {
+      /* offline / backend jos — reîncercăm la următorul tick */
     } finally {
       setRefreshing(false);
     }

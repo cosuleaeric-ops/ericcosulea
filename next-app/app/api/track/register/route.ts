@@ -64,27 +64,29 @@ export async function POST(req: NextRequest) {
     links.push(incoming[i] || prevLinks[i] || "");
   }
 
+  // La re-register (draft/undo-send/re-send) extensia poate să NU mai știe unele câmpuri
+  // (threadId lipsă din hash, subiect gol) — nu suprascriem valori bune cu null/"".
+  const senderIp = clientIp(req.headers);
+  const set: Record<string, unknown> = { links, senderIp };
+  if (body.account) set.account = body.account;
+  if (body.recipient) set.recipient = body.recipient;
+  if (body.subject) set.subject = body.subject;
+  if (body.threadId) set.threadId = body.threadId;
+
   await db
     .insert(trackedEmails)
     .values({
       id: body.id,
-      account: body.account ?? null,
-      recipient: body.recipient ?? null,
-      subject: body.subject ?? null,
-      threadId: body.threadId ?? null,
+      account: body.account || null,
+      recipient: body.recipient || null,
+      subject: body.subject || null,
+      threadId: body.threadId || null,
       links,
-      senderIp: clientIp(req.headers),
+      senderIp,
     })
     .onConflictDoUpdate({
       target: trackedEmails.id,
-      set: {
-        account: body.account ?? null,
-        recipient: body.recipient ?? null,
-        subject: body.subject ?? null,
-        threadId: body.threadId ?? null,
-        links,
-        senderIp: clientIp(req.headers),
-      },
+      set,
     });
 
   return NextResponse.json({ ok: true }, { status: 200, headers: CORS });
