@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, max } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
-import { PIXEL, PIXEL_HEADERS, looksLikeBot, clientIp } from "@/lib/tracking/util";
+import { PIXEL, PIXEL_HEADERS, looksLikeBot, isGoogleProxy, clientIp } from "@/lib/tracking/util";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Fereastră de grație după trimitere: deschiderile din primul minut sunt aproape sigur
-// prefetch (Gmail/GoogleImageProxy pre-încarcă și randează imaginile la primire), nu o
-// citire umană reală. Un destinatar real deschide mult mai târziu, deci nu pierdem nimic.
+// Fereastră de grație după trimitere: fetch-urile AMBIGUE (proxy Google / IP-ul tău) din
+// primul minut sunt aproape sigur prefetch (Gmail pre-încarcă la primire) sau propriul
+// load din Sent. Nu se aplică fetch-urilor directe de pe IP străin — alea sunt destinatarul,
+// chiar și la 30s după trimitere (se întâmplă constant în conversații active).
 const GRACE_MS = 60_000;
 const OWNER_SEEN_MS = 45_000; // deschideri în 45s de când proprietarul a văzut emailul = propriile lui vizualizări (> intervalul de re-ping de 20s al extensiei)
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -30,8 +31,11 @@ export async function GET(
     // Marcăm ca „propriu/prefetch" (exclus din total) dacă:
     //  - UA e scanner/bot cunoscut, SAU
     //  - IP-ul == IP-ul expeditorului (load din compose sau tu îți deschizi propriul mail), SAU
-    //  - e în primul minut de la trimitere (prefetch Gmail, GRACE_MS), SAU
-    //  - emailul nu e încă înregistrat (pixelul s-a încărcat în compose, înainte de register).
+    //  - emailul nu e încă înregistrat (pixelul s-a încărcat în compose, înainte de register), SAU
+    //  - e un fetch AMBIGUU (GoogleImageProxy / IP-ul tău) în fereastra de grace sau owner-seen.
+    // Ferestrele pe timp se aplică DOAR surselor ambigue: un fetch direct de pe IP străin cu
+    // UA normal e întotdeauna destinatarul — suprimarea lui pe timp arunca deschideri reale
+    // în conversațiile active (proprietarul stă în thread → fereastra nu se mai închidea).
     let excluded = looksLikeBot(ua);
     const rows = await db
       .select({
@@ -46,10 +50,12 @@ export async function GET(
     if (!row) {
       excluded = true;
     } else {
-      if (row.senderIp && ip && row.senderIp === ip) excluded = true;
-      if (Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
+      const ownIp = !!(row.senderIp && ip && row.senderIp === ip);
+      const ambiguous = ownIp || isGoogleProxy(ua);
+      if (ownIp) excluded = true;
+      if (ambiguous && Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
       // Proprietarul se uita chiar acum la email (extensia a raportat) → propria vizualizare.
-      if (row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {
+      if (ambiguous && row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {
         excluded = true;
       }
     }

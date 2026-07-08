@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
 
@@ -35,12 +35,24 @@ export async function POST(req: NextRequest) {
   }
   if (!ids.length) return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
 
+  const emails = await db
+    .select({ senderIp: trackedEmails.senderIp })
+    .from(trackedEmails)
+    .where(inArray(trackedEmails.id, ids));
+  const senderIps = [...new Set(emails.map((e) => e.senderIp).filter((x): x is string => !!x))];
+
   await db.update(trackedEmails).set({ ownerSeenAt: new Date() }).where(inArray(trackedEmails.id, ids));
 
   // Cursă: pixelul se poate declanșa cu câteva secunde înainte ca extensia să raporteze.
   // Marcăm retroactiv deschiderile/click-urile din ultimele 45s ca proprii (excluse) și
   // ANULĂM alerta — altfel un „high_count/reopen_week" declanșat de propria vizualizare
   // rămâne în events și extensia îl toastează deși open-ul a fost suprimat.
+  // DOAR evenimentele care pot fi ale proprietarului (GoogleImageProxy sau IP-ul lui) —
+  // un hit direct de pe IP străin e al destinatarului chiar dacă pică în fereastră.
+  const ambiguous = or(
+    sql`${emailEvents.userAgent} ~* 'googleimageproxy|ggpht\\.com'`,
+    senderIps.length ? and(isNotNull(emailEvents.ip), inArray(emailEvents.ip, senderIps)) : sql`false`,
+  );
   await db
     .update(emailEvents)
     .set({ isBot: true, alert: null })
@@ -49,6 +61,7 @@ export async function POST(req: NextRequest) {
         inArray(emailEvents.emailId, ids),
         eq(emailEvents.isBot, false),
         gt(emailEvents.createdAt, sql`now() - interval '45 seconds'`),
+        ambiguous,
       ),
     );
 

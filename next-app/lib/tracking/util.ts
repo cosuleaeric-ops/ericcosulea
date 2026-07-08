@@ -25,6 +25,15 @@ export function looksLikeBot(ua: string | null): boolean {
   return BOT_UA.test(ua);
 }
 
+// Proxy-ul de imagini Gmail — sursă AMBIGUĂ: prin el trec și deschiderile destinatarului
+// (dacă folosește Gmail), și ale proprietarului care se uită la propriul mail în Gmail.
+// DOAR pentru acestea au sens ferestrele grace/owner-seen; un fetch direct de pe un IP
+// străin cu UA normal nu poate fi al proprietarului și nu se suprimă niciodată.
+export const GOOGLE_PROXY_RX = /googleimageproxy|ggpht\.com/i;
+export function isGoogleProxy(ua: string | null): boolean {
+  return !!ua && GOOGLE_PROXY_RX.test(ua);
+}
+
 export function clientIp(h: Headers): string | null {
   const fwd = h.get("x-vercel-forwarded-for") || h.get("x-forwarded-for");
   return fwd ? fwd.split(",")[0].trim() : h.get("x-real-ip");

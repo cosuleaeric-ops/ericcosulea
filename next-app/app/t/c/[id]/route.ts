@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
-import { looksLikeBot, clientIp } from "@/lib/tracking/util";
+import { looksLikeBot, isGoogleProxy, clientIp } from "@/lib/tracking/util";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,9 +44,13 @@ export async function GET(
     if (!row) {
       excluded = true;
     } else {
-      if (row.senderIp && ip && row.senderIp === ip) excluded = true;
-      if (Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
-      if (row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {
+      // Ferestrele pe timp DOAR pentru surse ambigue (proxy Google / IP-ul expeditorului) —
+      // un click direct de pe IP străin cu UA normal e al destinatarului, nu se suprimă.
+      const ownIp = !!(row.senderIp && ip && row.senderIp === ip);
+      const ambiguous = ownIp || isGoogleProxy(ua);
+      if (ownIp) excluded = true;
+      if (ambiguous && Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
+      if (ambiguous && row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {
         excluded = true; // proprietarul se uită acum → click propriu
       }
     }
