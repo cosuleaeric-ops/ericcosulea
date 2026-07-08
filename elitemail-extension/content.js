@@ -14,7 +14,8 @@
     CONFIG = { baseUrl: (v.baseUrl || DEFAULTS.baseUrl).replace(/\/+$/, ""), secret: v.secret || "" };
     poll();
   });
-  chrome.storage.onChanged.addListener((c) => {
+  chrome.storage.onChanged.addListener((c, area) => {
+    if (area !== "sync") return; // scrierile în `local` (dedup alerte) nu sunt config
     if (c.baseUrl) CONFIG.baseUrl = (c.baseUrl.newValue || DEFAULTS.baseUrl).replace(/\/+$/, "");
     if (c.secret) CONFIG.secret = c.secret.newValue || "";
     poll();
@@ -158,12 +159,33 @@
   // nu depinde de STATUS/subiect/threadId, merge și înainte de primul poll. Gmail proxează
   // imaginile prin googleusercontent dar păstrează URL-ul original în src (uneori URL-encodat).
   const RX_TRACK = /\bt\/(?:o|c)\/([a-z0-9]{8,20})\b/gi;
+
+  // Cere service worker-ului să BLOCHEZE la nivel de rețea pixelii proprii randați în DOM
+  // (URL-ul exact, proxy sau direct): browserul tău nu-i mai cere deloc → serverul nu mai
+  // vede propriile deschideri. Dedup local ca să nu spamăm SW-ul la fiecare render.
+  const sentBlock = new Set();
+  function blockOwnPixels(urls) {
+    const fresh = urls.filter((u) => !sentBlock.has(u));
+    if (!fresh.length) return;
+    fresh.forEach((u) => sentBlock.add(u));
+    try {
+      chrome.runtime.sendMessage({ type: "mt-block", urls: fresh });
+    } catch {
+      /* SW indisponibil / extensie reîncărcată */
+    }
+  }
+
   function domTrackedIds() {
     const ids = new Set();
+    const toBlock = [];
     const els = document.querySelectorAll(
       'img[src*="t/o/" i], img[src*="t%2fo%2f" i], a[href*="t/c/" i], a[href*="t%2fc%2f" i]',
     );
     els.forEach((el) => {
+      if (el.tagName === "IMG") {
+        const src = el.getAttribute("src") || "";
+        if (src.startsWith("https://")) toBlock.push(src.split("#")[0]); // fără fragment (vezi background.js)
+      }
       let v = `${el.getAttribute("src") || ""} ${el.getAttribute("href") || ""}`;
       // Extrage din forma brută + până la 2 niveluri de URL-decoding (proxy dublu-encodat).
       for (let i = 0; i < 3 && v; i++) {
@@ -180,6 +202,7 @@
         }
       }
     });
+    blockOwnPixels(toBlock);
     return [...ids];
   }
 
@@ -208,6 +231,11 @@
     let pixelId = null;
     let maxIdx = -1;
     body.querySelectorAll("img[src], a[href]").forEach((el) => {
+      // Conținutul CITAT (reply/forward) conține pixelii/linkurile ALTUI email deja trimis.
+      // Dacă i-am refolosi id-ul, un forward ar suprascrie emailul vechi la register și
+      // nu ar mai primi pixel propriu. Reuse-ul e doar pentru draft/undo-send/re-send,
+      // unde pixelul e la nivelul de sus al corpului, nu în citat.
+      if (el.closest(".gmail_quote")) return;
       let v = `${el.getAttribute("src") || ""} ${el.getAttribute("href") || ""}`;
       for (let i = 0; i < 3 && v; i++) {
         const rxO = /\bt\/o\/([a-z0-9]{8,20})\b/gi;
@@ -669,8 +697,9 @@
     const s = root.querySelector(
       'input[name="subjectbox"], input[aria-label*="Subject" i], input[aria-label*="Subiect" i]',
     );
-    const v = s && s.value ? s.value.trim() : "";
-    if (v) return v;
+    // Câmp de subiect PREZENT (compose nou / pop-out) → valoarea lui e adevărul, chiar goală.
+    // Altfel un compose nou cu subiect gol ar fura subiectul thread-ului deschis în spate.
+    if (s) return (s.value || "").trim();
     // Reply/forward inline: nu există câmp de subiect → luăm subiectul conversației deschise.
     const h = document.querySelector("h2.hP, h2[data-thread-perm-id], .hP");
     return h ? (h.textContent || "").trim() : "";
@@ -695,14 +724,30 @@
   // ID-ul threadului Gmail — identificator EXACT (din URL când o conversație e deschisă).
   // Îl folosim ca să potrivim emailul fără să ne bazăm pe subiect.
   function readThreadId() {
-    const m = (location.hash || "").match(/[A-Za-z0-9_-]{22,}/);
+    // Doar partea de „vedere" din hash — după „?" urmează parametri (ex. ?compose=<token lung>)
+    // care altfel s-ar potrivi și ar deveni threadId fals pentru compose-urile noi.
+    const m = (location.hash || "").split("?")[0].match(/[A-Za-z0-9_-]{22,}/);
     if (m) return m[0];
     const el = document.querySelector("[data-thread-perm-id]");
     return el ? el.getAttribute("data-thread-perm-id") : null;
   }
 
-  function processCompose(scope) {
+  // Flag-urile (mtOff, mtId) trăiesc pe containerul de compose EXTERIOR — același element
+  // pe care decorateComposes pune pill-ul. mousedown/keydown pot nimeri un <form>/.aoI
+  // interior; fără canonicalizare, toggle-ul „Fără tracking" ar fi ignorat la trimitere.
+  function canonicalScope(el) {
+    let n = el.closest('[role="dialog"], .iN, .aoI') || el;
+    for (let p = n.parentElement; p; p = n.parentElement) {
+      const up = p.closest('[role="dialog"], .iN, .aoI');
+      if (!up) break;
+      n = up;
+    }
+    return n;
+  }
+
+  function processCompose(rawScope) {
     if (!CONFIG.secret) return;
+    const scope = canonicalScope(rawScope);
     if (scope.dataset.mtOff === "1") return; // dezactivat manual din badge
     const body = findBody(scope);
     if (!body) return;
@@ -748,7 +793,11 @@
     });
     const linksPayload = startIdx > 0 ? [...Array(startIdx).fill(""), ...links] : links;
 
-    if (!found.pixelId && !body.querySelector("img[data-mt-pixel]")) {
+    // Pixelul PROPRIU al acestui mesaj — cei din conținutul citat aparțin altui email.
+    const hasOwnPixel = [...body.querySelectorAll("img[data-mt-pixel]")].some(
+      (i) => !i.closest(".gmail_quote"),
+    );
+    if (!found.pixelId && !hasOwnPixel) {
       const img = document.createElement("img");
       img.setAttribute("data-mt-pixel", "1");
       img.src = `${base}/t/o/${id}.gif`;
@@ -761,19 +810,25 @@
     body.dispatchEvent(new InputEvent("input", { bubbles: true }));
 
     try {
-      fetch(`${base}/api/track/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
-        body: JSON.stringify({
-          id,
-          account: readAccount(),
-          recipient: readRecipients(scope),
-          subject: readSubject(scope),
-          threadId: readThreadId(),
-          links: linksPayload,
-        }),
-        keepalive: true,
-      }).catch(() => {});
+      const payload = JSON.stringify({
+        id,
+        account: readAccount(),
+        recipient: readRecipients(scope),
+        subject: readSubject(scope),
+        threadId: readThreadId(),
+        links: linksPayload,
+      });
+      const send = (keepalive) =>
+        fetch(`${base}/api/track/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-track-secret": CONFIG.secret },
+          body: payload,
+          keepalive,
+        });
+      // keepalive are limită de ~64KB pe body — un email cu foarte multe linkuri ar fi
+      // respins INSTANT și ar rămâne neînregistrat (deschiderile lui excluse pe veci).
+      // Reîncercăm fără keepalive; Gmail e SPA, pagina supraviețuiește trimiterii.
+      send(true).catch(() => send(false).catch(() => {}));
     } catch {
       /* ignorăm */
     }
@@ -795,6 +850,16 @@
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       const scope = e.target?.closest?.('[role="dialog"], form, .iN, .aoI');
+      if (scope) {
+        try {
+          processCompose(scope);
+        } catch {
+          /* ignorăm */
+        }
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      // Send activat din tastatură (Tab pe buton + Enter/Space) nu produce mousedown.
+      const scope = isSendButton(e.target);
       if (scope) {
         try {
           processCompose(scope);
