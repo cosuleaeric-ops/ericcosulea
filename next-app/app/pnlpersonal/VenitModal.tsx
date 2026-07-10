@@ -81,6 +81,13 @@ export function VenitModal({ row, catVenit, onClose, onSaved }: Props) {
                 placeholder="Nume categorie nouă"
                 value={catNoua}
                 onChange={(e) => setCatNoua(e.target.value)}
+                onKeyDown={(e) => {
+                  // stergerea e totul-sau-nimic: nu lasam categorii ciopartite
+                  if ((e.key === "Backspace" || e.key === "Delete") && catNoua !== "") {
+                    e.preventDefault();
+                    setCatNoua("");
+                  }
+                }}
                 style={{ marginTop: 8, width: "100%", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, background: "var(--bg)" }}
               />
             )}

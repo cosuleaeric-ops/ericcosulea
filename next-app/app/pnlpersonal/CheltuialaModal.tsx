@@ -53,13 +53,14 @@ export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAd
   };
 
   const onCatKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && catInputRef.current) {
-      const el = catInputRef.current;
-      if (el.selectionStart !== el.selectionEnd) {
+    if (e.key === "Backspace" || e.key === "Delete") {
+      // stergerea e totul-sau-nimic: nu lasam categorii ciopartite
+      if (catInput !== "") {
         e.preventDefault();
-        const newVal = el.value.slice(0, el.selectionStart!);
-        typedRef.current = newVal;
-        setCatInput(newVal);
+        typedRef.current = "";
+        setCatInput("");
+        setShowSugg(true);
+        setSuggIdx(-1);
       }
       return;
     }
