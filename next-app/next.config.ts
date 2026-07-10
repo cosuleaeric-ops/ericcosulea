@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["chart.js", "react-chartjs-2", "xlsx", "lucide-react"],
   },
+  async headers() {
+    return [
+      {
+        // Permite service worker-ului EliteDeux să controleze pagina /elite-deux
+        // (fără slash final), altfel scope-ul lui e limitat la /elite-deux/.
+        source: "/elite-deux/sw.js",
+        headers: [{ key: "Service-Worker-Allowed", value: "/elite-deux" }],
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: "/analytics", destination: "/elitedata", permanent: true },

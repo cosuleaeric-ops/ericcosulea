@@ -54,6 +54,7 @@ const taskTemplate = document.getElementById("taskTemplate");
 
 const prevWeekBtn = document.getElementById("prevWeek");
 const nextWeekBtn = document.getElementById("nextWeek");
+const todayBtn = document.getElementById("todayBtn");
 const prefsToggleBtn = document.getElementById("prefsToggle");
 const prefsPanel = document.getElementById("prefsPanel");
 const prefsCloseBtn = document.getElementById("prefsClose");
@@ -78,6 +79,15 @@ prevWeekBtn.addEventListener("click", () => {
 
 nextWeekBtn.addEventListener("click", () => {
   state.dayOffset += 1;
+  renderWeek();
+});
+
+todayBtn?.addEventListener("click", () => {
+  if (state.dayOffset === 0) {
+    return;
+  }
+
+  state.dayOffset = 0;
   renderWeek();
 });
 
@@ -172,9 +182,13 @@ importFileInput?.addEventListener("change", async (event) => {
 void init();
 
 async function init() {
-  await initializeState();
-  runDailyRollover();
-  normalizeAllLists();
+  // Paint imediat din localStorage — nu aștepta serverul.
+  const localSnapshot = readLocalSnapshot();
+  if (localSnapshot) {
+    applyStateSnapshot(localSnapshot);
+    runDailyRollover({ save: false });
+    normalizeAllLists({ save: false });
+  }
   syncSettingsUI();
   applyVisualSettings();
   renderWeek();
@@ -191,6 +205,8 @@ async function init() {
       pushStateToRemote(buildStateSnapshot(), { keepalive: true }).catch(() => {});
     }
   });
+
+  await reconcileWithServer();
 }
 
 function countTasksInSnapshot(snapshot) {
@@ -208,21 +224,18 @@ function countTasksInSnapshot(snapshot) {
   return n;
 }
 
-async function initializeState() {
-  const localSnapshot = readLocalSnapshot();
-
-  // Arată ceva imediat din local cât timp așteptăm serverul
-  if (localSnapshot) applyStateSnapshot(localSnapshot);
-
+async function reconcileWithServer() {
   setStorageStatus(HAS_REMOTE_STORAGE ? "Connecting to server..." : "Storage: local only");
 
   if (!HAS_REMOTE_STORAGE) {
-    if (!localSnapshot) persistLocalSnapshot();
+    persistLocalSnapshot();
     return;
   }
 
   try {
     const remoteSnapshot = await fetchRemoteSnapshot();
+    // Recitim localul ACUM: poate userul a editat cât timp am așteptat serverul.
+    const localSnapshot = readLocalSnapshot();
     const remoteTasks = countTasksInSnapshot(remoteSnapshot);
     const localTasks  = countTasksInSnapshot(localSnapshot);
 
@@ -232,11 +245,11 @@ async function initializeState() {
         // Localul e mai nou (ex: salvarea pe server a eșuat ieri) → pushăm localul
         await pushStateToRemote(buildStateSnapshot());
       } else {
-        applyStateSnapshot(remoteSnapshot);
+        applyRemoteAndRender(remoteSnapshot);
       }
     } else if (remoteTasks > 0) {
       // Doar serverul are date → aplicăm serverul
-      applyStateSnapshot(remoteSnapshot);
+      applyRemoteAndRender(remoteSnapshot);
     } else if (localTasks > 0) {
       // Serverul e gol dar localul are date → pushăm localul pe server
       await pushStateToRemote(buildStateSnapshot());
@@ -249,9 +262,18 @@ async function initializeState() {
     setStorageStatus("Storage: synced with server");
   } catch (error) {
     console.warn("EliteDeux remote sync unavailable", error);
-    if (!localSnapshot) persistLocalSnapshot();
-    setStorageStatus(localSnapshot ? "Server unavailable. Working from local backup." : "Server unavailable. Data stays local.");
+    persistLocalSnapshot();
+    setStorageStatus("Server unavailable. Working from local backup.");
   }
+}
+
+function applyRemoteAndRender(snapshot) {
+  applyStateSnapshot(snapshot);
+  runDailyRollover({ save: false });
+  normalizeAllLists({ save: false });
+  syncSettingsUI();
+  applyVisualSettings();
+  renderWeek();
 }
 
 function readLocalSnapshot() {
@@ -452,7 +474,7 @@ async function importStateFromFile(file) {
   setStorageStatus(HAS_REMOTE_STORAGE ? "Imported. Syncing to server..." : "Imported into local storage.");
 }
 
-function runDailyRollover() {
+function runDailyRollover(options = {}) {
   const today = startOfDay(new Date());
   const parsedLastSeen = parseDateKey(state.lastSeenDate);
   let cursor = parsedLastSeen && parsedLastSeen < today ? parsedLastSeen : today;
@@ -480,10 +502,12 @@ function runDailyRollover() {
   }
 
   state.lastSeenDate = formatDateKey(today);
-  saveState();
+  if (options.save !== false) {
+    saveState();
+  }
 }
 
-function normalizeAllLists() {
+function normalizeAllLists(options = {}) {
   let changed = false;
   const nextByDate = {};
 
@@ -498,7 +522,7 @@ function normalizeAllLists() {
   });
 
   state.tasksByDate = nextByDate;
-  if (changed) {
+  if (changed && options.save !== false) {
     saveState();
   }
 }
@@ -515,6 +539,34 @@ function renderWeek() {
     const key = formatDateKey(date);
     const column = renderDayColumn(date, key);
     weekGrid.appendChild(column);
+  }
+
+  if (todayBtn) {
+    todayBtn.disabled = state.dayOffset === 0;
+  }
+}
+
+// Re-randează doar coloana afectată — nu tot grid-ul (evită flicker + pierderea inputului).
+function renderColumn(dateKey) {
+  const column = weekGrid.querySelector(`.day-column[data-date-key="${dateKey}"]`);
+  const date = parseDateKey(dateKey);
+  if (!column || !date) {
+    renderWeek();
+    return;
+  }
+
+  const existingInput = column.querySelector(".composer-input");
+  const draft = existingInput ? existingInput.value : null;
+  const hadFocus = existingInput && document.activeElement === existingInput;
+
+  const fresh = renderDayColumn(date, dateKey);
+  column.replaceWith(fresh);
+
+  if (draft !== null) {
+    const input = openInlineComposer(fresh.querySelector(".task-list"), dateKey, { focus: Boolean(hadFocus) });
+    if (input) {
+      input.value = draft;
+    }
   }
 }
 
@@ -587,11 +639,15 @@ function renderDayColumn(date, dateKey) {
   return column;
 }
 
-function openInlineComposer(taskList, dateKey) {
+function openInlineComposer(taskList, dateKey, options = {}) {
+  if (!taskList) {
+    return null;
+  }
+
   const existingInput = taskList.querySelector(".composer-input");
   if (existingInput) {
     existingInput.focus();
-    return;
+    return existingInput;
   }
 
   const row = document.createElement("li");
@@ -604,25 +660,39 @@ function openInlineComposer(taskList, dateKey) {
 
   let committed = false;
 
-  const commit = () => {
+  // keepOpen (Enter): golește inputul și lasă composer-ul deschis pentru următorul task.
+  // renderColumn() îl re-creează cu focus pentru că draft-ul (gol) încă există la re-render.
+  const commit = (keepOpen) => {
     if (committed) {
       return;
     }
 
-    committed = true;
     const text = input.value.trim();
+
+    if (!keepOpen) {
+      committed = true;
+      row.remove();
+      if (text) {
+        addTask(dateKey, text);
+      }
+      return;
+    }
+
     if (!text) {
+      committed = true;
       row.remove();
       return;
     }
 
+    input.value = "";
+    committed = true;
     addTask(dateKey, text);
   };
 
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      commit();
+      commit(true);
       return;
     }
 
@@ -632,10 +702,15 @@ function openInlineComposer(taskList, dateKey) {
     }
   });
 
-  input.addEventListener("blur", commit);
+  input.addEventListener("blur", () => commit(false));
   row.appendChild(input);
   taskList.appendChild(row);
-  input.focus();
+
+  if (options.focus !== false) {
+    input.focus();
+  }
+
+  return input;
 }
 
 function focusTodayComposer() {
@@ -713,11 +788,22 @@ function beginTaskEdit(contentNode, dateKey, task) {
   input.className = "edit-input";
   input.value = task.text;
 
+  let done = false;
+
   const cancel = () => {
-    renderWeek();
+    if (done) {
+      return;
+    }
+    done = true;
+    renderColumn(dateKey);
   };
 
   const save = () => {
+    if (done) {
+      return;
+    }
+    done = true;
+
     const text = input.value.trim();
     if (!text) {
       removeTask(dateKey, task.id);
@@ -768,7 +854,7 @@ function addTask(dateKey, text) {
   }
 
   saveState();
-  renderWeek();
+  renderColumn(dateKey);
 }
 
 function updateTask(dateKey, taskId, updater) {
@@ -782,7 +868,7 @@ function updateTask(dateKey, taskId, updater) {
   });
 
   saveState();
-  renderWeek();
+  renderColumn(dateKey);
 }
 
 function toggleTaskCompleted(dateKey, taskId) {
@@ -809,7 +895,7 @@ function toggleTaskCompleted(dateKey, taskId) {
 
   state.tasksByDate[dateKey] = reorderCompletedToBottom(next);
   saveState();
-  renderWeek();
+  renderColumn(dateKey);
 
   return updatedTask.completed;
 }
@@ -834,7 +920,7 @@ function removeTask(dateKey, taskId) {
   state.tasksByDate[dateKey] = tasks.filter((task) => task.id !== taskId);
 
   saveState();
-  renderWeek();
+  renderColumn(dateKey);
 }
 
 function showTrashZone(visible) {
@@ -910,7 +996,7 @@ function onGlobalDrop(event) {
     const current = state.tasksByDate[sourceDate] || [];
     state.tasksByDate[sourceDate] = reorderByDom(list, current);
     saveState();
-    renderWeek();
+    renderColumn(sourceDate);
     return;
   }
 
@@ -932,7 +1018,8 @@ function onGlobalDrop(event) {
   state.tasksByDate[targetDate] = reorderByDom(list, targetTasks);
 
   saveState();
-  renderWeek();
+  renderColumn(sourceDate);
+  renderColumn(targetDate);
 }
 
 function reorderByDom(listElement, tasks) {
@@ -1143,4 +1230,31 @@ function setPreferencesPanel(visible) {
   prefsPanel.setAttribute("aria-hidden", String(!visible));
   prefsOverlay.hidden = !visible;
   prefsToggleBtn.setAttribute("aria-expanded", String(visible));
+}
+
+// Service worker: cache offline pentru shell + assets (deschidere instant ca PWA).
+// Scope "/elite-deux" (fără slash) ca să acopere și pagina /elite-deux — cere
+// header-ul Service-Worker-Allowed setat în next.config.ts.
+if ("serviceWorker" in navigator) {
+  const registerServiceWorker = () => {
+    navigator.serviceWorker
+      .register("/elite-deux/sw.js", { scope: "/elite-deux" })
+      .catch(() => {});
+
+    // Curăță înregistrarea veche cu scope "/elite-deux/" (nu controla pagina).
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        if (registration.scope.endsWith("/elite-deux/")) {
+          registration.unregister();
+        }
+      });
+    }).catch(() => {});
+  };
+
+  // Scriptul e încărcat afterInteractive — "load" poate fi deja trecut.
+  if (document.readyState === "complete") {
+    registerServiceWorker();
+  } else {
+    window.addEventListener("load", registerServiceWorker);
+  }
 }

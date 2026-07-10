@@ -5,7 +5,6 @@ export default function EliteDeuxPage() {
     <>
       <Script id="elite-deux-config" strategy="beforeInteractive">{`
 window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/elite-deux/sw.js');
       `}</Script>
 
       <div className="app-shell">
@@ -17,6 +16,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/elite-deux/
 
           <div className="week-controls">
             <button id="prevWeek" className="ghost-btn" aria-label="Ziua anterioară">‹</button>
+            <button id="todayBtn" className="ghost-btn today-btn" aria-label="Sari la ziua de azi">Azi</button>
             <button id="nextWeek" className="ghost-btn" aria-label="Ziua următoare">›</button>
           </div>
 
