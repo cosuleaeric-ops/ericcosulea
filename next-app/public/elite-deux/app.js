@@ -773,6 +773,16 @@ function renderTask(dateKey, task) {
     node.classList.remove("dragging");
     document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
     showTrashZone(false);
+
+    // Drag anulat sau drop nefinalizat: nodul e încă în DOM, posibil re-parentat
+    // de dragover în altă coloană — readu ambele coloane la starea reală.
+    if (node.isConnected) {
+      const currentKey = node.closest(".day-column")?.dataset.dateKey;
+      renderColumn(dateKey);
+      if (currentKey && currentKey !== dateKey) {
+        renderColumn(currentKey);
+      }
+    }
   });
 
   return node;
@@ -965,11 +975,15 @@ function onGlobalDragOver(event) {
 
 function onGlobalDrop(event) {
   showTrashZone(false);
+  document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
 
   if (event.target.closest(".trash-zone")) {
     event.preventDefault();
     const sourceDate = event.dataTransfer.getData("text/date-key");
     const taskId = event.dataTransfer.getData("text/task-id");
+    // dragover-ul re-parentează nodul târât în coloanele peste care treci;
+    // scoate-l explicit, altfel rămâne o "fantomă" în altă coloană.
+    document.querySelector(".task-item.dragging")?.remove();
     if (sourceDate && taskId) {
       removeTask(sourceDate, taskId);
     }
