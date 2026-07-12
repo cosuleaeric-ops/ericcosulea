@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ro" className={crimsonPro.variable}>
+    <html lang="ro" className={crimsonPro.variable} suppressHydrationWarning>
       <head>
         <Script id="admin-bar-init" strategy="beforeInteractive">
           {adminBarInitScript}
