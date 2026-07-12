@@ -1,7 +1,21 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getAllPostsForAdmin } from "@/lib/db/queries";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAllPostsForAdmin, getProjectsForHome, getAllImages } from "@/lib/db/queries";
+import { blobUrl } from "@/lib/blob";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Brain,
+  ExternalLink,
+  Mail,
+  Plus,
+  Soup,
+  Wallet,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "admin",
@@ -10,78 +24,131 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-function QuickCard({ href, title, desc }: { href: string; title: string; desc: string }) {
-  return (
-    <Link href={href} className="group block">
-      <Card className="h-full gap-0 py-5 transition-all group-hover:-translate-y-0.5 group-hover:border-ring group-hover:shadow-lg">
-        <CardHeader className="gap-2 px-5">
-          <CardTitle className="text-3xl leading-none font-semibold lowercase">{title}</CardTitle>
-          <CardDescription className="text-base">{desc}</CardDescription>
-        </CardHeader>
-      </Card>
-    </Link>
-  );
+const TOOLS: { href: string; name: string; icon: LucideIcon; chip: string }[] = [
+  { href: "/pnlpersonal", name: "p&l personal", icon: Wallet, chip: "bg-[#eef1fd] text-[#5469d4]" },
+  { href: "/dogu", name: "dogu", icon: Soup, chip: "bg-[#fdf0ec] text-[#d85a30]" },
+  { href: "/brain", name: "brain", icon: Brain, chip: "bg-[#ecf7f1] text-[#1d9e75]" },
+  { href: "/elite-deux", name: "elite deux", icon: Zap, chip: "bg-[#fdf6e7] text-[#ba7517]" },
+  { href: "/admin/mail", name: "elitemail", icon: Mail, chip: "bg-[#e8f3fd] text-[#2f7fd0]" },
+  { href: "/elitedata", name: "analytics", icon: BarChart3, chip: "bg-[#f3eefb] text-[#7a4fc9]" },
+];
+
+const RO_MONTHS_SHORT = ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "noi", "dec"];
+
+function formatRoDateShort(date: Date): string {
+  return `${date.getDate()} ${RO_MONTHS_SHORT[date.getMonth()]}`;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[11px] tracking-[0.08em] text-muted-foreground uppercase">{children}</p>;
 }
 
 export default async function AdminDashboard() {
-  const posts = await getAllPostsForAdmin();
-  const postCount = posts.length;
-  const latestPost = posts[0] ?? null;
+  const [posts, projects, images] = await Promise.all([
+    getAllPostsForAdmin(),
+    getProjectsForHome(),
+    getAllImages(),
+  ]);
+
+  const today = new Date().toLocaleDateString("ro-RO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Bucharest",
+  });
 
   return (
-    <div className="mx-auto max-w-[820px] px-6 py-6">
-      <h1 className="text-4xl font-semibold">Admin</h1>
-      <p className="mt-4 text-lg text-muted-foreground">
-        hub-ul tau intern pentru scris, organizare si sprinturi scurte de lucru.
-      </p>
+    <div className="mx-auto max-w-[860px] px-6 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">admin</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{today}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/" target="_blank">
+              <ExternalLink /> vezi site-ul
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/admin/posts/new">
+              <Plus /> articol nou
+            </Link>
+          </Button>
+        </div>
+      </div>
 
-      <h2 className="mt-9 text-2xl font-semibold lowercase">tooluri personale</h2>
-      <section className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2" aria-label="Tooluri personale">
-        <QuickCard
-          href="/pnlpersonal"
-          title="💰 p&l personal"
-          desc="cheltuieli, venituri și portofel — cash, ING, Revolut, Trading212."
-        />
-        <QuickCard
-          href="/dogu"
-          title="🍜 dogu"
-          desc="reviews, comenzi și vânzări restaurant — Bolt, Glovo, Breeze."
-        />
-        <QuickCard
-          href="/brain"
-          title="🧠 brain"
-          desc="second brain — pagini durabile și gânduri cronologice, citit de AI la decizii."
-        />
-        <QuickCard
-          href="/elite-deux"
-          title="⚡ elite deux"
-          desc="task grid săptămânal cu teme, coloane configurabile și export."
-        />
-      </section>
+      <SectionLabel>tooluri</SectionLabel>
+      <div className="mb-7 grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
+        {TOOLS.map((t) => (
+          <Link key={t.href} href={t.href}>
+            <Card className="flex-row items-center gap-3 px-3.5 py-3 transition-colors hover:border-ring">
+              <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${t.chip}`}>
+                <t.icon className="size-[17px]" />
+              </span>
+              <span className="text-[13px] font-medium">{t.name}</span>
+              <ArrowUpRight className="ml-auto size-3.5 text-muted-foreground/60" />
+            </Card>
+          </Link>
+        ))}
+      </div>
 
-      <h2 className="mt-9 text-2xl font-semibold lowercase">website</h2>
-      <section className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2" aria-label="Website">
-        <QuickCard
-          href="/admin/projects"
-          title="🚀 proiecte"
-          desc="adaugă, editează și șterge proiectele afișate pe pagina principală."
-        />
-        <QuickCard href="/inspo" title="🖼 inspo" desc="upload + delete pe pagina /inspo." />
-      </section>
-
-      <h2 className="mt-9 text-2xl font-semibold lowercase">overview blog</h2>
-      <section className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2" aria-label="Blog">
-        <QuickCard
-          href="/admin/posts"
-          title={`${postCount} articole`}
-          desc={latestPost ? `ultimul: ${latestPost.title}` : "inca nu ai publicat nimic."}
-        />
-        <QuickCard
-          href="/admin/posts/new"
-          title="articol nou"
-          desc="deschide editorul și pornește direct un draft nou."
-        />
-      </section>
+      <SectionLabel>editezi aici</SectionLabel>
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
+        <Link href="/admin/posts">
+          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[13px] font-medium">articole</span>
+              <span className="text-[11px] text-muted-foreground">{posts.length}</span>
+            </div>
+            {posts.slice(0, 2).map((p, i) => (
+              <p
+                key={p.id}
+                className={`truncate text-xs leading-relaxed text-foreground/75 ${i === 0 ? "border-b border-border/60 pb-1.5 mb-1.5" : ""}`}
+              >
+                {p.title}
+                <span className="text-muted-foreground"> · {formatRoDateShort(p.publishedAt)}</span>
+              </p>
+            ))}
+          </Card>
+        </Link>
+        <Link href="/admin/projects">
+          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[13px] font-medium">proiecte</span>
+              <span className="text-[11px] text-muted-foreground">{projects.length}</span>
+            </div>
+            <p className="truncate border-b border-border/60 pb-1.5 mb-1.5 text-xs leading-relaxed text-foreground/75">
+              {projects.slice(0, 2).map((p) => p.name).join(" · ")}
+            </p>
+            <p className="truncate text-xs leading-relaxed text-foreground/75">
+              {projects.slice(2, 4).map((p) => p.name).join(" · ")}
+            </p>
+          </Card>
+        </Link>
+        <Link href="/inspo">
+          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[13px] font-medium">inspo</span>
+              <span className="text-[11px] text-muted-foreground">{images.length} img</span>
+            </div>
+            <div className="flex gap-1.5">
+              {images.slice(0, 3).map((img) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={img.id}
+                  src={blobUrl(`inspo/${img.filename}`)}
+                  alt=""
+                  className="aspect-square w-0 flex-1 rounded-md object-cover"
+                />
+              ))}
+              <span className="flex aspect-square w-0 flex-1 items-center justify-center rounded-md bg-muted">
+                <Plus className="size-3.5 text-muted-foreground" />
+              </span>
+            </div>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }

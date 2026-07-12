@@ -17,26 +17,27 @@
    IMPORTANT: scoped pe .admin-app, NU pe :root — site.css folosește aceleași nume
    de variabile (--muted, --accent, --card) și le-ar suprascrie pe site-ul public. */
 .admin-app {
-  --background: #fffdf7;
+  --background: #faf9f6;
   --foreground: #1c1c1c;
-  --card: #fffaf2;
+  --card: #ffffff;
   --card-foreground: #1c1c1c;
-  --popover: #fffaf2;
+  --popover: #ffffff;
   --popover-foreground: #1c1c1c;
-  --primary: #3f2d1b;
-  --primary-foreground: #fffdf7;
-  --secondary: #f3ead9;
-  --secondary-foreground: #3f2d1b;
-  --muted: #f5efe3;
-  --muted-foreground: #6d6a64;
-  --accent: #f3ead9;
-  --accent-foreground: #3f2d1b;
+  --primary: #1c1c1c;
+  --primary-foreground: #faf9f6;
+  --secondary: #f1efe9;
+  --secondary-foreground: #1c1c1c;
+  --muted: #f1efe9;
+  --muted-foreground: #8f8b82;
+  --accent: #f1efe9;
+  --accent-foreground: #1c1c1c;
   --destructive: #b3261e;
-  --destructive-foreground: #fffdf7;
-  --border: #efe6d6;
-  --input: #e6dac4;
-  --ring: #dcc9aa;
-  --radius: 0.875rem;
+  --destructive-foreground: #faf9f6;
+  --border: #e5e2da;
+  --input: #ddd8cc;
+  --ring: #cfc9ba;
+  --radius: 0.625rem;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* EliteMail — tema dark (aceleași tokens ca /elitedata), scoped. */
