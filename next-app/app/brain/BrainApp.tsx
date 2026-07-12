@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ChevronRight,
+  Command,
   FileText,
   Moon,
   Pencil,
@@ -34,53 +35,31 @@ type Thought = {
   createdAt: string;
 };
 
-type EditorState = {
-  pageId: number | null; // null = pagină nouă
-  parentId: number | null;
-  title: string;
-  description: string;
-  icon: string;
-  contentMd: string;
-};
+type View = { kind: "home" } | { kind: "thoughts" } | { kind: "page"; id: number };
 
 function relTime(iso: string): string {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return "just now";
-  const units: [string, number][] = [
-    ["year", 31536000],
-    ["month", 2592000],
-    ["week", 604800],
-    ["day", 86400],
-    ["hour", 3600],
-    ["minute", 60],
-  ];
-  const parts: string[] = [];
-  let rest = diff;
-  for (const [name, secs] of units) {
-    if (parts.length === 2) break;
-    const v = Math.floor(rest / secs);
-    if (v > 0 || parts.length === 1) {
-      if (v > 0) parts.push(`${v} ${name}${v > 1 ? "s" : ""}`);
-      rest -= v * secs;
-    }
-  }
-  return `${parts.join(", ")} ago`;
+  if (diff < 60) return "acum";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}z`;
+  return new Date(iso).toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
 }
 
 function thoughtDate(iso: string): string {
   const d = new Date(iso);
-  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return `${date} · ${time}`;
+  return (
+    d.toLocaleDateString("ro-RO", { day: "numeric", month: "short", year: "numeric" }) +
+    " · " +
+    d.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
-function parseTags(text: string): string[] {
-  return [...new Set(
-    text
-      .split(/[,\s]+/)
-      .map((t) => t.trim().replace(/^#/, "").toLowerCase())
-      .filter(Boolean),
-  )];
+// Extrage #tagurile din text: „idee misto #outglow #pricing" -> { text, tags }
+function extractTags(raw: string): { text: string; tags: string[] } {
+  const tags = [...new Set([...raw.matchAll(/(^|\s)#([a-zA-Z0-9ăâîșț\-_]+)/g)].map((m) => m[2].toLowerCase()))];
+  const text = raw.replace(/(^|\s)#[a-zA-Z0-9ăâîșț\-_]+/g, " ").replace(/[ \t]+/g, " ").trim();
+  return { text, tags };
 }
 
 async function api(path: string, method: string, body?: unknown) {
@@ -94,6 +73,12 @@ async function api(path: string, method: string, body?: unknown) {
   return data;
 }
 
+function withTransition(fn: () => void) {
+  const d = document as Document & { startViewTransition?: (cb: () => void) => void };
+  if (d.startViewTransition) d.startViewTransition(fn);
+  else fn();
+}
+
 function Md({ text }: { text: string }) {
   return (
     <div className="brain-md">
@@ -102,10 +87,18 @@ function Md({ text }: { text: string }) {
   );
 }
 
-function PageIcon({ page }: { page: Page }) {
-  if (page.icon) return <span className="brain-tree-emoji">{page.icon}</span>;
-  return <FileText size={13} className="brain-tree-doc" strokeWidth={1.8} />;
+function PageIcon({ page, size = 13.5 }: { page: Page; size?: number }) {
+  if (page.icon) return <span className="brain-emoji" style={{ fontSize: size }}>{page.icon}</span>;
+  return <FileText size={size} className="brain-doc-ico" strokeWidth={1.8} />;
 }
+
+type PaletteItem = {
+  key: string;
+  label: string;
+  hint?: string;
+  icon?: React.ReactNode;
+  action: () => void;
+};
 
 export default function BrainApp({
   initialPages,
@@ -116,28 +109,52 @@ export default function BrainApp({
 }) {
   const [pages, setPages] = useState<Page[]>(initialPages);
   const [thoughts, setThoughts] = useState<Thought[]>(initialThoughts);
-  const [view, setView] = useState<"pages" | "thoughts">("pages");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [view, setView] = useState<View>({ kind: "home" });
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [editor, setEditor] = useState<EditorState | null>(null);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
   const [dark, setDark] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   // Thoughts
-  const [composer, setComposer] = useState({ content: "", tags: "" });
+  const [capture, setCapture] = useState("");
   const [thoughtFilter, setThoughtFilter] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [openThoughts, setOpenThoughts] = useState<Set<number>>(new Set());
-  const [thoughtEdit, setThoughtEdit] = useState<{ id: number; content: string; tags: string } | null>(null);
+  const [thoughtEdit, setThoughtEdit] = useState<{ id: number; content: string } | null>(null);
+
+  // Palette + toast
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQ, setPaletteQ] = useState("");
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const [toast, setToast] = useState<{ msg: string; undo?: () => void } | null>(null);
 
   const shellRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const captureRef = useRef<HTMLTextAreaElement>(null);
+  const filterRef = useRef<HTMLInputElement>(null);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastKey = useRef<{ k: string; t: number }>({ k: "", t: 0 });
 
+  const byId = useMemo(() => new Map(pages.map((p) => [p.id, p])), [pages]);
+  const selected = view.kind === "page" ? byId.get(view.id) ?? null : null;
+
+  // draft pentru inline editing (autosave)
+  const [draft, setDraft] = useState<{ title: string; description: string; icon: string; contentMd: string } | null>(null);
+
+  const childrenOf = useCallback(
+    (parentId: number | null) =>
+      pages
+        .filter((p) => p.parentId === parentId)
+        .sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title)),
+    [pages],
+  );
+
+  /* ── tema ── */
   useEffect(() => {
     setDark(localStorage.getItem("brain-theme") === "dark");
   }, []);
-
   useEffect(() => {
     const root = shellRef.current?.closest(".brain");
     if (!root) return;
@@ -145,25 +162,276 @@ export default function BrainApp({
     localStorage.setItem("brain-theme", dark ? "dark" : "light");
   }, [dark]);
 
+  /* ── navigare ── */
+  const go = useCallback((v: View) => {
+    withTransition(() => {
+      setView(v);
+      setEditing(false);
+      setDraft(null);
+      if (v.kind === "page") {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          let p = byId.get(v.id);
+          while (p?.parentId != null) {
+            next.add(p.parentId);
+            p = byId.get(p.parentId);
+          }
+          return next;
+        });
+      }
+    });
+  }, [byId]);
+
+  /* ── autosave pagină ── */
+  const flushSave = useCallback(async (pageId: number, d: NonNullable<typeof draft>) => {
+    setSaveState("saving");
+    try {
+      const { page } = await api(`pages/${pageId}`, "PATCH", {
+        title: d.title || "Untitled",
+        description: d.description,
+        icon: d.icon,
+        contentMd: d.contentMd,
+      });
+      setPages((prev) => prev.map((p) => (p.id === page.id ? page : p)));
+      setSaveState("saved");
+    } catch {
+      setSaveState("idle");
+      setToast({ msg: "Salvarea a eșuat — reîncearcă" });
+    }
+  }, []);
+
+  const scheduleSave = useCallback(
+    (pageId: number, d: NonNullable<typeof draft>) => {
+      setDraft(d);
+      setSaveState("saving");
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => flushSave(pageId, d), 700);
+    },
+    [flushSave],
+  );
+
+  function startEdit(p: Page) {
+    setDraft({ title: p.title, description: p.description ?? "", icon: p.icon ?? "", contentMd: p.contentMd });
+    setEditing(true);
+  }
+
+  function stopEdit() {
+    if (saveTimer.current && draft && selected) {
+      clearTimeout(saveTimer.current);
+      flushSave(selected.id, draft);
+    }
+    setEditing(false);
+    setDraft(null);
+  }
+
+  /* ── acțiuni ── */
+  const newPage = useCallback(async (parentId: number | null) => {
+    try {
+      const { page } = await api("pages", "POST", { title: "Pagină nouă", parentId });
+      setPages((prev) => [...prev, page]);
+      if (parentId != null) setExpanded((prev) => new Set(prev).add(parentId));
+      withTransition(() => setView({ kind: "page", id: page.id }));
+      setDraft({ title: page.title, description: "", icon: "", contentMd: "" });
+      setEditing(true);
+      setTimeout(() => { titleRef.current?.focus(); titleRef.current?.select(); }, 60);
+    } catch (err) {
+      setToast({ msg: err instanceof Error ? err.message : String(err) });
+    }
+  }, []);
+
+  async function deletePage(p: Page) {
+    if (!confirm(`Ștergi pagina „${p.title}"?`)) return;
+    try {
+      await api(`pages/${p.id}`, "DELETE");
+      setPages((prev) => prev.filter((x) => x.id !== p.id));
+      go(p.parentId != null ? { kind: "page", id: p.parentId } : { kind: "home" });
+    } catch (err) {
+      setToast({ msg: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  const saveCapture = useCallback(async () => {
+    const { text, tags } = extractTags(capture);
+    if (!text) return;
+    try {
+      const { thought } = await api("thoughts", "POST", { contentMd: text, tags });
+      setThoughts((prev) => [thought, ...prev]);
+      setCapture("");
+      setToast({ msg: tags.length ? `Gând salvat · ${tags.map((t) => `#${t}`).join(" ")}` : "Gând salvat" });
+    } catch (err) {
+      setToast({ msg: err instanceof Error ? err.message : String(err) });
+    }
+  }, [capture]);
+
+  async function saveThoughtEdit() {
+    if (!thoughtEdit) return;
+    const { text, tags } = extractTags(thoughtEdit.content);
+    if (!text) return;
+    const orig = thoughts.find((t) => t.id === thoughtEdit.id);
+    const mergedTags = [...new Set([...(tags.length ? tags : orig?.tags ?? [])])];
+    try {
+      const { thought } = await api(`thoughts/${thoughtEdit.id}`, "PATCH", { contentMd: text, tags: mergedTags });
+      setThoughts((prev) => prev.map((t) => (t.id === thought.id ? thought : t)));
+      setThoughtEdit(null);
+    } catch (err) {
+      setToast({ msg: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  function deleteThought(t: Thought) {
+    // optimist + undo, fără confirm
+    setThoughts((prev) => prev.filter((x) => x.id !== t.id));
+    api(`thoughts/${t.id}`, "DELETE").catch(() => {
+      setThoughts((prev) => [t, ...prev].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setToast({ msg: "Ștergerea a eșuat" });
+      return;
+    });
+    setToast({
+      msg: "Gând șters",
+      undo: async () => {
+        try {
+          const { thought } = await api("thoughts", "POST", { contentMd: t.contentMd, tags: t.tags });
+          setThoughts((prev) => [thought, ...prev]);
+        } catch {
+          setToast({ msg: "Undo a eșuat" });
+        }
+      },
+    });
+  }
+
+  /* ── toast auto-hide ── */
+  useEffect(() => {
+    if (!toast) return;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 6000);
+    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  }, [toast]);
+
+  /* ── command palette ── */
+  const paletteItems = useMemo<PaletteItem[]>(() => {
+    const items: PaletteItem[] = [
+      { key: "a-home", label: "Du-te la: Azi", hint: "g h", action: () => go({ kind: "home" }) },
+      { key: "a-thoughts", label: "Du-te la: Thoughts", hint: "g t", action: () => go({ kind: "thoughts" }) },
+      { key: "a-new-thought", label: "Gând nou", hint: "n", action: () => { go({ kind: "home" }); setTimeout(() => captureRef.current?.focus(), 80); } },
+      { key: "a-new-page", label: "Pagină nouă", hint: "p", action: () => newPage(null) },
+      { key: "a-theme", label: dark ? "Temă: light" : "Temă: dark", action: () => setDark((d) => !d) },
+    ];
+    for (const p of pages) {
+      items.push({
+        key: `p-${p.id}`,
+        label: `${p.icon ? p.icon + " " : ""}${p.title}`,
+        hint: p.description ?? undefined,
+        action: () => go({ kind: "page", id: p.id }),
+      });
+    }
+    for (const t of thoughts.slice(0, 100)) {
+      items.push({
+        key: `t-${t.id}`,
+        label: t.contentMd.replace(/\n+/g, " ").slice(0, 80),
+        hint: t.tags.map((x) => `#${x}`).join(" ") || thoughtDate(t.createdAt),
+        action: () => { setActiveTag(null); setThoughtFilter(t.contentMd.slice(0, 30)); go({ kind: "thoughts" }); },
+      });
+    }
+    return items;
+  }, [pages, thoughts, dark, go, newPage]);
+
+  const paletteResults = useMemo(() => {
+    const q = paletteQ.trim().toLowerCase();
+    if (!q) return paletteItems.slice(0, 9);
+    return paletteItems
+      .map((it) => {
+        const l = it.label.toLowerCase();
+        const h = (it.hint ?? "").toLowerCase();
+        let score = -1;
+        if (l.startsWith(q)) score = 3;
+        else if (l.includes(q)) score = 2;
+        else if (h.includes(q)) score = 1;
+        return { it, score };
+      })
+      .filter((x) => x.score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 9)
+      .map((x) => x.it);
+  }, [paletteQ, paletteItems]);
+
+  useEffect(() => setPaletteIdx(0), [paletteQ, paletteOpen]);
+
+  function openPalette() {
+    setPaletteQ("");
+    setPaletteOpen(true);
+    setTimeout(() => paletteInputRef.current?.focus(), 40);
+  }
+
+  /* ── shortcuts globale ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement;
+      const typing = tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        searchRef.current?.focus();
+        openPalette();
+        return;
+      }
+      if (paletteOpen) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setPaletteIdx((i) => Math.min(i + 1, paletteResults.length - 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setPaletteIdx((i) => Math.max(i - 1, 0));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          const it = paletteResults[paletteIdx];
+          if (it) {
+            setPaletteOpen(false);
+            it.action();
+          }
+        } else if (e.key === "Escape") {
+          setPaletteOpen(false);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        if (editing) { stopEdit(); return; }
+        if (typing) tgt.blur();
+        return;
+      }
+      if (typing || paletteOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const now = Date.now();
+      const seq = now - lastKey.current.t < 600 ? lastKey.current.k : "";
+      lastKey.current = { k: e.key.toLowerCase(), t: now };
+
+      if (seq === "g") {
+        if (e.key === "h") { e.preventDefault(); go({ kind: "home" }); }
+        if (e.key === "t") { e.preventDefault(); go({ kind: "thoughts" }); }
+        return;
+      }
+      switch (e.key.toLowerCase()) {
+        case "n":
+          e.preventDefault();
+          go({ kind: "home" });
+          setTimeout(() => captureRef.current?.focus(), 80);
+          break;
+        case "p":
+          e.preventDefault();
+          newPage(view.kind === "page" ? (selected?.id ?? null) : null);
+          break;
+        case "e":
+          if (selected && !editing) { e.preventDefault(); startEdit(selected); }
+          break;
+        case "/":
+          if (view.kind === "thoughts") { e.preventDefault(); filterRef.current?.focus(); }
+          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paletteOpen, paletteResults, paletteIdx, editing, selected, view, go, newPage]);
 
-  const byId = useMemo(() => new Map(pages.map((p) => [p.id, p])), [pages]);
-  const childrenOf = (parentId: number | null) =>
-    pages
-      .filter((p) => p.parentId === parentId)
-      .sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title));
-
-  const selected = selectedId != null ? byId.get(selectedId) ?? null : null;
-
+  /* ── date derivate ── */
   const crumbs = useMemo(() => {
     const chain: Page[] = [];
     let p = selected;
@@ -173,17 +441,6 @@ export default function BrainApp({
     }
     return chain;
   }, [selected, byId]);
-
-  const treeMatches = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return null;
-    return pages.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q) ||
-        p.contentMd.toLowerCase().includes(q),
-    );
-  }, [search, pages]);
 
   const tagCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -200,134 +457,26 @@ export default function BrainApp({
     });
   }, [thoughts, thoughtFilter, activeTag]);
 
-  function selectPage(id: number | null) {
-    setSelectedId(id);
-    setEditor(null);
-    if (id != null) {
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        let p = byId.get(id);
-        while (p?.parentId != null) {
-          next.add(p.parentId);
-          p = byId.get(p.parentId);
-        }
-        return next;
-      });
-    }
-  }
+  const stadiuLive = useMemo(() => pages.find((p) => p.slug === "stadiu-live"), [pages]);
+  const dileme = useMemo(() => pages.find((p) => p.slug === "intrebari-deschise"), [pages]);
+  const recentPages = useMemo(
+    () => [...pages].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6),
+    [pages],
+  );
 
-  function startNewPage(parentId: number | null) {
-    setEditor({ pageId: null, parentId, title: "", description: "", icon: "", contentMd: "" });
-  }
-
-  function startEditPage(p: Page) {
-    setEditor({
-      pageId: p.id,
-      parentId: p.parentId,
-      title: p.title,
-      description: p.description ?? "",
-      icon: p.icon ?? "",
-      contentMd: p.contentMd,
-    });
-  }
-
-  async function saveEditor() {
-    if (!editor || !editor.title.trim() || busy) return;
-    setBusy(true);
-    try {
-      if (editor.pageId == null) {
-        const { page } = await api("pages", "POST", {
-          title: editor.title,
-          parentId: editor.parentId,
-          description: editor.description,
-          icon: editor.icon,
-          contentMd: editor.contentMd,
-        });
-        setPages((prev) => [...prev, page]);
-        if (editor.parentId != null) setExpanded((prev) => new Set(prev).add(editor.parentId!));
-        setSelectedId(page.id);
-      } else {
-        const { page } = await api(`pages/${editor.pageId}`, "PATCH", {
-          title: editor.title,
-          description: editor.description,
-          icon: editor.icon,
-          contentMd: editor.contentMd,
-        });
-        setPages((prev) => prev.map((p) => (p.id === page.id ? page : p)));
-      }
-      setEditor(null);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deletePage(p: Page) {
-    if (!confirm(`Ștergi pagina „${p.title}"?`)) return;
-    try {
-      await api(`pages/${p.id}`, "DELETE");
-      setPages((prev) => prev.filter((x) => x.id !== p.id));
-      setSelectedId(p.parentId);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function saveThoughtNew() {
-    if (!composer.content.trim() || busy) return;
-    setBusy(true);
-    try {
-      const { thought } = await api("thoughts", "POST", {
-        contentMd: composer.content,
-        tags: parseTags(composer.tags),
-      });
-      setThoughts((prev) => [thought, ...prev]);
-      setComposer({ content: "", tags: "" });
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveThoughtEdit() {
-    if (!thoughtEdit || busy) return;
-    setBusy(true);
-    try {
-      const { thought } = await api(`thoughts/${thoughtEdit.id}`, "PATCH", {
-        contentMd: thoughtEdit.content,
-        tags: parseTags(thoughtEdit.tags),
-      });
-      setThoughts((prev) => prev.map((t) => (t.id === thought.id ? thought : t)));
-      setThoughtEdit(null);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deleteThought(id: number) {
-    if (!confirm("Ștergi gândul?")) return;
-    try {
-      await api(`thoughts/${id}`, "DELETE");
-      setThoughts((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
-    }
-  }
+  /* ── componente de view ── */
 
   function renderTree(parentId: number | null, depth: number): React.ReactNode {
     return childrenOf(parentId).map((p) => {
       const kids = childrenOf(p.id);
       const isOpen = expanded.has(p.id);
+      const active = view.kind === "page" && view.id === p.id;
       return (
         <div key={p.id}>
           <div
-            className={`brain-tree-row${selectedId === p.id ? " active" : ""}`}
-            style={{ paddingLeft: `${depth * 16 + 4}px` }}
-            onClick={() => selectPage(p.id)}
+            className={`brain-tree-row${active ? " active" : ""}`}
+            style={{ paddingLeft: `${depth * 14 + 2}px` }}
+            onClick={() => go({ kind: "page", id: p.id })}
           >
             <button
               className={`brain-tree-chevron${kids.length ? "" : " hidden"}${isOpen ? " open" : ""}`}
@@ -340,11 +489,12 @@ export default function BrainApp({
                   return next;
                 });
               }}
+              tabIndex={-1}
               aria-label="toggle"
             >
-              <ChevronRight size={12} strokeWidth={2} />
+              <ChevronRight size={11} strokeWidth={2.2} />
             </button>
-            <PageIcon page={p} />
+            <PageIcon page={p} size={13} />
             <span className="brain-tree-title">{p.title}</span>
           </div>
           {isOpen && kids.length > 0 && renderTree(p.id, depth + 1)}
@@ -353,330 +503,373 @@ export default function BrainApp({
     });
   }
 
-  function renderSubPages(parentId: number | null) {
-    const kids = childrenOf(parentId)
-      .slice()
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    if (!kids.length) return null;
+  function renderThoughtRow(t: Thought, compact = false) {
+    const isOpen = openThoughts.has(t.id);
+    const long = !compact && (t.contentMd.length > 280 || t.contentMd.split("\n").length > 4);
     return (
-      <section className="brain-subpages">
-        <div className="brain-subpages-head">
-          <span className="brain-label">SUB-PAGES · {kids.length}</span>
-          <span className="brain-label muted">Recently updated</span>
+      <div key={t.id} className={`brain-thought${compact ? " compact" : ""}`}>
+        <div className="brain-thought-head">
+          <span className="brain-time">{compact ? relTime(t.createdAt) : thoughtDate(t.createdAt)}</span>
+          <span className="brain-thought-tags">
+            {t.tags.map((tag) => (
+              <button
+                key={tag}
+                className="brain-chip"
+                onClick={() => { setActiveTag(tag); if (view.kind !== "thoughts") go({ kind: "thoughts" }); }}
+              >
+                #{tag}
+              </button>
+            ))}
+          </span>
+          {!compact && (
+            <span className="brain-thought-actions">
+              <button onClick={() => setThoughtEdit({ id: t.id, content: t.contentMd })}>
+                <Pencil size={11} strokeWidth={2} />
+              </button>
+              <button onClick={() => deleteThought(t)}>
+                <Trash2 size={11} strokeWidth={2} />
+              </button>
+            </span>
+          )}
         </div>
-        {kids.map((p) => (
-          <div key={p.id} className="brain-subpage-row" onClick={() => selectPage(p.id)}>
-            <div>
-              <div className="brain-subpage-title">
-                {p.icon && <span className="brain-subpage-emoji">{p.icon}</span>}
-                {p.title}
-                <ChevronRight size={15} className="brain-subpage-arrow" strokeWidth={2} />
-              </div>
-              {p.description && <div className="brain-subpage-desc">{p.description}</div>}
+        {thoughtEdit?.id === t.id ? (
+          <div className="brain-capture inline">
+            <textarea
+              autoFocus
+              value={thoughtEdit.content}
+              onChange={(e) => setThoughtEdit({ ...thoughtEdit, content: e.target.value })}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") saveThoughtEdit();
+                if (e.key === "Escape") setThoughtEdit(null);
+              }}
+            />
+            <div className="brain-capture-foot">
+              <span className="brain-kbd-hint">⌘↵ salvează · esc anulează</span>
             </div>
-            <span className="brain-time">{relTime(p.updatedAt)}</span>
           </div>
-        ))}
-      </section>
+        ) : (
+          <>
+            <div className={long && !isOpen ? "brain-thought-body clamped" : "brain-thought-body"}>
+              <Md text={t.contentMd} />
+            </div>
+            {long && (
+              <button
+                className="brain-showmore"
+                onClick={() =>
+                  setOpenThoughts((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(t.id)) next.delete(t.id);
+                    else next.add(t.id);
+                    return next;
+                  })
+                }
+              >
+                {isOpen ? "restrânge" : "arată tot"}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     );
   }
 
-  const pageHeaderActions = selected && !editor && (
-    <div className="brain-page-actions">
-      <button className="brain-btn" onClick={() => startEditPage(selected)}>
-        <Pencil size={11.5} strokeWidth={2} /> Edit
-      </button>
-      <button className="brain-btn" onClick={() => startNewPage(selected.id)}>
-        <Plus size={12.5} strokeWidth={2} /> Sub-page
-      </button>
-      <button className="brain-btn danger icon-only" title="Delete" onClick={() => deletePage(selected)}>
-        <Trash2 size={12.5} strokeWidth={2} />
-      </button>
+  const quickCapture = (
+    <div className="brain-capture">
+      <textarea
+        ref={captureRef}
+        placeholder="Capturează un gând… folosește #taguri inline"
+        value={capture}
+        onChange={(e) => setCapture(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); saveCapture(); }
+        }}
+        rows={capture.includes("\n") || capture.length > 90 ? 4 : 2}
+      />
+      <div className="brain-capture-foot">
+        <span className="brain-kbd-hint">n focus · #tag inline</span>
+        <button className="brain-btn primary sm" disabled={!extractTags(capture).text} onClick={saveCapture}>
+          Salvează <kbd>⌘↵</kbd>
+        </button>
+      </div>
     </div>
   );
 
   return (
     <div className="brain-shell" ref={shellRef}>
       <header className="brain-topbar">
-        <a className="brain-brand" href="/brain">
+        <a
+          className="brain-brand"
+          href="/brain"
+          onClick={(e) => { e.preventDefault(); go({ kind: "home" }); }}
+        >
           <span className="brain-brand-dot" />
           Brain
         </a>
-        <div className="brain-tabs">
-          <button className={view === "pages" ? "active" : ""} onClick={() => setView("pages")}>
-            Pages
+        <nav className="brain-nav">
+          <button className={view.kind === "home" ? "active" : ""} onClick={() => go({ kind: "home" })}>
+            Azi
           </button>
-          <button className={view === "thoughts" ? "active" : ""} onClick={() => setView("thoughts")}>
+          <button className={view.kind === "thoughts" ? "active" : ""} onClick={() => go({ kind: "thoughts" })}>
             Thoughts
           </button>
-        </div>
+        </nav>
         <div className="brain-topbar-right">
-          <div className="brain-search">
-            <Search size={13} strokeWidth={2} className="brain-search-ico" />
-            <input
-              ref={searchRef}
-              placeholder="Search..."
-              value={view === "pages" ? search : thoughtFilter}
-              onChange={(e) => (view === "pages" ? setSearch(e.target.value) : setThoughtFilter(e.target.value))}
-            />
+          <button className="brain-search-btn" onClick={openPalette}>
+            <Search size={12.5} strokeWidth={2} />
+            <span>Caută sau comandă…</span>
             <kbd>⌘K</kbd>
-          </div>
-          <button
-            className="brain-theme-btn"
-            title={dark ? "Light mode" : "Dark mode"}
-            onClick={() => setDark(!dark)}
-          >
-            {dark ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
+          </button>
+          <button className="brain-theme-btn" title="Temă" onClick={() => setDark(!dark)}>
+            {dark ? <Sun size={14} strokeWidth={1.8} /> : <Moon size={14} strokeWidth={1.8} />}
           </button>
         </div>
       </header>
 
-      {view === "pages" ? (
-        <div className="brain-body">
-          <aside className="brain-sidebar">
-            <div className="brain-label">PAGES</div>
-            <nav className="brain-tree">
-              {treeMatches ? (
-                treeMatches.length ? (
-                  treeMatches.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`brain-tree-row${selectedId === p.id ? " active" : ""}`}
-                      style={{ paddingLeft: "4px" }}
-                      onClick={() => selectPage(p.id)}
-                    >
-                      <span className="brain-tree-chevron hidden" />
-                      <PageIcon page={p} />
-                      <span className="brain-tree-title">{p.title}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="brain-empty-side">niciun rezultat</div>
-                )
-              ) : (
-                renderTree(null, 0)
-              )}
-            </nav>
-            <button className="brain-btn brain-newpage" onClick={() => startNewPage(null)}>
-              <Plus size={12.5} strokeWidth={2} /> New page
-            </button>
-          </aside>
+      <div className="brain-body">
+        <aside className="brain-sidebar">
+          <div className="brain-label">Pages</div>
+          <nav className="brain-tree">{renderTree(null, 0)}</nav>
+          {view.kind === "thoughts" && tagCounts.length > 0 && (
+            <>
+              <div className="brain-label" style={{ marginTop: 12 }}>Tags</div>
+              <nav className="brain-taglist">
+                {tagCounts.map(([tag, count]) => (
+                  <button
+                    key={tag}
+                    className={`brain-tag-row${activeTag === tag ? " active" : ""}`}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  >
+                    <span>#{tag}</span>
+                    <span className="brain-tag-count">{count}</span>
+                  </button>
+                ))}
+              </nav>
+            </>
+          )}
+          <button className="brain-btn brain-newpage" onClick={() => newPage(null)}>
+            <Plus size={12} strokeWidth={2} /> New page <kbd>p</kbd>
+          </button>
+        </aside>
 
-          <main className="brain-main">
-            {editor ? (
-              <div className="brain-editor">
+        <main className="brain-main">
+          {view.kind === "home" && (
+            <div className="brain-dash">
+              <div className="brain-dash-head">
+                <h1 className="brain-h1">Azi</h1>
+                <span className="brain-time">
+                  {new Date().toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" })}
+                </span>
+              </div>
+              {quickCapture}
+              <div className="brain-dash-grid">
+                <section className="brain-card" onClick={() => stadiuLive && go({ kind: "page", id: stadiuLive.id })}>
+                  <div className="brain-card-title">📊 Stadiu live</div>
+                  {stadiuLive ? <Md text={stadiuLive.contentMd} /> : <p className="brain-muted">—</p>}
+                </section>
+                <section className="brain-card" onClick={() => dileme && go({ kind: "page", id: dileme.id })}>
+                  <div className="brain-card-title">❓ Întrebări deschise</div>
+                  {dileme ? <Md text={dileme.contentMd} /> : <p className="brain-muted">—</p>}
+                </section>
+              </div>
+              <div className="brain-dash-grid">
+                <section className="brain-dash-list">
+                  <div className="brain-label">Gânduri recente</div>
+                  {thoughts.slice(0, 5).map((t) => renderThoughtRow(t, true))}
+                  {!thoughts.length && <p className="brain-muted">niciun gând încă</p>}
+                </section>
+                <section className="brain-dash-list">
+                  <div className="brain-label">Atinse recent</div>
+                  {recentPages.map((p) => (
+                    <button key={p.id} className="brain-recent-row" onClick={() => go({ kind: "page", id: p.id })}>
+                      <PageIcon page={p} size={13} />
+                      <span className="brain-recent-title">{p.title}</span>
+                      <span className="brain-time">{relTime(p.updatedAt)}</span>
+                    </button>
+                  ))}
+                </section>
+              </div>
+            </div>
+          )}
+
+          {view.kind === "page" && selected && (
+            <article className="brain-page">
+              <div className="brain-page-top">
                 <div className="brain-crumbs">
-                  <button onClick={() => selectPage(null)}>Brain</button>
-                  {editor.parentId != null && byId.get(editor.parentId) && (
-                    <>
+                  <button onClick={() => go({ kind: "home" })}>Brain</button>
+                  {crumbs.slice(0, -1).map((c) => (
+                    <span key={c.id}>
                       <span>/</span>
-                      <button onClick={() => selectPage(editor.parentId)}>{byId.get(editor.parentId)!.title}</button>
+                      <button onClick={() => go({ kind: "page", id: c.id })}>{c.title}</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="brain-page-actions">
+                  {editing ? (
+                    <span className={`brain-save-state ${saveState}`}>
+                      {saveState === "saving" ? "se salvează…" : saveState === "saved" ? "salvat ✓" : ""}
+                    </span>
+                  ) : (
+                    <span className="brain-time">upd {relTime(selected.updatedAt)}</span>
+                  )}
+                  {!editing && (
+                    <>
+                      <button className="brain-btn sm" onClick={() => startEdit(selected)}>
+                        <Pencil size={11} strokeWidth={2} /> Edit <kbd>e</kbd>
+                      </button>
+                      <button className="brain-btn sm" onClick={() => newPage(selected.id)}>
+                        <Plus size={11.5} strokeWidth={2} /> Sub-page
+                      </button>
+                      <button className="brain-btn sm danger icon-only" title="Delete" onClick={() => deletePage(selected)}>
+                        <Trash2 size={11.5} strokeWidth={2} />
+                      </button>
                     </>
                   )}
-                  <span>/</span>
-                  <span className="current">{editor.pageId == null ? "New page" : "Edit"}</span>
-                </div>
-                <div className="brain-editor-titlerow">
-                  <input
-                    className="brain-editor-icon"
-                    placeholder="🧠"
-                    value={editor.icon}
-                    onChange={(e) => setEditor({ ...editor, icon: e.target.value })}
-                  />
-                  <input
-                    className="brain-editor-title"
-                    placeholder="Title"
-                    autoFocus
-                    value={editor.title}
-                    onChange={(e) => setEditor({ ...editor, title: e.target.value })}
-                  />
-                </div>
-                <input
-                  className="brain-editor-desc"
-                  placeholder="Short description (italic subtitle)"
-                  value={editor.description}
-                  onChange={(e) => setEditor({ ...editor, description: e.target.value })}
-                />
-                <textarea
-                  className="brain-editor-content"
-                  placeholder="Markdown content..."
-                  value={editor.contentMd}
-                  onChange={(e) => setEditor({ ...editor, contentMd: e.target.value })}
-                />
-                <div className="brain-editor-actions">
-                  <button className="brain-btn primary" disabled={busy || !editor.title.trim()} onClick={saveEditor}>
-                    {busy ? "Saving..." : "Save"}
-                  </button>
-                  <button className="brain-btn" onClick={() => setEditor(null)}>Cancel</button>
+                  {editing && (
+                    <button className="brain-btn sm" onClick={stopEdit}>
+                      Done <kbd>esc</kbd>
+                    </button>
+                  )}
                 </div>
               </div>
-            ) : selected ? (
-              <article className="brain-page">
-                <div className="brain-page-top">
-                  <div className="brain-crumbs">
-                    <button onClick={() => selectPage(null)}>Brain</button>
-                    {crumbs.slice(0, -1).map((c) => (
-                      <span key={c.id}>
-                        <span>/</span>
-                        <button onClick={() => selectPage(c.id)}>{c.title}</button>
-                      </span>
-                    ))}
+
+              {editing && draft ? (
+                <div className="brain-inline-editor">
+                  <div className="brain-editor-titlerow">
+                    <input
+                      className="brain-editor-icon"
+                      placeholder="🧠"
+                      value={draft.icon}
+                      onChange={(e) => scheduleSave(selected.id, { ...draft, icon: e.target.value })}
+                    />
+                    <input
+                      ref={titleRef}
+                      className="brain-editor-title"
+                      placeholder="Titlu"
+                      value={draft.title}
+                      onChange={(e) => scheduleSave(selected.id, { ...draft, title: e.target.value })}
+                    />
                   </div>
-                  {pageHeaderActions}
+                  <input
+                    className="brain-editor-desc"
+                    placeholder="Descriere scurtă (subtitlu italic)"
+                    value={draft.description}
+                    onChange={(e) => scheduleSave(selected.id, { ...draft, description: e.target.value })}
+                  />
+                  <textarea
+                    className="brain-editor-content"
+                    placeholder="Markdown…"
+                    value={draft.contentMd}
+                    onChange={(e) => scheduleSave(selected.id, { ...draft, contentMd: e.target.value })}
+                  />
                 </div>
-                <h1 className="brain-h1">
-                  {selected.icon && <span className="brain-h1-emoji">{selected.icon}</span>}
-                  {selected.title}
-                </h1>
-                {selected.description && <p className="brain-page-desc">{selected.description}</p>}
-                <div className="brain-rule" />
-                {selected.contentMd.trim() ? (
-                  <Md text={selected.contentMd} />
-                ) : (
-                  <div className="brain-placeholder">Empty page — hit Edit to write.</div>
+              ) : (
+                <>
+                  <h1 className="brain-h1">
+                    {selected.icon && <span className="brain-h1-emoji">{selected.icon}</span>}
+                    {selected.title}
+                  </h1>
+                  {selected.description && <p className="brain-page-desc">{selected.description}</p>}
+                  <div className="brain-rule" />
+                  {selected.contentMd.trim() ? (
+                    <div onDoubleClick={() => startEdit(selected)}>
+                      <Md text={selected.contentMd} />
+                    </div>
+                  ) : (
+                    <button className="brain-placeholder" onClick={() => startEdit(selected)}>
+                      Pagină goală — apasă <kbd>e</kbd> sau click ca să scrii.
+                    </button>
+                  )}
+                  {childrenOf(selected.id).length > 0 && (
+                    <section className="brain-subpages">
+                      <div className="brain-label">Sub-pages · {childrenOf(selected.id).length}</div>
+                      {childrenOf(selected.id)
+                        .slice()
+                        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+                        .map((p) => (
+                          <div key={p.id} className="brain-subpage-row" onClick={() => go({ kind: "page", id: p.id })}>
+                            <div>
+                              <div className="brain-subpage-title">
+                                {p.icon && <span className="brain-subpage-emoji">{p.icon}</span>}
+                                {p.title}
+                                <ChevronRight size={14} className="brain-subpage-arrow" strokeWidth={2} />
+                              </div>
+                              {p.description && <div className="brain-subpage-desc">{p.description}</div>}
+                            </div>
+                            <span className="brain-time">{relTime(p.updatedAt)}</span>
+                          </div>
+                        ))}
+                    </section>
+                  )}
+                </>
+              )}
+            </article>
+          )}
+
+          {view.kind === "thoughts" && (
+            <article className="brain-page thoughts">
+              <div className="brain-dash-head">
+                <h1 className="brain-h1">Thoughts</h1>
+                <span className="brain-time">{thoughts.length} gânduri</span>
+              </div>
+              {quickCapture}
+              <div className="brain-filter-row">
+                <input
+                  ref={filterRef}
+                  className="brain-thought-filter"
+                  placeholder="Filtrează…  ( / )"
+                  value={thoughtFilter}
+                  onChange={(e) => setThoughtFilter(e.target.value)}
+                />
+                {activeTag && (
+                  <button className="brain-chip active" onClick={() => setActiveTag(null)}>
+                    #{activeTag} ✕
+                  </button>
                 )}
-                {renderSubPages(selected.id)}
-                <div className="brain-updated brain-time">updated {relTime(selected.updatedAt)}</div>
-              </article>
-            ) : (
-              <article className="brain-page">
-                <div className="brain-page-top">
-                  <div className="brain-crumbs">
-                    <span className="current">Brain</span>
-                  </div>
-                </div>
-                <h1 className="brain-h1">Brain</h1>
-                <div className="brain-rule" />
-                <div className="brain-placeholder">Pick a page from the tree on the left.</div>
-                {renderSubPages(null)}
-              </article>
-            )}
-          </main>
-        </div>
-      ) : (
-        <div className="brain-body">
-          <aside className="brain-sidebar">
-            <div className="brain-label">TAGS</div>
-            <nav className="brain-taglist">
-              {tagCounts.map(([tag, count]) => (
+              </div>
+              {visibleThoughts.map((t) => renderThoughtRow(t))}
+              {!visibleThoughts.length && <div className="brain-muted" style={{ padding: "24px 0" }}>Nimic aici.</div>}
+            </article>
+          )}
+        </main>
+      </div>
+
+      {paletteOpen && (
+        <div className="brain-palette-overlay" onClick={() => setPaletteOpen(false)}>
+          <div className="brain-palette" onClick={(e) => e.stopPropagation()}>
+            <div className="brain-palette-input">
+              <Command size={14} strokeWidth={2} />
+              <input
+                ref={paletteInputRef}
+                placeholder="Caută pagini, gânduri, comenzi…"
+                value={paletteQ}
+                onChange={(e) => setPaletteQ(e.target.value)}
+              />
+              <kbd>esc</kbd>
+            </div>
+            <div className="brain-palette-list">
+              {paletteResults.map((it, i) => (
                 <button
-                  key={tag}
-                  className={`brain-tag-row${activeTag === tag ? " active" : ""}`}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  key={it.key}
+                  className={`brain-palette-item${i === paletteIdx ? " active" : ""}`}
+                  onMouseEnter={() => setPaletteIdx(i)}
+                  onClick={() => { setPaletteOpen(false); it.action(); }}
                 >
-                  <span>#{tag}</span>
-                  <span className="brain-tag-count">{count}</span>
+                  <span className="brain-palette-label">{it.label}</span>
+                  {it.hint && <span className="brain-palette-hint">{it.hint}</span>}
                 </button>
               ))}
-              {!tagCounts.length && <div className="brain-empty-side">no tags yet</div>}
-            </nav>
-          </aside>
+              {!paletteResults.length && <div className="brain-muted" style={{ padding: 14 }}>Niciun rezultat.</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
-          <main className="brain-main">
-            <article className="brain-page">
-              <h1 className="brain-h1">Thoughts</h1>
-              <p className="brain-page-desc">
-                Everything you&apos;ve thought worth keeping, in the order you thought it.
-              </p>
-              <div className="brain-rule" />
-
-              <div className="brain-composer">
-                <textarea
-                  placeholder="What's worth keeping? (markdown)"
-                  value={composer.content}
-                  onChange={(e) => setComposer({ ...composer, content: e.target.value })}
-                />
-                <div className="brain-composer-row">
-                  <input
-                    placeholder="tags: idea, outglow..."
-                    value={composer.tags}
-                    onChange={(e) => setComposer({ ...composer, tags: e.target.value })}
-                  />
-                  <button
-                    className="brain-btn primary"
-                    disabled={busy || !composer.content.trim()}
-                    onClick={saveThoughtNew}
-                  >
-                    Save thought
-                  </button>
-                </div>
-              </div>
-
-              <input
-                className="brain-thought-filter"
-                placeholder="Filter thoughts..."
-                value={thoughtFilter}
-                onChange={(e) => setThoughtFilter(e.target.value)}
-              />
-
-              {visibleThoughts.map((t) => {
-                const isOpen = openThoughts.has(t.id);
-                const long = t.contentMd.length > 280 || t.contentMd.split("\n").length > 4;
-                return (
-                  <div key={t.id} className="brain-thought">
-                    <div className="brain-thought-head">
-                      <span className="brain-time">{thoughtDate(t.createdAt)}</span>
-                      <span className="brain-thought-tags">
-                        {t.tags.map((tag) => (
-                          <button key={tag} className="brain-chip" onClick={() => setActiveTag(tag)}>
-                            #{tag}
-                          </button>
-                        ))}
-                      </span>
-                      <span className="brain-thought-actions">
-                        <button onClick={() => setThoughtEdit({ id: t.id, content: t.contentMd, tags: t.tags.join(", ") })}>
-                          <Pencil size={11} strokeWidth={2} /> edit
-                        </button>
-                        <button onClick={() => deleteThought(t.id)}>
-                          <Trash2 size={11} strokeWidth={2} /> delete
-                        </button>
-                      </span>
-                    </div>
-                    {thoughtEdit?.id === t.id ? (
-                      <div className="brain-composer inline">
-                        <textarea
-                          value={thoughtEdit.content}
-                          onChange={(e) => setThoughtEdit({ ...thoughtEdit, content: e.target.value })}
-                        />
-                        <div className="brain-composer-row">
-                          <input
-                            value={thoughtEdit.tags}
-                            onChange={(e) => setThoughtEdit({ ...thoughtEdit, tags: e.target.value })}
-                          />
-                          <button className="brain-btn primary" disabled={busy} onClick={saveThoughtEdit}>
-                            Save
-                          </button>
-                          <button className="brain-btn" onClick={() => setThoughtEdit(null)}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className={long && !isOpen ? "brain-thought-body clamped" : "brain-thought-body"}>
-                          <Md text={t.contentMd} />
-                        </div>
-                        {long && (
-                          <button
-                            className="brain-showmore"
-                            onClick={() =>
-                              setOpenThoughts((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(t.id)) next.delete(t.id);
-                                else next.add(t.id);
-                                return next;
-                              })
-                            }
-                          >
-                            {isOpen ? "Show less" : "Show more"}
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-              {!visibleThoughts.length && <div className="brain-placeholder">No thoughts match.</div>}
-            </article>
-          </main>
+      {toast && (
+        <div className="brain-toast">
+          <span>{toast.msg}</span>
+          {toast.undo && (
+            <button onClick={() => { toast.undo!(); setToast(null); }}>Undo</button>
+          )}
         </div>
       )}
     </div>
