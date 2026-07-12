@@ -108,6 +108,30 @@ export const eliteDeuxState = pgTable("elite_deux_state", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ───────────────────────────── Brain (second brain, /brain) ─────────────────────────────
+// Pages = cunoștințe durabile (arbore, markdown). Thoughts = notițe cronologice cu taguri.
+// Consultat de AI la decizii prin /api/brain/export și MCP (/api/brain/mcp).
+
+export const brainPages = pgTable("brain_pages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  parentId: integer("parent_id"), // null = pagină de top-level
+  title: text("title").notNull(),
+  description: text("description"), // subtitlul italic din listări
+  icon: text("icon"), // emoji opțional în arbore
+  contentMd: text("content_md").notNull().default(""),
+  sort: integer("sort").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const brainThoughts = pgTable("brain_thoughts", {
+  id: serial("id").primaryKey(),
+  contentMd: text("content_md").notNull(),
+  tags: jsonb("tags").$type<string[]>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const verificationTokens = pgTable("verification_tokens", {
   id: serial("id").primaryKey(),
   tokenHash: text("token_hash").notNull().unique(),

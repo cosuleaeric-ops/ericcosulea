@@ -63,3 +63,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## Second Brain (/brain) — consultă-l la decizii
+
+Eric are un „second brain" la https://www.ericcosulea.ro/brain (pagini durabile în arbore + gânduri cronologice cu taguri; tabele `brain_pages`/`brain_thoughts` în Neon).
+
+**La orice discuție de tip decizie, direcție, prioritizare sau „merită să fac X?", citește întâi brain-ul și răspunde prin prisma obiectivelor, constrângerilor și deciziilor anterioare de acolo** — nu generic:
+
+```bash
+curl -s https://www.ericcosulea.ro/api/brain/export \
+  -H "x-brain-secret: $(grep '^BRAIN_SECRET=' next-app/.env.local | cut -d= -f2)"
+```
+
+- Căutare punctuală: `GET https://www.ericcosulea.ro/api/brain/search?q=...` (același header).
+- Când Eric spune „reține asta" / ia o decizie demnă de păstrat: `POST /api/brain/thoughts` cu `{"contentMd":"...","tags":["decizie", ...]}` (același header). Confirmă-i că ai salvat-o.
+- Nu crea/modifica pagini din proprie inițiativă — doar la cererea lui explicită.
+- Nu e nevoie de brain la task-uri pur mecanice (fix-uri, refactor, întrebări tehnice).

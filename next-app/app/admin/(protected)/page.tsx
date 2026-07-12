@@ -33,6 +33,10 @@ export default async function AdminDashboard() {
             <h2>🍜 dogu</h2>
             <p>reviews, comenzi și vânzări restaurant — Bolt, Glovo, Breeze.</p>
           </Link>
+          <Link className="admin-quick-card" href="/brain">
+            <h2>🧠 brain</h2>
+            <p>second brain — pagini durabile și gânduri cronologice, citit de AI la decizii.</p>
+          </Link>
           <Link className="admin-quick-card" href="/elite-deux">
             <h2>⚡ elite deux</h2>
             <p>task grid săptămânal cu teme, coloane configurabile și export.</p>
