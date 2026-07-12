@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -37,7 +37,6 @@ export async function saveProjectAction(_prev: ActionState, formData: FormData):
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const url = String(formData.get("url") ?? "").trim();
-  const sort = Number(formData.get("sort") ?? 99);
   const existingLogo = String(formData.get("existing_logo") ?? "").trim();
   const logoFile = formData.get("logo_file");
 
@@ -61,15 +60,15 @@ export async function saveProjectAction(_prev: ActionState, formData: FormData):
         description: description || null,
         url,
         logo,
-        sort,
       }).where(eq(projects.id, id));
     } else {
+      const top = await db.select({ sort: projects.sort }).from(projects).orderBy(desc(projects.sort)).limit(1);
       await db.insert(projects).values({
         name,
         description: description || null,
         url,
         logo,
-        sort,
+        sort: (top[0]?.sort ?? 0) + 1,
       });
     }
   } catch (err) {
@@ -80,6 +79,15 @@ export async function saveProjectAction(_prev: ActionState, formData: FormData):
   revalidatePath("/");
   revalidatePath("/admin/projects");
   redirect("/admin/projects");
+}
+
+export async function reorderProjectsAction(ids: number[]) {
+  if (!(await isAuthenticated())) return;
+  await Promise.all(
+    ids.map((id, index) => db.update(projects).set({ sort: index + 1 }).where(eq(projects.id, id))),
+  );
+  revalidatePath("/");
+  revalidatePath("/admin/projects");
 }
 
 export async function deleteProjectAction(formData: FormData) {

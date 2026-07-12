@@ -2,13 +2,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllPostsForAdmin, getProjectsForHome, getAllImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ArrowUpRight,
   BarChart3,
   Brain,
-  ExternalLink,
   Mail,
   Plus,
   Soup,
@@ -59,23 +57,9 @@ export default async function AdminDashboard() {
 
   return (
     <div className="mx-auto max-w-[700px] px-9 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">admin</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{today}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/" target="_blank">
-              <ExternalLink /> vezi site-ul
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/admin/posts/new">
-              <Plus /> articol nou
-            </Link>
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">admin</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">{today}</p>
       </div>
 
       <SectionLabel>tooluri</SectionLabel>

@@ -40,9 +40,7 @@ export default function RootLayout({
   return (
     <html lang="ro" className={crimsonPro.variable}>
       <head>
-        <Script id="admin-bar-init" strategy="beforeInteractive">
-          {adminBarInitScript}
-        </Script>
+        <script dangerouslySetInnerHTML={{ __html: adminBarInitScript }} />
         <Script
           src="https://plausible.io/js/pa-U3QUedm8aW1g2Ou0qk-1J.js"
           strategy="afterInteractive"

@@ -15,7 +15,6 @@ type Props = {
     description: string | null;
     url: string;
     logo: string;
-    sort: number;
   };
   saveAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 };
@@ -52,11 +51,6 @@ export default function ProjectForm({ initial, saveAction }: Props) {
       <div className="grid gap-2">
         <Label htmlFor="url">URL</Label>
         <Input type="url" id="url" name="url" defaultValue={initial?.url ?? ""} required />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="sort">Ordine sortare</Label>
-        <Input type="number" id="sort" name="sort" defaultValue={initial?.sort ?? 99} required />
       </div>
 
       <div className="grid gap-2">
