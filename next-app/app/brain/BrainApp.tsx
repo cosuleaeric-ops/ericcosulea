@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  ChevronRight,
+  FileText,
+  Moon,
+  Pencil,
+  Plus,
+  Search,
+  Sun,
+  Trash2,
+} from "lucide-react";
 
 type Page = {
   id: number;
@@ -94,12 +104,7 @@ function Md({ text }: { text: string }) {
 
 function PageIcon({ page }: { page: Page }) {
   if (page.icon) return <span className="brain-tree-emoji">{page.icon}</span>;
-  return (
-    <svg className="brain-tree-doc" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-    </svg>
-  );
+  return <FileText size={13} className="brain-tree-doc" strokeWidth={1.8} />;
 }
 
 export default function BrainApp({
@@ -117,6 +122,7 @@ export default function BrainApp({
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dark, setDark] = useState(false);
 
   // Thoughts
   const [composer, setComposer] = useState({ content: "", tags: "" });
@@ -124,6 +130,31 @@ export default function BrainApp({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [openThoughts, setOpenThoughts] = useState<Set<number>>(new Set());
   const [thoughtEdit, setThoughtEdit] = useState<{ id: number; content: string; tags: string } | null>(null);
+
+  const shellRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDark(localStorage.getItem("brain-theme") === "dark");
+  }, []);
+
+  useEffect(() => {
+    const root = shellRef.current?.closest(".brain");
+    if (!root) return;
+    root.classList.toggle("brain-night", dark);
+    localStorage.setItem("brain-theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const byId = useMemo(() => new Map(pages.map((p) => [p.id, p])), [pages]);
   const childrenOf = (parentId: number | null) =>
@@ -173,7 +204,6 @@ export default function BrainApp({
     setSelectedId(id);
     setEditor(null);
     if (id != null) {
-      // deschide strămoșii în arbore
       setExpanded((prev) => {
         const next = new Set(prev);
         let p = byId.get(id);
@@ -296,7 +326,7 @@ export default function BrainApp({
         <div key={p.id}>
           <div
             className={`brain-tree-row${selectedId === p.id ? " active" : ""}`}
-            style={{ paddingLeft: `${depth * 14 + 6}px` }}
+            style={{ paddingLeft: `${depth * 16 + 4}px` }}
             onClick={() => selectPage(p.id)}
           >
             <button
@@ -312,7 +342,7 @@ export default function BrainApp({
               }}
               aria-label="toggle"
             >
-              ›
+              <ChevronRight size={12} strokeWidth={2} />
             </button>
             <PageIcon page={p} />
             <span className="brain-tree-title">{p.title}</span>
@@ -338,8 +368,9 @@ export default function BrainApp({
           <div key={p.id} className="brain-subpage-row" onClick={() => selectPage(p.id)}>
             <div>
               <div className="brain-subpage-title">
-                {p.icon ? `${p.icon} ` : ""}
+                {p.icon && <span className="brain-subpage-emoji">{p.icon}</span>}
                 {p.title}
+                <ChevronRight size={15} className="brain-subpage-arrow" strokeWidth={2} />
               </div>
               {p.description && <div className="brain-subpage-desc">{p.description}</div>}
             </div>
@@ -352,14 +383,20 @@ export default function BrainApp({
 
   const pageHeaderActions = selected && !editor && (
     <div className="brain-page-actions">
-      <button className="brain-btn" onClick={() => startEditPage(selected)}>Edit</button>
-      <button className="brain-btn" onClick={() => startNewPage(selected.id)}>+ Sub-page</button>
-      <button className="brain-btn danger" onClick={() => deletePage(selected)}>Delete</button>
+      <button className="brain-btn" onClick={() => startEditPage(selected)}>
+        <Pencil size={11.5} strokeWidth={2} /> Edit
+      </button>
+      <button className="brain-btn" onClick={() => startNewPage(selected.id)}>
+        <Plus size={12.5} strokeWidth={2} /> Sub-page
+      </button>
+      <button className="brain-btn danger icon-only" title="Delete" onClick={() => deletePage(selected)}>
+        <Trash2 size={12.5} strokeWidth={2} />
+      </button>
     </div>
   );
 
   return (
-    <div className="brain-shell">
+    <div className="brain-shell" ref={shellRef}>
       <header className="brain-topbar">
         <a className="brain-brand" href="/brain">
           <span className="brain-brand-dot" />
@@ -374,12 +411,23 @@ export default function BrainApp({
           </button>
         </div>
         <div className="brain-topbar-right">
-          <input
-            className="brain-search"
-            placeholder="Search..."
-            value={view === "pages" ? search : thoughtFilter}
-            onChange={(e) => (view === "pages" ? setSearch(e.target.value) : setThoughtFilter(e.target.value))}
-          />
+          <div className="brain-search">
+            <Search size={13} strokeWidth={2} className="brain-search-ico" />
+            <input
+              ref={searchRef}
+              placeholder="Search..."
+              value={view === "pages" ? search : thoughtFilter}
+              onChange={(e) => (view === "pages" ? setSearch(e.target.value) : setThoughtFilter(e.target.value))}
+            />
+            <kbd>⌘K</kbd>
+          </div>
+          <button
+            className="brain-theme-btn"
+            title={dark ? "Light mode" : "Dark mode"}
+            onClick={() => setDark(!dark)}
+          >
+            {dark ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
+          </button>
         </div>
       </header>
 
@@ -394,10 +442,10 @@ export default function BrainApp({
                     <div
                       key={p.id}
                       className={`brain-tree-row${selectedId === p.id ? " active" : ""}`}
-                      style={{ paddingLeft: "6px" }}
+                      style={{ paddingLeft: "4px" }}
                       onClick={() => selectPage(p.id)}
                     >
-                      <span className="brain-tree-chevron hidden">›</span>
+                      <span className="brain-tree-chevron hidden" />
                       <PageIcon page={p} />
                       <span className="brain-tree-title">{p.title}</span>
                     </div>
@@ -410,7 +458,7 @@ export default function BrainApp({
               )}
             </nav>
             <button className="brain-btn brain-newpage" onClick={() => startNewPage(null)}>
-              + New page
+              <Plus size={12.5} strokeWidth={2} /> New page
             </button>
           </aside>
 
@@ -477,7 +525,7 @@ export default function BrainApp({
                   {pageHeaderActions}
                 </div>
                 <h1 className="brain-h1">
-                  {selected.icon ? `${selected.icon} ` : ""}
+                  {selected.icon && <span className="brain-h1-emoji">{selected.icon}</span>}
                   {selected.title}
                 </h1>
                 {selected.description && <p className="brain-page-desc">{selected.description}</p>}
@@ -540,7 +588,7 @@ export default function BrainApp({
                 />
                 <div className="brain-composer-row">
                   <input
-                    placeholder="tags: idea, journeyloop..."
+                    placeholder="tags: idea, outglow..."
                     value={composer.tags}
                     onChange={(e) => setComposer({ ...composer, tags: e.target.value })}
                   />
@@ -577,9 +625,11 @@ export default function BrainApp({
                       </span>
                       <span className="brain-thought-actions">
                         <button onClick={() => setThoughtEdit({ id: t.id, content: t.contentMd, tags: t.tags.join(", ") })}>
-                          edit
+                          <Pencil size={11} strokeWidth={2} /> edit
                         </button>
-                        <button onClick={() => deleteThought(t.id)}>delete</button>
+                        <button onClick={() => deleteThought(t.id)}>
+                          <Trash2 size={11} strokeWidth={2} /> delete
+                        </button>
                       </span>
                     </div>
                     {thoughtEdit?.id === t.id ? (
