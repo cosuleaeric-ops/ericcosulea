@@ -66,12 +66,12 @@ export default async function AdminDashboard() {
       <div className="mb-7 grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
         {TOOLS.map((t) => (
           <Link key={t.href} href={t.href}>
-            <Card className="flex-row items-center gap-3 px-3.5 py-3 transition-colors hover:border-ring">
-              <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${t.chip}`}>
-                <t.icon className="size-[17px]" />
+            <Card className="flex-row items-center gap-3 px-4 py-4.5 transition-all duration-150 hover:-translate-y-1 hover:border-ring hover:shadow-lg">
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${t.chip}`}>
+                <t.icon className="size-[18px]" />
               </span>
-              <span className="text-[13px] font-medium">{t.name}</span>
-              <ArrowUpRight className="ml-auto size-3.5 text-muted-foreground/60" />
+              <span className="text-sm font-medium">{t.name}</span>
+              <ArrowUpRight className="ml-auto size-4 text-muted-foreground/60" />
             </Card>
           </Link>
         ))}
@@ -80,7 +80,7 @@ export default async function AdminDashboard() {
       <SectionLabel>editezi aici</SectionLabel>
       <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
         <Link href="/admin/posts">
-          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+          <Card className="h-full gap-0 px-5 py-4.5 transition-all duration-150 hover:-translate-y-1 hover:border-ring hover:shadow-lg">
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-[13px] font-medium">articole</span>
               <span className="text-[11px] text-muted-foreground">{posts.length}</span>
@@ -97,7 +97,7 @@ export default async function AdminDashboard() {
           </Card>
         </Link>
         <Link href="/admin/projects">
-          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+          <Card className="h-full gap-0 px-5 py-4.5 transition-all duration-150 hover:-translate-y-1 hover:border-ring hover:shadow-lg">
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-[13px] font-medium">proiecte</span>
               <span className="text-[11px] text-muted-foreground">{projects.length}</span>
@@ -111,7 +111,7 @@ export default async function AdminDashboard() {
           </Card>
         </Link>
         <Link href="/inspo">
-          <Card className="h-full gap-0 px-4 py-3.5 transition-colors hover:border-ring">
+          <Card className="h-full gap-0 px-5 py-4.5 transition-all duration-150 hover:-translate-y-1 hover:border-ring hover:shadow-lg">
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-[13px] font-medium">inspo</span>
               <span className="text-[11px] text-muted-foreground">{images.length} img</span>
