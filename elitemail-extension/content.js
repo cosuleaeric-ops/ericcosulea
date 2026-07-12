@@ -714,11 +714,26 @@
   }
   function readRecipients(scope) {
     const root = composeRoot(scope);
+    const own = (readAccount() || "").toLowerCase();
     const emails = new Set();
-    root.querySelectorAll("[email]").forEach((n) => {
-      const e = n.getAttribute("email");
-      if (e && e.includes("@")) emails.add(e);
+    const add = (raw) => {
+      // Poate fi o listă („a@x, b@y") sau un singur token — extragem fiecare adresă.
+      (raw || "").match(/[\w.+-]+@[\w.-]+\.\w+/g)?.forEach((e) => {
+        if (e.toLowerCase() !== own) emails.add(e); // niciodată propriul cont
+      });
+    };
+    // 1) Chip-urile din câmpurile de adresă (To/Cc/Bcc), NU din conținutul citat.
+    //    data-hovercard-id / [email] pe chip; excludem quote-ul (unde apar tot [email]).
+    root.querySelectorAll("[email], [data-hovercard-id]").forEach((n) => {
+      if (n.closest(".gmail_quote")) return;
+      add(n.getAttribute("email") || n.getAttribute("data-hovercard-id"));
     });
+    // 2) Text tastat, încă ne-transformat în chip (Gmail îl ține în input/textarea).
+    root
+      .querySelectorAll(
+        'input[aria-label*="To" i], input[aria-label*="Către" i], input[aria-label*="Recipient" i], input[aria-label*="Destinatar" i], textarea[name="to"], input[name="to"]',
+      )
+      .forEach((i) => add(i.value));
     return Array.from(emails).join(", ");
   }
   function readAccount() {
