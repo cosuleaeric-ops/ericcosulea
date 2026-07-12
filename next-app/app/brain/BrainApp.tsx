@@ -499,7 +499,6 @@ export default function BrainApp({
 
   const stadiuLive = useMemo(() => pages.find((p) => p.slug === "stadiu-live"), [pages]);
   const dileme = useMemo(() => pages.find((p) => p.slug === "intrebari-deschise"), [pages]);
-  const recentPages = useMemo(() => [...pages].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6), [pages]);
 
   const backlinks = useMemo(() => {
     if (!selected) return [] as Page[];
@@ -702,23 +701,6 @@ export default function BrainApp({
                 <section className="brain-card" onClick={() => dileme && go({ kind: "page", id: dileme.id })}>
                   <div className="brain-card-title">❓ Întrebări deschise</div>
                   {dileme ? <MdRich text={dileme.contentMd} resolve={resolveByName} onNav={navByName} /> : <p className="brain-muted">—</p>}
-                </section>
-              </div>
-              <div className="brain-dash-grid">
-                <section className="brain-dash-list">
-                  <div className="brain-label">Gânduri recente</div>
-                  {thoughts.slice(0, 5).map((t) => renderThoughtRow(t, true))}
-                  {!thoughts.length && <p className="brain-muted">niciun gând încă</p>}
-                </section>
-                <section className="brain-dash-list">
-                  <div className="brain-label">Atinse recent</div>
-                  {recentPages.map((p) => (
-                    <button key={p.id} className="brain-recent-row" onClick={() => go({ kind: "page", id: p.id })}>
-                      {p.icon ? <span className="brain-emoji" style={{ fontSize: 13 }}>{p.icon}</span> : <FileText size={13} className="brain-doc-ico" strokeWidth={1.8} />}
-                      <span className="brain-recent-title">{p.title}</span>
-                      <span className="brain-time">{relTime(p.updatedAt)}</span>
-                    </button>
-                  ))}
                 </section>
               </div>
             </div>
