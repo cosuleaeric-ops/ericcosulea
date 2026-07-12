@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LoginForm from "./LoginForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "login - admin",
@@ -18,12 +19,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const errorMessage = error ? ERROR_MESSAGES[error] : null;
 
   return (
-    <main className="page page-narrow">
-      <section className="page-section">
-        <h1 className="page-title">login</h1>
-        {errorMessage && <p className="login-error">{errorMessage}</p>}
-        <LoginForm />
-      </section>
+    <main className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center px-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl lowercase">login</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {errorMessage && <p className="mb-4 text-sm text-destructive">{errorMessage}</p>}
+          <LoginForm />
+        </CardContent>
+      </Card>
     </main>
   );
 }

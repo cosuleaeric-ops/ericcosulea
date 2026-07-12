@@ -2,6 +2,10 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type ActionState = { error?: string } | undefined;
 
@@ -26,9 +30,9 @@ const DEFAULT_PUBLISHED_AT = () => {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn" disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "..." : "salvează"}
-    </button>
+    </Button>
   );
 }
 
@@ -54,20 +58,21 @@ export default function PostEditor({ initial, saveAction }: Props) {
   };
 
   return (
-    <form className="post-editor" action={formAction}>
+    <form className="mt-6 flex flex-col gap-4" action={formAction}>
       {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="content_html" value={contentHtml} />
 
-      {state?.error && <p className="login-error">{state.error}</p>}
+      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-      <label className="form-label" htmlFor="title">Titlu</label>
-      <input className="form-input" type="text" id="title" name="title" defaultValue={initial?.title ?? ""} required />
+      <div className="grid gap-2">
+        <Label htmlFor="title">Titlu</Label>
+        <Input type="text" id="title" name="title" defaultValue={initial?.title ?? ""} required />
+      </div>
 
-      <div className="form-row">
-        <div>
-          <label className="form-label" htmlFor="slug">Slug</label>
-          <input
-            className="form-input"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="slug">Slug</Label>
+          <Input
             type="text"
             id="slug"
             name="slug"
@@ -77,10 +82,9 @@ export default function PostEditor({ initial, saveAction }: Props) {
             required
           />
         </div>
-        <div>
-          <label className="form-label" htmlFor="published_at">Publicat la</label>
-          <input
-            className="form-input"
+        <div className="grid gap-2">
+          <Label htmlFor="published_at">Publicat la</Label>
+          <Input
             type="datetime-local"
             id="published_at"
             name="published_at"
@@ -90,36 +94,63 @@ export default function PostEditor({ initial, saveAction }: Props) {
         </div>
       </div>
 
-      <label className="form-label" htmlFor="excerpt">Excerpt (opțional)</label>
-      <textarea className="form-input" id="excerpt" name="excerpt" rows={2} defaultValue={initial?.excerpt ?? ""} />
-
-      <label className="form-label">Conținut</label>
-      <div className="editor-toolbar">
-        <select onChange={(e) => exec("formatBlock", e.target.value)} defaultValue="P">
-          <option value="P">paragraf</option>
-          <option value="H2">heading mare</option>
-          <option value="H3">heading mic</option>
-        </select>
-        <button type="button" onClick={() => exec("bold")}><strong>B</strong></button>
-        <button type="button" onClick={() => exec("italic")}><em>I</em></button>
-        <button type="button" onClick={() => exec("insertUnorderedList")}>lista</button>
-        <button type="button" onClick={() => exec("insertOrderedList")}>1. 2. 3.</button>
-        <button type="button" onClick={() => exec("formatBlock", "blockquote")}>quote</button>
-        <button type="button" onClick={() => {
-          const url = prompt("URL link:");
-          if (url) exec("createLink", url);
-        }}>link</button>
-        <button type="button" onClick={() => exec("unlink")}>unlink</button>
+      <div className="grid gap-2">
+        <Label htmlFor="excerpt">Excerpt (opțional)</Label>
+        <Textarea id="excerpt" name="excerpt" rows={2} defaultValue={initial?.excerpt ?? ""} />
       </div>
-      <div
-        ref={editorRef}
-        className="editor"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={onEditorInput}
-      />
 
-      <div className="form-actions">
+      <div className="grid gap-2">
+        <Label>Conținut</Label>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <select
+            onChange={(e) => exec("formatBlock", e.target.value)}
+            defaultValue="P"
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="P">paragraf</option>
+            <option value="H2">heading mare</option>
+            <option value="H3">heading mic</option>
+          </select>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("bold")}>
+            <strong>B</strong>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("italic")}>
+            <em>I</em>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("insertUnorderedList")}>
+            lista
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("insertOrderedList")}>
+            1. 2. 3.
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("formatBlock", "blockquote")}>
+            quote
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const url = prompt("URL link:");
+              if (url) exec("createLink", url);
+            }}
+          >
+            link
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => exec("unlink")}>
+            unlink
+          </Button>
+        </div>
+        <div
+          ref={editorRef}
+          className="admin-prose min-h-[280px] rounded-md border border-input bg-card px-3 py-2 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={onEditorInput}
+        />
+      </div>
+
+      <div>
         <SubmitButton />
       </div>
     </form>

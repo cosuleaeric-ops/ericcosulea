@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function DeleteButton({
   action,
@@ -14,7 +15,7 @@ export default function DeleteButton({
   const [pending, startTransition] = useTransition();
   return (
     <form
-      style={{ display: "inline" }}
+      className="inline"
       onSubmit={(e) => {
         e.preventDefault();
         if (!confirm(confirmText)) return;
@@ -23,9 +24,16 @@ export default function DeleteButton({
         startTransition(() => action(fd));
       }}
     >
-      <button type="submit" className="admin-delete-btn" disabled={pending}>
+      <Button
+        type="submit"
+        variant="ghost"
+        size="icon-sm"
+        disabled={pending}
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label="șterge"
+      >
         {pending ? "…" : "×"}
-      </button>
+      </Button>
     </form>
   );
 }

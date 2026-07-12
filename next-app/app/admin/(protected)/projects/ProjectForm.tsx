@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type ActionState = { error?: string } | undefined;
 
@@ -20,9 +23,9 @@ type Props = {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn" disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "..." : "salvează"}
-    </button>
+    </Button>
   );
 }
 
@@ -30,35 +33,48 @@ export default function ProjectForm({ initial, saveAction }: Props) {
   const [state, formAction] = useActionState(saveAction, undefined);
 
   return (
-    <form className="post-editor" action={formAction}>
+    <form className="mt-6 flex flex-col gap-4" action={formAction}>
       {initial?.id != null && <input type="hidden" name="id" value={initial.id} />}
       {initial?.logo && <input type="hidden" name="existing_logo" value={initial.logo} />}
 
-      {state?.error && <p className="login-error">{state.error}</p>}
+      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-      <label className="form-label" htmlFor="name">Nume</label>
-      <input className="form-input" type="text" id="name" name="name" defaultValue={initial?.name ?? ""} required />
+      <div className="grid gap-2">
+        <Label htmlFor="name">Nume</Label>
+        <Input type="text" id="name" name="name" defaultValue={initial?.name ?? ""} required />
+      </div>
 
-      <label className="form-label" htmlFor="description">Descriere (opțional)</label>
-      <input className="form-input" type="text" id="description" name="description" defaultValue={initial?.description ?? ""} />
+      <div className="grid gap-2">
+        <Label htmlFor="description">Descriere (opțional)</Label>
+        <Input type="text" id="description" name="description" defaultValue={initial?.description ?? ""} />
+      </div>
 
-      <label className="form-label" htmlFor="url">URL</label>
-      <input className="form-input" type="url" id="url" name="url" defaultValue={initial?.url ?? ""} required />
+      <div className="grid gap-2">
+        <Label htmlFor="url">URL</Label>
+        <Input type="url" id="url" name="url" defaultValue={initial?.url ?? ""} required />
+      </div>
 
-      <label className="form-label" htmlFor="sort">Ordine sortare</label>
-      <input className="form-input" type="number" id="sort" name="sort" defaultValue={initial?.sort ?? 99} required />
+      <div className="grid gap-2">
+        <Label htmlFor="sort">Ordine sortare</Label>
+        <Input type="number" id="sort" name="sort" defaultValue={initial?.sort ?? 99} required />
+      </div>
 
-      <label className="form-label">Logo</label>
-      {initial?.logo && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src={initial.logo} alt="" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 8 }} />
-          <span className="post-item-date">{initial.logo}</span>
-        </div>
-      )}
-      <input className="form-input" type="file" id="logo_file" name="logo_file" accept="image/*" />
-      {!initial?.logo && <p className="post-item-date">Acceptă jpg, png, webp, gif, svg.</p>}
+      <div className="grid gap-2">
+        <Label htmlFor="logo_file">Logo</Label>
+        {initial?.logo && (
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={initial.logo} alt="" className="size-8 rounded-lg object-contain" />
+            <span className="text-sm text-muted-foreground">{initial.logo}</span>
+          </div>
+        )}
+        <Input type="file" id="logo_file" name="logo_file" accept="image/*" />
+        {!initial?.logo && (
+          <p className="text-sm text-muted-foreground">Acceptă jpg, png, webp, gif, svg.</p>
+        )}
+      </div>
 
-      <div className="form-actions">
+      <div>
         <SubmitButton />
       </div>
     </form>

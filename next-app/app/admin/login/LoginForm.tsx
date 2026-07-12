@@ -2,33 +2,34 @@
 
 import { useActionState } from "react";
 import { loginAction } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, undefined);
 
   if (state?.ok) {
     return (
-      <p className="page-lead">
+      <p className="text-muted-foreground">
         Dacă email-ul e corect, ți-am trimis un link de autentificare. Verifică inbox-ul (sau Spam).
       </p>
     );
   }
 
   return (
-    <form action={action} className="login-form">
-      <input
+    <form action={action} className="flex flex-col gap-3">
+      <Input
         type="email"
         name="email"
         placeholder="email"
         autoComplete="email"
         autoFocus
         required
-        className="login-input"
       />
-      <button type="submit" className="btn" disabled={pending}>
+      <Button type="submit" disabled={pending}>
         {pending ? "se trimite..." : "trimite link"}
-      </button>
-      {state?.error && <p className="login-error">{state.error}</p>}
+      </Button>
+      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
     </form>
   );
 }

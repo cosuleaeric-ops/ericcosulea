@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function NewProjectPage() {
   return (
-    <main className="page">
-      <section className="section">
-        <Link className="post-back" href="/admin/projects">← projects</Link>
-        <h2>proiect nou</h2>
+    <main className="mx-auto max-w-[820px] px-6 py-8">
+      <section>
+        <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/projects">← projects</Link>
+        <h2 className="mt-3 text-3xl font-semibold lowercase">proiect nou</h2>
         <ProjectForm saveAction={saveProjectAction} />
       </section>
     </main>

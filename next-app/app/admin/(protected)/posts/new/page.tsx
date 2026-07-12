@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function NewPostPage() {
   return (
-    <main className="page">
-      <section className="section">
-        <Link className="post-back" href="/admin/posts">← posts</Link>
-        <h2>articol nou</h2>
+    <main className="mx-auto max-w-[820px] px-6 py-8">
+      <section>
+        <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/posts">← posts</Link>
+        <h2 className="mt-3 text-3xl font-semibold lowercase">articol nou</h2>
         <PostEditor saveAction={savePostAction} />
       </section>
     </main>
