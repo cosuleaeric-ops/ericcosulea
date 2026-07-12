@@ -16,7 +16,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   if (!project) notFound();
 
   return (
-    <main className="mx-auto max-w-[820px] px-6 py-8">
+    <main className="mx-auto max-w-[700px] px-9 py-8">
       <section>
         <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/projects">← projects</Link>
         <h2 className="mt-3 text-3xl font-semibold lowercase">editează proiect</h2>

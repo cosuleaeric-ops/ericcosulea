@@ -21,7 +21,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   if (!post) notFound();
 
   return (
-    <main className="mx-auto max-w-[820px] px-6 py-8">
+    <main className="mx-auto max-w-[700px] px-9 py-8">
       <section>
         <Link className="text-sm text-muted-foreground hover:text-foreground" href="/admin/posts">← posts</Link>
         <h2 className="mt-3 text-3xl font-semibold lowercase">editează articol</h2>

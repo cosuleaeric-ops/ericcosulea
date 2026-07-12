@@ -24,7 +24,7 @@ export default async function AdminPostsList() {
   const posts = await getAllPostsForAdmin();
 
   return (
-    <main className="mx-auto max-w-[820px] px-6 py-8">
+    <main className="mx-auto max-w-[700px] px-9 py-8">
       <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">
         ← admin
       </Link>
