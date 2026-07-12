@@ -13,8 +13,10 @@
 /* dark: doar pe clasă (mail), nu pe prefers-color-scheme — adminul e light-only. */
 @custom-variant dark (&:is(.dark *));
 
-/* Tema shadcn — paleta caldă a site-ului. */
-:root {
+/* Tema shadcn — paleta caldă a site-ului.
+   IMPORTANT: scoped pe .admin-app, NU pe :root — site.css folosește aceleași nume
+   de variabile (--muted, --accent, --card) și le-ar suprascrie pe site-ul public. */
+.admin-app {
   --background: #fffdf7;
   --foreground: #1c1c1c;
   --card: #fffaf2;
