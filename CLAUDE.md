@@ -79,5 +79,6 @@ curl -s https://www.ericcosulea.ro/api/brain/export \
 
 - Căutare punctuală: `GET https://www.ericcosulea.ro/api/brain/search?q=...` (același header).
 - Când Eric spune „reține asta" / ia o decizie demnă de păstrat: `POST /api/brain/thoughts` cu `{"contentMd":"...","tags":["decizie", ...]}` (același header). Confirmă-i că ai salvat-o.
-- Nu crea/modifica pagini din proprie inițiativă — doar la cererea lui explicită.
+- Nu crea/modifica pagini din proprie inițiativă — doar la cererea lui explicită. Excepție: pagina `stadiu-live` e scrisă automat de `/api/cron/brain-sync` (cron Vercel, luni 05:00 UTC; declanșabil manual cu GET + `x-brain-secret`).
+- După un eveniment major într-un proiect la care lucrezi cu Eric (lansare, schimbare de pricing, pivot, primul client plătitor, prag atins/ratat), propune-i să salvezi un thought cu tagul proiectului — istoricul deciziilor e valoarea brain-ului.
 - Nu e nevoie de brain la task-uri pur mecanice (fix-uri, refactor, întrebări tehnice).
