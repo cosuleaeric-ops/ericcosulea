@@ -387,29 +387,6 @@
 .brain-wikilink:hover { border-bottom-color: var(--b-accent); }
 .brain-wikilink.missing { color: var(--b-ink-faint); border-bottom-style: dashed; }
 
-/* ── Focus (Elite Deux) ── */
-.brain-focus { margin-top: 14px; }
-.brain-focus-head { display: block; text-decoration: none; margin-bottom: 6px; transition: color 0.12s ease; }
-.brain-focus-head:hover { color: var(--b-ink-soft); }
-.brain-focus-list {
-  background: var(--b-elev); border: 1px solid var(--b-line); border-radius: 12px;
-  padding: 6px; box-shadow: var(--b-shadow);
-}
-.brain-focus-item { display: flex; align-items: center; gap: 9px; padding: 5px 8px; border-radius: 7px; font-size: 13.5px; }
-.brain-focus-item.done { color: var(--b-ink-faint); }
-.brain-focus-item.done .brain-focus-text { text-decoration: line-through; }
-.brain-focus-box {
-  width: 15px; height: 15px; flex-shrink: 0; border-radius: 5px;
-  border: 1.5px solid var(--b-ink-faint); display: grid; place-items: center; color: var(--b-bg);
-}
-.brain-focus-box.on { background: var(--b-accent); border-color: var(--b-accent); }
-.brain-focus-text { flex: 1; }
-.brain-focus-tag {
-  font-family: var(--b-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--b-error); border: 1px solid color-mix(in srgb, var(--b-error) 45%, transparent);
-  border-radius: 5px; padding: 1px 5px;
-}
-
 /* ── Backlinks ── */
 .brain-backlinks { margin-top: 32px; }
 .brain-backlinks .brain-label { display: block; padding-bottom: 8px; border-bottom: 1px solid var(--b-line); margin-bottom: 4px; }

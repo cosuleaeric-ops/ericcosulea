@@ -30,7 +30,6 @@ type Page = {
   updatedAt: string;
 };
 type Thought = { id: number; contentMd: string; tags: string[]; createdAt: string };
-type RecentTask = { date: string; id: string; text: string; completed: boolean };
 type View = { kind: "home" } | { kind: "thoughts" } | { kind: "graph" } | { kind: "page"; id: number };
 
 /* ── helpers ── */
@@ -49,10 +48,6 @@ function thoughtDate(iso: string): string {
     " · " +
     d.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })
   );
-}
-function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function extractTags(raw: string): { text: string; tags: string[] } {
   const tags = [...new Set([...raw.matchAll(/(^|\s)#([a-zA-Z0-9ăâîșț\-_]+)/g)].map((m) => m[2].toLowerCase()))];
@@ -167,11 +162,9 @@ type PaletteItem = { key: string; label: string; hint?: string; action: () => vo
 export default function BrainApp({
   initialPages,
   initialThoughts,
-  recentTasks,
 }: {
   initialPages: Page[];
   initialThoughts: Thought[];
-  recentTasks: RecentTask[];
 }) {
   const [pages, setPages] = useState<Page[]>(initialPages);
   const [thoughts, setThoughts] = useState<Thought[]>(initialThoughts);
@@ -508,15 +501,6 @@ export default function BrainApp({
   const dileme = useMemo(() => pages.find((p) => p.slug === "intrebari-deschise"), [pages]);
   const recentPages = useMemo(() => [...pages].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6), [pages]);
 
-  const focusTasks = useMemo(() => {
-    const t = todayISO();
-    const today = recentTasks.filter((x) => x.date === t);
-    const overdue = recentTasks.filter((x) => x.date < t && !x.completed);
-    return [...overdue.map((x) => ({ ...x, overdue: true })), ...today.map((x) => ({ ...x, overdue: false }))]
-      .sort((a, b) => Number(a.completed) - Number(b.completed))
-      .slice(0, 8);
-  }, [recentTasks]);
-
   const backlinks = useMemo(() => {
     if (!selected) return [] as Page[];
     return pages.filter((q) => q.id !== selected.id && wikiNames(q.contentMd).some((n) => resolveByName(n)?.id === selected.id));
@@ -710,20 +694,6 @@ export default function BrainApp({
                 <span className="brain-time">{new Date().toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" })}</span>
               </div>
               {quickCapture}
-              {focusTasks.length > 0 && (
-                <section className="brain-focus">
-                  <a className="brain-label brain-focus-head" href="/elite-deux">✅ Focus azi · din Elite Deux ↗</a>
-                  <div className="brain-focus-list">
-                    {focusTasks.map((t) => (
-                      <div key={t.id} className={`brain-focus-item${t.completed ? " done" : ""}`}>
-                        <span className={`brain-focus-box${t.completed ? " on" : ""}`}>{t.completed && <Check size={10} strokeWidth={3} />}</span>
-                        <span className="brain-focus-text">{t.text}</span>
-                        {t.overdue && !t.completed && <span className="brain-focus-tag">restanță</span>}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
               <div className="brain-dash-grid">
                 <section className="brain-card" onClick={() => stadiuLive && go({ kind: "page", id: stadiuLive.id })}>
                   <div className="brain-card-title">📊 Stadiu live</div>
