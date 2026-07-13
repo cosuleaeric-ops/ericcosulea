@@ -1,4 +1,4 @@
-/* analytics — tracking script (DataFast clone). Fără dependențe. */
+/* EliteData — tracking script first-party. Fără dependențe. */
 (function () {
   "use strict";
 
@@ -28,9 +28,9 @@
     /\.local$/.test(host);
   if (isLocal && !includeLocalhost) return;
 
-  // ── Opt-out propriu (ca DataFast): localStorage.datafast_ignore=true ──
+  // ── Opt-out propriu: localStorage.elitedata_ignore=true ──
   try {
-    if (localStorage.getItem("datafast_ignore") === "true") return;
+    if (localStorage.getItem("elitedata_ignore") === "true") return;
   } catch (e) {}
 
   // ── Visitor id persistent (localStorage, fallback cookie) ──
@@ -103,16 +103,16 @@
   };
   window.addEventListener("popstate", pageview);
 
-  // ── Custom events: window.datafast("nume_event") ──
-  window.datafast = function (name) {
+  // ── Custom events: window.elitedata("nume_event") ──
+  window.elitedata = function (name) {
     if (name) send("custom", String(name));
   };
 
-  // ── Goal pe click (ca DataFast): orice element cu data-fast-goal="nume" ──
+  // ── Goal pe click: orice element cu elite-data-goal="nume" ──
   // Delegat pe document, prinde și click pe copiii elementului marcat.
   document.addEventListener("click", function (e) {
-    var el = e.target && e.target.closest && e.target.closest("[data-fast-goal]");
-    var name = el && el.getAttribute("data-fast-goal");
+    var el = e.target && e.target.closest && e.target.closest("[elite-data-goal]");
+    var name = el && el.getAttribute("elite-data-goal");
     if (name) send("custom", name);
   });
 
