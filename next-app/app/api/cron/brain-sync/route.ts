@@ -59,6 +59,42 @@ async function outglowStats() {
   };
 }
 
+type ClpRow = { data: string; suma: number; categorie?: string | null };
+
+// P&L-ul CLP live, prin sync-export-ul de pe cursurilapahar.ro (token, nu sesiune).
+async function clpStats() {
+  const url = process.env.CLP_SYNC_URL;
+  const token = process.env.CLP_SYNC_TOKEN;
+  if (!url || !token) return null;
+  try {
+    const bundle = await fetch(url, {
+      headers: { "X-Sync-Token": token },
+      cache: "no-store",
+    }).then((r) => (r.ok ? r.json() : null));
+    const pnl = bundle?.pnl;
+    if (!pnl) return null;
+    const ven = new Map<string, number>();
+    const chel = new Map<string, number>();
+    for (const r of (pnl.venituri ?? []) as ClpRow[]) {
+      const luna = r.data.slice(0, 7);
+      ven.set(luna, (ven.get(luna) ?? 0) + r.suma);
+    }
+    for (const r of (pnl.cheltuieli ?? []) as ClpRow[]) {
+      if ((r.categorie ?? "").trim().toLowerCase() === "dividende") continue; // profit distribuit, nu cost
+      const luna = r.data.slice(0, 7);
+      chel.set(luna, (chel.get(luna) ?? 0) + r.suma);
+    }
+    const luni = [...new Set([...ven.keys(), ...chel.keys()])].sort().slice(-4);
+    return luni.map((luna) => ({
+      luna,
+      venituri: Math.round(ven.get(luna) ?? 0),
+      cheltuieli: Math.round(chel.get(luna) ?? 0),
+    }));
+  } catch {
+    return null;
+  }
+}
+
 async function pnlPersonal() {
   const from = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 7);
   const [venit, chelt, wallet] = await Promise.all([
@@ -90,7 +126,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "unauth" }, { status: 401 });
   }
 
-  const [og, pnl] = await Promise.all([outglowStats(), pnlPersonal()]);
+  const [og, pnl, clp] = await Promise.all([outglowStats(), pnlPersonal(), clpStats()]);
   const azi = new Date().toISOString().slice(0, 10);
   const lines: string[] = [
     `*Sincronizat automat: ${azi} (cron săptămânal, luni dimineața; se poate rula și manual).*`,
@@ -120,11 +156,15 @@ export async function GET(request: Request) {
     lines.push(`- Buffer portofel (${w.data}): **${total} lei** (cash ${w.cash} + ING ${w.ing} + Revolut ${w.revolut} + T212 ${w.trading212})`);
   }
 
-  lines.push(
-    "",
-    "## Cursuri la Pahar",
-    "- P&L-ul CLP nu e accesibil din cloud (sqlite pe hosting) — cifrele de referință se actualizează manual în [Constrângeri și resurse] din snapshotul local sau export.php.",
-  );
+  lines.push("", "## Cursuri la Pahar — P&L live (fără dividende)");
+  if (clp?.length) {
+    for (const m of clp) {
+      lines.push(`- ${m.luna}: venituri ${m.venituri} lei · cheltuieli ${m.cheltuieli} lei · profit ${m.venituri - m.cheltuieli} lei`);
+    }
+    lines.push("- *Lunile recente pot fi parțiale — încasările LiveTickets vin în valuri.*");
+  } else {
+    lines.push("- (sync-export CLP indisponibil la această rulare)");
+  }
 
   await upsertPage({
     slug: "stadiu-live",
