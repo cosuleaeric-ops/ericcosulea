@@ -184,6 +184,20 @@ export const events = pgTable("events", {
   index("events_website_name_idx").on(t.websiteId, t.name),
 ]);
 
+// Crawlere AI / boți — colectate server-side (nu rulează JS, deci nu trec prin /api/event).
+export const crawlerEvents = pgTable("crawler_events", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  crawler: text("crawler").notNull(), // "GPTBot", "ClaudeBot", "PerplexityBot", ...
+  category: text("category").notNull(), // answer | search | training | other
+  path: text("path"),
+  status: integer("status"), // status HTTP returnat (dacă e cunoscut)
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("crawler_events_website_created_idx").on(t.websiteId, t.createdAt),
+  index("crawler_events_website_crawler_idx").on(t.websiteId, t.crawler),
+]);
+
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   websiteId: integer("website_id").notNull(),

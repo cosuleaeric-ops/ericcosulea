@@ -689,6 +689,55 @@ GROUP BY pv.session_id ORDER BY "startedAt" DESC`;
   }));
 }
 
+// ───────────────────────── Crawlere AI ─────────────────────────
+export type CrawlerStats = {
+  total: number;
+  uniqueCrawlers: number;
+  byCrawler: { key: string; category: string; value: number }[];
+  byCategory: { key: string; value: number }[];
+  byPath: { key: string; value: number }[];
+};
+
+export async function getCrawlerStats(
+  websiteId: number,
+  range: Range,
+): Promise<CrawlerStats> {
+  const from = range.from.toISOString();
+  const to = range.to.toISOString();
+  const win = `website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz`;
+  const params = [websiteId, from, to];
+
+  const [totals, byCrawler, byCategory, byPath] = await Promise.all([
+    q<{ total: number; uniq: number }>(
+      `SELECT count(*)::int AS total, count(DISTINCT crawler)::int AS uniq FROM crawler_events WHERE ${win}`,
+      params,
+    ),
+    q<{ key: string; category: string; value: number }>(
+      `SELECT crawler AS key, max(category) AS category, count(*)::int AS value
+       FROM crawler_events WHERE ${win} GROUP BY crawler ORDER BY value DESC LIMIT 100`,
+      params,
+    ),
+    q<{ key: string; value: number }>(
+      `SELECT category AS key, count(*)::int AS value
+       FROM crawler_events WHERE ${win} GROUP BY category ORDER BY value DESC`,
+      params,
+    ),
+    q<{ key: string; value: number }>(
+      `SELECT coalesce(path, '/') AS key, count(*)::int AS value
+       FROM crawler_events WHERE ${win} GROUP BY path ORDER BY value DESC LIMIT 100`,
+      params,
+    ),
+  ]);
+
+  return {
+    total: Number(totals[0]?.total ?? 0),
+    uniqueCrawlers: Number(totals[0]?.uniq ?? 0),
+    byCrawler: byCrawler.map((r) => ({ key: r.key, category: r.category, value: Number(r.value) })),
+    byCategory: byCategory.map((r) => ({ key: r.key, value: Number(r.value) })),
+    byPath: byPath.map((r) => ({ key: r.key, value: Number(r.value) })),
+  };
+}
+
 export async function getOnline(websiteId: number): Promise<number> {
   const rows = await q<{ n: number }>(
     `SELECT count(DISTINCT visitor_id)::int AS n FROM events WHERE website_id=$1 AND created_at > now() - interval '5 minutes'`,
