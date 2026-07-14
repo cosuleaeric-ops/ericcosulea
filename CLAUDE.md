@@ -79,7 +79,7 @@ curl -s https://www.ericcosulea.ro/api/brain/export \
 
 - Căutare punctuală: `GET https://www.ericcosulea.ro/api/brain/search?q=...` (același header).
 - Când Eric spune „reține asta" / ia o decizie demnă de păstrat: `POST /api/brain/thoughts` cu `{"contentMd":"...","tags":["decizie", ...]}` (același header). Confirmă-i că ai salvat-o.
-- Nu crea/modifica pagini din proprie inițiativă — doar la cererea lui explicită. Excepție: pagina `stadiu-live` e scrisă automat de `/api/cron/brain-sync` (cron Vercel, luni 05:00 UTC; declanșabil manual cu GET + `x-brain-secret`).
+- **Salvează autonom, fără să întrebi** (cerut explicit de Eric, 14 iul 2026): decizii, praguri, auto-cunoaștere, evenimente majore → thoughts; cifre/stadii/insight-uri durabile → actualizări la paginile existente. După salvare menționează scurt ce ai salvat. Conservator doar la pagini structurale noi și ștergeri. Pagina `stadiu-live` e scrisă automat de `/api/cron/brain-sync` (cron Vercel, luni 05:00 UTC).
 - După un eveniment major într-un proiect la care lucrezi cu Eric (lansare, schimbare de pricing, pivot, primul client plătitor, prag atins/ratat), propune-i să salvezi un thought cu tagul proiectului — istoricul deciziilor e valoarea brain-ului.
 - Nu e nevoie de brain la task-uri pur mecanice (fix-uri, refactor, întrebări tehnice).
 - **Jurnal Day One (doar local, read-only):** la discuții de decizie personală/direcție poți citi intrările recente din jurnalul „Journal" (sqlite: `~/Library/Group Containers/5U8NS4GX82.dayoneapp2/Data/Documents/DayOne.sqlite`, mode=ro; datele Core Data au offset +978307200). NU copia conținutul jurnalului în brain, în fișiere sau oriunde altundeva — e doar context. Al doilea jurnal e criptat E2EE, inaccesibil.
