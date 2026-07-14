@@ -33,6 +33,11 @@
     if (localStorage.getItem("elitedata_ignore") === "true") return;
   } catch (e) {}
 
+  // ── Exclude admin-ul: dacă e logat, cookie-ul hint e prezent ──
+  if (document.cookie.split(";").some(function (c) {
+    return c.trim() === "ericcosulea_admin_hint=1";
+  })) return;
+
   // ── Visitor id persistent (localStorage, fallback cookie) ──
   var VKEY = "dfa_visitor_id";
   function uuid() {
