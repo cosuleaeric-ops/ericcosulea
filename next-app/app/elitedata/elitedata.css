@@ -784,12 +784,13 @@
 .dfa-chart-inner {
   transition: opacity 200ms ease;
 }
-/* Fără outline-ul alb de focus pe SVG-ul Recharts la click pe grafic. */
-.dfa-main-chart .recharts-wrapper:focus,
-.dfa-main-chart .recharts-wrapper:focus-visible,
-.dfa-main-chart .recharts-surface:focus,
-.dfa-main-chart svg:focus {
-  outline: none;
+/* Fără outline-ul alb de focus la click pe grafic — orice element focusabil din
+   panoul KPI+grafic (surface-ul Recharts primea tabindex de la accessibilityLayer). */
+.dfa-kpi-chart-panel :focus,
+.dfa-kpi-chart-panel :focus-visible,
+.dfa-main-chart :focus,
+.dfa-main-chart :focus-visible {
+  outline: none !important;
 }
 .dfa-chart-shimmer {
   position: absolute;
