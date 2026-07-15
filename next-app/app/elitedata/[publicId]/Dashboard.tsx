@@ -42,6 +42,25 @@ function chipValue(key: string, value: string): string {
   return value;
 }
 
+// Drill-down: click pe un punct din grafic → restrânge tot dashboard-ul la acel
+// bucket. Granularitatea devine mai fină ca să rămână util (zi→ore, oră→minute).
+const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+function drillGranularity(fromMs: number, toMs: number): Granularity {
+  const span = toMs - fromMs;
+  if (span <= 3 * HOUR_MS) return "minute";
+  if (span <= 3 * DAY_MS) return "hourly";
+  if (span <= 95 * DAY_MS) return "daily";
+  return "monthly";
+}
+function drillLabel(from: Date, to: Date, tz: string): string {
+  const date = new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "short", timeZone: tz });
+  const time = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit", timeZone: tz });
+  const spanH = (to.getTime() - from.getTime()) / HOUR_MS;
+  if (spanH <= 26) return `${date.format(from)}, ${time.format(from)}–${time.format(to)}`;
+  return `${date.format(from)} – ${date.format(new Date(to.getTime() - 1))}`;
+}
+
 type SiteLite = { publicId: string; domain: string; faviconUrl: string | null };
 type WebsiteProp = SiteLite & {
   name: string;
@@ -101,6 +120,7 @@ export default function Dashboard({
   const [compare, setCompare] = useState(false);
   const [showGoalBars, setShowGoalBars] = useState(true);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
+  const [drill, setDrill] = useState<{ from: string; to: string } | null>(null);
   const [data, setData] = useState<StatsPayload | null>(initialData);
   const [deploysByDay, setDeploysByDay] = useState<Record<string, Deploy[]>>({});
   const [loading, setLoading] = useState(false);
@@ -128,21 +148,32 @@ export default function Dashboard({
       return next;
     });
 
-  const range = computeRange(period, offset, custom ?? undefined);
   const tz = website.timezone;
-  const displayLabel =
-    period === "custom" || (isNavigable(period) && offset !== 0)
+  const range = drill
+    ? { from: new Date(drill.from), to: new Date(drill.to) }
+    : computeRange(period, offset, custom ?? undefined);
+  const gran: Granularity = drill
+    ? drillGranularity(new Date(drill.from).getTime(), new Date(drill.to).getTime())
+    : granularity;
+  const displayLabel = drill
+    ? drillLabel(range.from, range.to, tz)
+    : period === "custom" || (isNavigable(period) && offset !== 0)
       ? formatRangeLabel(range, tz)
       : PERIOD_LABELS[period];
 
   const load = useCallback(
     async (mode: "full" | "refresh" | "silent") => {
-      const r = computeRange(period, offset, custom ?? undefined);
+      const r = drill
+        ? { from: new Date(drill.from), to: new Date(drill.to) }
+        : computeRange(period, offset, custom ?? undefined);
+      const g = drill
+        ? drillGranularity(new Date(drill.from).getTime(), new Date(drill.to).getTime())
+        : granularity;
       const params = new URLSearchParams({
         site: website.publicId,
         from: r.from.toISOString(),
         to: r.to.toISOString(),
-        granularity,
+        granularity: g,
         compare: compare ? "1" : "0",
       });
       for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
@@ -163,7 +194,7 @@ export default function Dashboard({
         }
       }
     },
-    [period, offset, custom, granularity, compare, filters, website.publicId],
+    [period, offset, custom, granularity, compare, filters, website.publicId, drill],
   );
 
   useEffect(() => {
@@ -185,7 +216,8 @@ export default function Dashboard({
 
   // Deploy-uri Vercel pe grafic — doar pe granularitate zilnică (marcaje/zi).
   useEffect(() => {
-    if (granularity !== "daily") return;
+    // Când drill-ul e activ granularitatea e sub-zi → fără marcaje de deploy.
+    if (drill || granularity !== "daily") return;
     let cancelled = false;
     const r = computeRange(period, offset, custom ?? undefined);
     const params = new URLSearchParams({
@@ -200,7 +232,7 @@ export default function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, [website.publicId, period, offset, custom, granularity]);
+  }, [website.publicId, period, offset, custom, granularity, drill]);
 
   // Scurtături de tastatură (ca în DataFast).
   useEffect(() => {
@@ -228,6 +260,7 @@ export default function Dashboard({
   }, []);
 
   function changePeriod(p: PeriodKey) {
+    setDrill(null);
     setPeriod(p);
     setOffset(0);
     setCustom(null);
@@ -237,11 +270,16 @@ export default function Dashboard({
 
   function applyCustom(from: string, to: string) {
     const span = new Date(to + "T23:59:59").getTime() - new Date(from + "T00:00:00").getTime();
+    setDrill(null);
     setPeriod("custom");
     setOffset(0);
     setCustom({ from, to });
     setGranularity(defaultGranularity("custom", span));
   }
+
+  // Click pe un punct din grafic → drill-down la acel bucket.
+  const drillTo = (fromISO: string, toISO: string | null) =>
+    setDrill({ from: fromISO, to: toISO ?? range.to.toISOString() });
 
   const addFilter = (key: keyof Filters, value: string) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -280,12 +318,29 @@ export default function Dashboard({
         onToggleGoalBars={toggleGoalBars}
         onPeriod={changePeriod}
         onCustom={applyCustom}
-        onShift={(dir) => setOffset((o) => Math.min(0, o + dir))}
+        onShift={(dir) => {
+          setDrill(null);
+          setOffset((o) => Math.min(0, o + dir));
+        }}
         onGranularity={setGranularity}
         onToggleCompare={() => setCompare((c) => !c)}
         onRefresh={() => load("refresh")}
         onFilter={() => activeFilters.length && clearFilters()}
       />
+
+      {drill && (
+        <div className="dfa-filter-chips">
+          <button
+            className="dfa-chip"
+            onClick={() => setDrill(null)}
+            title="Ieși din interval — înapoi la perioada întreagă"
+          >
+            <span className="dfa-chip-key">Interval</span>
+            {displayLabel}
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {activeFilters.length > 0 && (
         <div className="dfa-filter-chips">
@@ -314,11 +369,12 @@ export default function Dashboard({
         <MainChart
           series={data?.series ?? []}
           compareSeries={data?.compareSeries ?? null}
-          deploysByDay={granularity === "daily" ? deploysByDay : {}}
+          deploysByDay={gran === "daily" ? deploysByDay : {}}
           tz={tz}
           loading={noData || refreshing}
           goalName={kpis.kpi1Name}
           showGoal={showGoalBars}
+          onDrill={drillTo}
         />
       </div>
       <Panels

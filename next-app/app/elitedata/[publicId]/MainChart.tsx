@@ -25,6 +25,7 @@ type Row = {
   goalValue?: number; // conversii KPI #1 în bucket (bara portocalie)
   spikeSource?: string | null;
   dayKey: string; // pentru lookup deploys (ținut în afara datelor animate)
+  t: string; // start-ul bucket-ului (ISO) — pentru drill-down la click
 };
 
 // Datele graficului NU conțin deploy-urile (acelea vin async și ar reporni
@@ -43,6 +44,7 @@ function buildData(
     compareValue: compare ? compare[i]?.value ?? 0 : undefined,
     spikeSource: p.spikeSource,
     dayKey: dayKeyInTz(p.t, tz),
+    t: p.t,
   }));
 }
 
@@ -220,6 +222,7 @@ export function MainChart({
   loading,
   goalName,
   showGoal = true,
+  onDrill,
 }: {
   series: SeriesPoint[];
   compareSeries: SeriesPoint[] | null;
@@ -228,6 +231,7 @@ export function MainChart({
   loading: boolean;
   goalName?: string | null;
   showGoal?: boolean;
+  onDrill?: (fromISO: string, toISO: string | null) => void;
 }) {
   // Memoizat pe serie/compare/tz — NU pe deploysByDay. Așa sosirea async a
   // deploy-urilor nu schimbă referința `data` și recharts nu repornește animația.
@@ -246,7 +250,18 @@ export function MainChart({
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
         <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }} accessibilityLayer={false}>
+          <ComposedChart
+            data={data}
+            margin={{ top: 12, right: 8, bottom: 0, left: -16 }}
+            accessibilityLayer={false}
+            style={onDrill ? { cursor: "pointer" } : undefined}
+            onClick={(state) => {
+              if (!onDrill) return;
+              const i = Number(state?.activeTooltipIndex);
+              if (!Number.isInteger(i) || i < 0 || !data[i]) return;
+              onDrill(data[i].t, data[i + 1]?.t ?? null);
+            }}
+          >
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.38} />
