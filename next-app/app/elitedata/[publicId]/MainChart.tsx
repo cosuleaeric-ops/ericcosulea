@@ -246,7 +246,7 @@ export function MainChart({
       {loading && <div className="dfa-chart-shimmer" />}
       <div className="dfa-chart-inner" style={{ opacity: loading ? 0.4 : 1 }}>
         <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }}>
+          <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: -16 }} accessibilityLayer={false}>
             <defs>
               <linearGradient id="dfa-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--dfa-chart)" stopOpacity={0.38} />
