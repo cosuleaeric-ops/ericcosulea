@@ -2,13 +2,28 @@
 
 # Sensitive config
 admin/config.php
+.ec-cookies
 
 # Databases
 *.sqlite
 *.db
+*.sqlite-wal
+*.sqlite-shm
+*.pre-import-backup-*
+
+# State/date locale (sqlite legacy + Elite Deux) — sursa reala e Neon
+data/
+pnlpersonal/data/
+reviewsdogu/data/
 
 # Uploaded files
 clp/uploads/*.pdf
 clp/uploads/*.jpg
 clp/uploads/*.png
 clp/uploads/*.jpeg
+
+# Upload-uri legacy PHP (servite candva de Hostico), doar local
+uploads/
+
+# Worktrees Claude Code
+.claude/worktrees/
