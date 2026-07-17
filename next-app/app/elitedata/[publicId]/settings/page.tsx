@@ -61,10 +61,15 @@ export const config = {
         <h2>Install tracking</h2>
         <p className="dfa-muted">
           Pune snippet-ul în <code>&lt;head&gt;</code> pe <strong>{website.domain}</strong>.
-          Pageview-urile și custom event-urile (<code>window.datafast(&quot;nume&quot;)</code>)
-          apar imediat în dashboard.
+          Pageview-urile apar imediat în dashboard.
         </p>
         <SnippetBlock code={snippet} />
+        <p className="dfa-muted">
+          Custom event-urile (goal-urile) se trimit în două feluri: din JS cu{" "}
+          <code>window.elitedata(&quot;nume_event&quot;)</code>, sau declarativ, punând{" "}
+          <code>elite-data-goal=&quot;nume_event&quot;</code> pe orice element — click-ul pe el
+          (sau pe copiii lui) trimite event-ul automat.
+        </p>
       </section>
 
       <section className="dfa-card dfa-settings-card">
