@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addCategorieCheltuialaAction, addCheltuialaAction, editCheltuialaAction } from "./actions";
+import { CategorieCombobox, resolveCategorie } from "./CategorieCombobox";
 import type { Cheltuiala } from "./types";
 import { dayShift, getInitialAddDate } from "./utils";
 
@@ -16,79 +17,32 @@ type Props = {
 export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAdd }: Props) {
   const isEdit = row != null;
   const [data, setData] = useState(row?.data ?? getInitialAddDate());
-  const [catInput, setCatInput] = useState(row?.categorie ?? (catChelt[0] ?? ""));
-  const [showSugg, setShowSugg] = useState(false);
-  const [suggIdx, setSuggIdx] = useState(-1);
+  const [catInput, setCatInput] = useState(row?.categorie ?? "");
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
   const [detalii, setDetalii] = useState(row?.detalii ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const sumaRef = useRef<HTMLInputElement>(null);
-  const catInputRef = useRef<HTMLInputElement>(null);
-  const typedRef = useRef(row?.categorie ?? (catChelt[0] ?? ""));
-
-  const suggestions = catChelt.filter((c) => c.toLowerCase().includes(catInput.toLowerCase()));
-  const isNew = catInput.trim() !== "" && !catChelt.some((c) => c.toLowerCase() === catInput.trim().toLowerCase());
 
   useEffect(() => { sumaRef.current?.focus(); }, []);
-
-  const selectSugg = (c: string) => { typedRef.current = c; setCatInput(c); setShowSugg(false); setSuggIdx(-1); };
-
-  const onCatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const typed = e.target.value;
-    typedRef.current = typed;
-    setShowSugg(true);
-    setSuggIdx(-1);
-    if (!typed) { setCatInput(""); return; }
-    const match = catChelt.find((c) => c.toLowerCase().startsWith(typed.toLowerCase()));
-    if (match && match.toLowerCase() !== typed.toLowerCase()) {
-      setCatInput(match);
-      requestAnimationFrame(() => {
-        catInputRef.current?.setSelectionRange(typed.length, match.length);
-      });
-    } else {
-      setCatInput(typed);
-    }
-  };
-
-  const onCatKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" || e.key === "Delete") {
-      // stergerea e totul-sau-nimic: nu lasam categorii ciopartite
-      if (catInput !== "") {
-        e.preventDefault();
-        typedRef.current = "";
-        setCatInput("");
-        setShowSugg(true);
-        setSuggIdx(-1);
-      }
-      return;
-    }
-    if (!showSugg) { if (e.key === "ArrowDown") { setShowSugg(true); setSuggIdx(0); } return; }
-    if (e.key === "ArrowDown") { e.preventDefault(); setSuggIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setSuggIdx((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter" && suggIdx >= 0) { e.preventDefault(); selectSugg(suggestions[suggIdx]); }
-    else if (e.key === "Escape") { setShowSugg(false); }
-  };
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const numeCat = catInput.trim();
-    if (!numeCat) { setError("Selectează sau scrie o categorie."); return; }
-    let categorie = numeCat;
-    if (isNew) {
+    const cat = resolveCategorie(catInput, catChelt);
+    if (!cat) { setError("Selectează sau scrie o categorie."); return; }
+    if (cat.isNew) {
       setCreating(true);
-      const fd = new FormData(); fd.set("nume", numeCat);
+      const fd = new FormData(); fd.set("nume", cat.nume);
       const res = await addCategorieCheltuialaAction(undefined, fd);
       setCreating(false);
       if (res?.error) { setError(res.error); return; }
-      categorie = numeCat;
     }
     const fd = new FormData();
     if (isEdit && row) fd.set("id", String(row.id));
     fd.set("data", data);
-    fd.set("categorie", categorie);
+    fd.set("categorie", cat.nume);
     fd.set("detalii", detalii);
     fd.set("suma", suma);
     startTransition(async () => {
@@ -120,28 +74,9 @@ export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAd
               <button type="button" className="date-nav-btn" onClick={() => setData(dayShift(data, 1))}>›</button>
             </div>
           </div>
-          <div className="form-group" style={{ position: "relative" }}>
-            <label>Categorie{isNew && <span style={{ marginLeft: 6, fontSize: 12, color: "var(--muted)" }}>— categorie nouă</span>}</label>
-            <input
-              ref={catInputRef}
-              type="text"
-              value={catInput}
-              autoComplete="off"
-              onChange={onCatChange}
-              onFocus={(e) => { e.target.select(); setShowSugg(true); }}
-              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
-              onKeyDown={onCatKey}
-              placeholder="Scrie sau caută categorie..."
-            />
-            {showSugg && suggestions.length > 0 && (
-              <ul style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, margin: 0, padding: 0, listStyle: "none", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", maxHeight: 200, overflowY: "auto" }}>
-                {suggestions.map((c, i) => (
-                  <li key={c} onMouseDown={() => selectSugg(c)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 14, background: i === suggIdx ? "var(--bg-hover, #f5f0e8)" : undefined }}>
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="form-group">
+            <label>Categorie</label>
+            <CategorieCombobox value={catInput} onChange={setCatInput} cats={catChelt} />
           </div>
           <div className="form-group">
             <label>Sumă (lei)</label>

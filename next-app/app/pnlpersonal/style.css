@@ -813,6 +813,60 @@ td.suma-red    { color: var(--red);    font-weight: 600; font-variant-numeric: t
   background: #fff;
 }
 
+/* ── Categorie combobox ── */
+.categorie-combobox { position: relative; }
+.categorie-combobox input { padding-right: 38px; }
+
+.cat-combobox-arrow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.cat-combobox-arrow:hover { color: var(--text); }
+.cat-combobox-arrow svg { width: 14px; height: 14px; transition: transform 0.18s; }
+.categorie-combobox.open .cat-combobox-arrow svg { transform: rotate(180deg); }
+
+.categorie-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 210;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.categorie-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: var(--card);
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.categorie-suggestions button:hover { background: var(--blue-light); color: var(--blue); }
+.categorie-suggestions button.is-new { color: var(--green); font-weight: 600; }
+
 /* Portofel modal has 2-column grid */
 .portofel-form-grid {
   display: grid;
