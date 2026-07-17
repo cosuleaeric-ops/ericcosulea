@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addCategorieCheltuialaAction, addCheltuialaAction, editCheltuialaAction } from "./actions";
 import { CategorieCombobox, resolveCategorie } from "./CategorieCombobox";
+import { catLabel } from "./catEmoji";
 import type { Cheltuiala } from "./types";
 import { dayShift, getInitialAddDate } from "./utils";
 
@@ -17,7 +18,7 @@ type Props = {
 export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAdd }: Props) {
   const isEdit = row != null;
   const [data, setData] = useState(row?.data ?? getInitialAddDate());
-  const [catInput, setCatInput] = useState(row?.categorie ?? "");
+  const [catInput, setCatInput] = useState(row ? catLabel(row.categorie, "cheltuiala") : "");
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
   const [detalii, setDetalii] = useState(row?.detalii ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAd
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const cat = resolveCategorie(catInput, catChelt);
+    const cat = resolveCategorie(catInput, catChelt, "cheltuiala");
     if (!cat) { setError("Selectează sau scrie o categorie."); return; }
     if (cat.isNew) {
       setCreating(true);
@@ -76,7 +77,7 @@ export function CheltuialaModal({ row, catChelt, onClose, onSavedEdit, onSavedAd
           </div>
           <div className="form-group">
             <label>Categorie</label>
-            <CategorieCombobox value={catInput} onChange={setCatInput} cats={catChelt} />
+            <CategorieCombobox value={catInput} onChange={setCatInput} cats={catChelt} kind="cheltuiala" />
           </div>
           <div className="form-group">
             <label>Sumă (lei)</label>

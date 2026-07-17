@@ -1,30 +1,33 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { catLabel, type CatKind } from "./catEmoji";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
   cats: string[];
+  kind: CatKind;
 };
 
-/** Normalizeaza la categoria existenta (pastrand scrierea din DB) sau semnaleaza una noua. */
-export function resolveCategorie(value: string, cats: string[]): { nume: string; isNew: boolean } | null {
+/** Normalizeaza la categoria existenta (dupa nume sau dupa label-ul cu emoji) sau semnaleaza una noua. */
+export function resolveCategorie(value: string, cats: string[], kind: CatKind): { nume: string; isNew: boolean } | null {
   const nume = value.trim();
   if (!nume) return null;
-  const exact = cats.find((c) => c.toLowerCase() === nume.toLowerCase());
+  const q = nume.toLowerCase();
+  const exact = cats.find((c) => c.toLowerCase() === q || catLabel(c, kind).toLowerCase() === q);
   return exact ? { nume: exact, isNew: false } : { nume, isNew: true };
 }
 
-export function CategorieCombobox({ value, onChange, cats }: Props) {
+export function CategorieCombobox({ value, onChange, cats, kind }: Props) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectAllRef = useRef(false);
 
   const typed = value.trim();
   const q = typed.toLowerCase();
-  const list = cats.filter((c) => !q || c.toLowerCase().includes(q));
-  const isNew = typed !== "" && !cats.some((c) => c.toLowerCase() === q);
+  const list = cats.filter((c) => !q || c.toLowerCase().includes(q) || catLabel(c, kind).toLowerCase().includes(q));
+  const isNew = typed !== "" && !cats.some((c) => c.toLowerCase() === q || catLabel(c, kind).toLowerCase() === q);
   const showBox = open && (list.length > 0 || isNew);
 
   const pick = (c: string) => { onChange(c); setOpen(false); };
@@ -88,7 +91,9 @@ export function CategorieCombobox({ value, onChange, cats }: Props) {
       {showBox && (
         <div className="categorie-suggestions">
           {list.map((c) => (
-            <button key={c} type="button" onMouseDown={(e) => { e.preventDefault(); pick(c); }}>{c}</button>
+            <button key={c} type="button" onMouseDown={(e) => { e.preventDefault(); pick(catLabel(c, kind)); }}>
+              {catLabel(c, kind)}
+            </button>
           ))}
           {isNew && (
             <button type="button" className="is-new" onMouseDown={(e) => { e.preventDefault(); pick(typed); }}>

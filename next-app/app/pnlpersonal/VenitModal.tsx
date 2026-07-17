@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addCategorieVenitAction, addVenitAction, editVenitAction } from "./actions";
 import { CategorieCombobox, resolveCategorie } from "./CategorieCombobox";
+import { catLabel } from "./catEmoji";
 import type { Venit } from "./types";
 import { dayShift, getInitialAddDate } from "./utils";
 
@@ -16,7 +17,7 @@ type Props = {
 export function VenitModal({ row, catVenit, onClose, onSaved }: Props) {
   const isEdit = row != null;
   const [data, setData] = useState(row?.data ?? getInitialAddDate());
-  const [catInput, setCatInput] = useState(row?.descriere ?? "");
+  const [catInput, setCatInput] = useState(row ? catLabel(row.descriere, "venit") : "");
   const [suma, setSuma] = useState(row ? String(row.suma) : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -28,7 +29,7 @@ export function VenitModal({ row, catVenit, onClose, onSaved }: Props) {
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const cat = resolveCategorie(catInput, catVenit);
+    const cat = resolveCategorie(catInput, catVenit, "venit");
     if (!cat) { setError("Selectează sau scrie o categorie."); return; }
     if (cat.isNew) {
       setCreating(true);
@@ -66,7 +67,7 @@ export function VenitModal({ row, catVenit, onClose, onSaved }: Props) {
           </div>
           <div className="form-group">
             <label>Categorie</label>
-            <CategorieCombobox value={catInput} onChange={setCatInput} cats={catVenit} />
+            <CategorieCombobox value={catInput} onChange={setCatInput} cats={catVenit} kind="venit" />
           </div>
           <div className="form-group">
             <label>Sumă (lei)</label>

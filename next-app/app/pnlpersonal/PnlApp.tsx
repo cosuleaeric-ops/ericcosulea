@@ -8,6 +8,7 @@ import {
   deletePortofelAction,
   deleteVenitAction,
 } from "./actions";
+import { catLabel } from "./catEmoji";
 import { CheltuialaModal } from "./CheltuialaModal";
 import { PortofelModal } from "./PortofelModal";
 import type { Cheltuiala, PnlDataInput, Portofel, Venit } from "./types";
@@ -335,7 +336,7 @@ export default function PnlApp(props: Props) {
             <h3>Top categorii</h3>
             <div className="ranking-wrap" style={{ height: Math.max(160, (rankingExpanded ? topCategorii.length : Math.min(5, topCategorii.length)) * 38) }}>
               <RankingChart
-                data={rankingExpanded ? topCategorii : topCategorii.slice(0, 5)}
+                data={(rankingExpanded ? topCategorii : topCategorii.slice(0, 5)).map((c) => ({ ...c, categorie: catLabel(c.categorie, "cheltuiala") }))}
                 colors={CAT_COLORS}
               />
             </div>
@@ -370,7 +371,7 @@ export default function PnlApp(props: Props) {
                   key={c}
                   className={`cat-pill ${filterCategorie === c ? "active" : ""}`}
                   onClick={() => setFilterCategorie(filterCategorie === c ? null : c)}
-                >{c}</button>
+                >{catLabel(c, "cheltuiala")}</button>
               ))}
             </div>
           )}
@@ -396,7 +397,7 @@ export default function PnlApp(props: Props) {
                         {tab === "toate" && (
                           <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: t.kind === "venit" ? "#2A7D4F" : "#C1444A", marginRight: 7, verticalAlign: "middle" }} />
                         )}
-                        {t.categorie}
+                        {catLabel(t.categorie, t.kind)}
                         {t.detalii && <div className="tx-detalii">{t.detalii}</div>}
                       </td>
                       <td className={`right ${t.kind === "venit" ? "suma-green" : "suma-red"}`}>
