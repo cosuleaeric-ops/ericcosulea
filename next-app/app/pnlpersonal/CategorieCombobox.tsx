@@ -34,6 +34,9 @@ export function CategorieCombobox({ value, onChange, cats }: Props) {
     const isInsert = !inputType || inputType.startsWith("insert");
     const val = e.target.value;
     setOpen(true);
+    // Stergerea e totul-sau-nimic: orice Backspace/Delete/cut goleste tot campul,
+    // ca sa nu ramana categorii ciopartite.
+    if (inputType?.startsWith("delete")) { onChange(""); return; }
     // Inline autocomplete: completeaza la prima categorie care se potriveste, cu partea adaugata selectata.
     if (isInsert && val.length >= 2) {
       const match = cats.find((c) => c.toLowerCase().startsWith(val.toLowerCase()));
