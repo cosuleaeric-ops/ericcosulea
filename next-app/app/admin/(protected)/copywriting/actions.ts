@@ -9,7 +9,7 @@ import { copyImages } from "@/lib/db/schema";
 import { isAuthenticated } from "@/lib/session";
 import { BLOB_BASE_URL } from "@/lib/blob";
 
-const ALLOWED_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+const ALLOWED_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif"]);
 
 export async function uploadCopyAction(formData: FormData): Promise<{ error?: string }> {
   if (!(await isAuthenticated())) return { error: "unauth" };
