@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getAllPostsForAdmin, getProjectsForHome, getAllImages } from "@/lib/db/queries";
+import { getAllPostsForAdmin, getProjectsForHome, getAllImages, getAllCopyImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
 import { Card } from "@/components/ui/card";
 import {
@@ -42,10 +42,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default async function AdminDashboard() {
-  const [posts, projects, images] = await Promise.all([
+  const [posts, projects, images, copyImgs] = await Promise.all([
     getAllPostsForAdmin(),
     getProjectsForHome(),
     getAllImages(),
+    getAllCopyImages(),
   ]);
 
   const today = new Date().toLocaleDateString("ro-RO", {
@@ -122,6 +123,28 @@ export default async function AdminDashboard() {
                 <img
                   key={img.id}
                   src={blobUrl(`inspo/${img.filename}`)}
+                  alt=""
+                  className="aspect-square w-0 flex-1 rounded-md object-cover"
+                />
+              ))}
+              <span className="flex aspect-square w-0 flex-1 items-center justify-center rounded-md bg-muted">
+                <Plus className="size-3.5 text-muted-foreground" />
+              </span>
+            </div>
+          </Card>
+        </Link>
+        <Link href="/admin/copywriting">
+          <Card className="h-full gap-0 px-5 py-4.5 transition-colors duration-150 hover:border-ring hover:bg-secondary">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[13px] font-medium">copywriting</span>
+              <span className="text-[11px] text-muted-foreground">{copyImgs.length} img</span>
+            </div>
+            <div className="flex gap-1.5">
+              {copyImgs.slice(0, 3).map((img) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={img.id}
+                  src={blobUrl(`copywriting/${img.filename}`)}
                   alt=""
                   className="aspect-square w-0 flex-1 rounded-md object-cover"
                 />

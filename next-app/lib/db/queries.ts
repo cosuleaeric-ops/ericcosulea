@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "./index";
-import { cheltuialaCategorii, cheltuieli, images, pages, portofel, posts, projects, venitCategorii, venituri } from "./schema";
+import { cheltuialaCategorii, cheltuieli, copyImages, images, pages, portofel, posts, projects, venitCategorii, venituri } from "./schema";
 
 export const getProjectsForHome = cache(async () => {
   return db.select().from(projects).orderBy(asc(projects.sort), asc(projects.id));
@@ -13,6 +13,10 @@ export const getLatestImages = cache(async (limit = 8) => {
 
 export const getAllImages = cache(async () => {
   return db.select().from(images).orderBy(desc(images.createdAt));
+});
+
+export const getAllCopyImages = cache(async () => {
+  return db.select().from(copyImages).orderBy(desc(copyImages.createdAt));
 });
 
 export const getAllPosts = cache(async () => {

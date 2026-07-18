@@ -17,6 +17,13 @@ export const images = pgTable("images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
+export const copyImages = pgTable("copy_images", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull().unique(),
+  originalName: text("original_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
