@@ -31,14 +31,18 @@ export default function CopyGallery({ images }: { images: ImageItem[] }) {
   }, [activeSrc]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setUploadError(null);
-    const fd = new FormData();
-    fd.set("image", file);
     startUpload(async () => {
-      const result = await uploadCopyAction(fd);
-      if (result?.error) setUploadError(result.error);
+      const errors: string[] = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.set("image", file);
+        const result = await uploadCopyAction(fd);
+        if (result?.error) errors.push(`${file.name}: ${result.error}`);
+      }
+      if (errors.length > 0) setUploadError(errors.join(" · "));
       else if (fileInputRef.current) fileInputRef.current.value = "";
     });
   };
@@ -54,12 +58,13 @@ export default function CopyGallery({ images }: { images: ImageItem[] }) {
     <>
       <div className="inspo-upload">
         <label className="inspo-upload-label">
-          <span>{pendingUpload ? "se încarcă..." : "adaugă imagine"}</span>
+          <span>{pendingUpload ? "se încarcă..." : "adaugă imagini"}</span>
           <input
             ref={fileInputRef}
             type="file"
             name="image"
             accept="image/*"
+            multiple
             onChange={onFileChange}
             disabled={pendingUpload}
           />
