@@ -265,10 +265,10 @@ async function fetchKpis(
   const conv = `e.type='custom' AND (${k}::text IS NULL OR e.name=${k})`;
   const text = `
 WITH ev AS (
-  SELECT 'cur' AS b, visitor_id, session_id, type, name, created_at FROM events
+  SELECT 'cur' AS b, visitor_id, session_id, type, name, created_at FROM events_human
    WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
   UNION ALL
-  SELECT 'prev' AS b, visitor_id, session_id, type, name, created_at FROM events
+  SELECT 'prev' AS b, visitor_id, session_id, type, name, created_at FROM events_human
    WHERE website_id=$1 AND created_at>=$4::timestamptz AND created_at<$5::timestamptz${fc}
 ),
 ev_agg AS (
@@ -320,11 +320,11 @@ async function fetchSeries(
   const goalIdx = params.length; // NULL ⇒ goalv = 0 peste tot
   const text = `
 WITH ev AS (
-  SELECT visitor_id, created_at, type, name FROM events
+  SELECT visitor_id, created_at, type, name FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
 ),
 firsts AS (
-  SELECT visitor_id, min(created_at) AS first_seen FROM events
+  SELECT visitor_id, min(created_at) AS first_seen FROM events_human
   WHERE website_id=$1 AND visitor_id IS NOT NULL
   GROUP BY visitor_id
 ),
@@ -393,7 +393,7 @@ async function enrichSpikes(
   const toIdx = params.length;
   const text = `
 WITH ev AS (
-  SELECT visitor_id, created_at, coalesce(referrer_source,'Direct/None') AS src FROM events
+  SELECT visitor_id, created_at, coalesce(referrer_source,'Direct/None') AS src FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
 ),
 bnd AS (
@@ -452,7 +452,7 @@ async function fetchBreakdownsAndGoals(
 WITH base AS MATERIALIZED (
   SELECT visitor_id, session_id, type, name, referrer_source, utm_medium, utm_campaign,
          path, hostname, country, region, city, browser, os, device
-  FROM events WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
+  FROM events_human WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
 )
 ${branches.join("\nUNION ALL\n")}`;
   const rows = await q<{ dim: string; key: string; value: number }>(text, params);
@@ -487,7 +487,7 @@ async function fetchConversionBreakdowns(
   const g = `$${params.length}`;
   const text = `
 WITH convs AS (
-  SELECT DISTINCT visitor_id FROM events
+  SELECT DISTINCT visitor_id FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
     AND type='custom' AND name=${g} AND visitor_id IS NOT NULL
 ),
@@ -497,7 +497,7 @@ ft AS (
     coalesce(e.referrer_source,'Direct/None') AS referrer,
     e.utm_campaign AS campaign,
     e.country, e.region, e.city, e.browser, e.os, e.device
-  FROM events e JOIN convs c ON c.visitor_id=e.visitor_id
+  FROM events_human e JOIN convs c ON c.visitor_id=e.visitor_id
   WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
   ORDER BY e.visitor_id, e.created_at ASC
 )
@@ -520,7 +520,7 @@ SELECT * FROM ft`;
 
   // „page": conversii per pagina unde s-a dat click (total, per-eveniment).
   const pageRows = await q<{ key: string; n: number }>(
-    `SELECT path AS key, count(*)::int n FROM events
+    `SELECT path AS key, count(*)::int n FROM events_human
      WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
        AND type='custom' AND name=${g} AND path IS NOT NULL AND path <> ''
      GROUP BY path`,
@@ -548,7 +548,7 @@ async function fetchEntryExit(
   const fc = buildFilterClause(filters, params);
   const text = `
 WITH pv AS MATERIALIZED (
-  SELECT session_id, path, created_at, id FROM events
+  SELECT session_id, path, created_at, id FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
     AND type='pageview' AND session_id IS NOT NULL AND path IS NOT NULL${fc}
 ),
@@ -608,7 +608,7 @@ async function fetchFunnel(websiteId: number, range: Range, filters: Filters): P
 WITH reach AS (
   SELECT coalesce(visitor_id, session_id) AS vid,
     ${bools.join(",\n    ")}
-  FROM events
+  FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND coalesce(visitor_id,session_id) IS NOT NULL${fc}
   GROUP BY 1
 )
@@ -632,19 +632,19 @@ WITH per AS (
     count(DISTINCT session_id)::int AS sessions,
     count(*) FILTER (WHERE type='pageview')::int AS pageviews,
     max(created_at) AS last_seen
-  FROM events
+  FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
   GROUP BY visitor_id ORDER BY last_seen DESC LIMIT 30
 ),
 latest AS (
   SELECT DISTINCT ON (e.visitor_id) e.visitor_id, e.country, e.device, e.os, e.browser
-  FROM events e JOIN per USING (visitor_id)
+  FROM events_human e JOIN per USING (visitor_id)
   WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
   ORDER BY e.visitor_id, e.created_at DESC, e.id DESC
 ),
 firstref AS (
   SELECT DISTINCT ON (e.visitor_id) e.visitor_id, e.referrer_source
-  FROM events e JOIN per USING (visitor_id)
+  FROM events_human e JOIN per USING (visitor_id)
   WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
   ORDER BY e.visitor_id, e.created_at ASC, e.id ASC
 )
@@ -664,7 +664,7 @@ async function fetchJourneys(websiteId: number, range: Range, filters: Filters):
 WITH pv AS (
   SELECT session_id, path, created_at, id, country, device,
          min(created_at) OVER (PARTITION BY session_id) AS started_at
-  FROM events
+  FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
     AND type='pageview' AND session_id IS NOT NULL AND path IS NOT NULL${fc}
 ),
@@ -740,7 +740,7 @@ export async function getCrawlerStats(
 
 export async function getOnline(websiteId: number): Promise<number> {
   const rows = await q<{ n: number }>(
-    `SELECT count(DISTINCT visitor_id)::int AS n FROM events WHERE website_id=$1 AND created_at > now() - interval '5 minutes'`,
+    `SELECT count(DISTINCT visitor_id)::int AS n FROM events_human WHERE website_id=$1 AND created_at > now() - interval '5 minutes'`,
     [websiteId],
   );
   return Number(rows[0]?.n ?? 0);
@@ -811,7 +811,7 @@ export async function getOverview(
   const [visRows, sparkRows] = await Promise.all([
     // vizitatori distincți / site (tot intervalul)
     q<{ website_id: number; visitors: number }>(
-      `SELECT website_id, count(DISTINCT visitor_id)::int AS visitors FROM events
+      `SELECT website_id, count(DISTINCT visitor_id)::int AS visitors FROM events_human
        WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz AND visitor_id IS NOT NULL GROUP BY website_id`,
       [from, to],
     ),
@@ -823,7 +823,7 @@ export async function getOverview(
          FROM unnest($3::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
        )
        SELECT e.website_id, b.idx, count(DISTINCT e.visitor_id)::int AS value
-       FROM bnd b JOIN events e ON e.created_at >= b.lo AND e.created_at < b.hi
+       FROM bnd b JOIN events_human e ON e.created_at >= b.lo AND e.created_at < b.hi
        WHERE e.created_at>=$1::timestamptz AND e.created_at<$2::timestamptz AND e.visitor_id IS NOT NULL
        GROUP BY e.website_id, b.idx`,
       [from, to, startISO],

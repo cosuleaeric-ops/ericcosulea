@@ -4,6 +4,7 @@ import { and, desc, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { events, websites } from "@/lib/db/schema";
 import { parseUserAgent, referrerSource, parseUtm } from "@/lib/analytics/parse";
+import { isDatacenterIp } from "@/lib/analytics/datacenter";
 
 export const runtime = "nodejs";
 
@@ -79,12 +80,15 @@ export async function POST(req: NextRequest) {
   if (isBot(req.headers.get("user-agent"))) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
-  if (EXCLUDED_IPS.size > 0) {
-    const ip = clientIp(req.headers);
-    if (ip && EXCLUDED_IPS.has(ip)) {
-      return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
-    }
+  const ip = clientIp(req.headers);
+  if (EXCLUDED_IPS.size > 0 && ip && EXCLUDED_IPS.has(ip)) {
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
+
+  // Boți cu UA curat (headless cu UA de Chrome, agenți AI cu browser real):
+  // singurul semnal e IP-ul de datacenter. Nu-i aruncăm — îi marcăm, iar
+  // graficele citesc doar events_human (WHERE NOT is_datacenter).
+  const isDatacenter = await isDatacenterIp(ip);
 
   // Lookup site — necunoscut → ignorăm silențios (nu stricăm clientul).
   const siteRows = await db
@@ -175,6 +179,7 @@ export async function POST(req: NextRequest) {
     visitorId,
     sessionId,
     isBounce,
+    isDatacenter,
   });
 
   return NextResponse.json({ ok: true }, { status: 202, headers: CORS });

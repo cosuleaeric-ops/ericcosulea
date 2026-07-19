@@ -11,6 +11,11 @@
   var websiteId = script.getAttribute("data-website-id");
   if (!websiteId) return;
 
+  // Browsere automatizate nedeghizate (Playwright/Puppeteer/Selenium au
+  // navigator.webdriver=true). UA-ul lor e adesea de Chrome normal, deci
+  // filtrul de pe server nu-i prinde; îi oprim aici, la sursă.
+  if (navigator.webdriver) return;
+
   // API base = originea scriptului (merge pe orice domeniu unde e instalat).
   var apiBase = "";
   try {

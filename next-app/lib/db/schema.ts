@@ -162,6 +162,9 @@ export const websites = pgTable("websites", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Peste events există view-ul SQL `events_human` (SELECT * ... WHERE NOT is_datacenter),
+// folosit de toate query-urile de statistici. E creat cu SELECT * înghețat la creare:
+// dacă adaugi coloane aici, recreează view-ul (CREATE OR REPLACE VIEW events_human ...).
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   websiteId: integer("website_id").notNull(),
@@ -183,6 +186,7 @@ export const events = pgTable("events", {
   visitorId: text("visitor_id"),
   sessionId: text("session_id"),
   isBounce: boolean("is_bounce").notNull().default(true),
+  isDatacenter: boolean("is_datacenter").notNull().default(false), // IP de cloud/hosting (vezi lib/analytics/datacenter.ts)
   durationSeconds: integer("duration_seconds").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
