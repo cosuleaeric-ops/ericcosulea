@@ -19,6 +19,18 @@ function isBot(ua: string | null): boolean {
   return BOT_UA.test(ua);
 }
 
+// Boți cu UA spoofat: UA-ul zice Chrome modern, dar headerele nu sunt de
+// Chromium real. Orice Chromium ≥89 trimite sec-ch-ua pe fiecare request
+// (inclusiv sendBeacon); clienții HTTP care doar copiază UA-ul nu-l au.
+function isSpoofedChromium(h: Headers): boolean {
+  const chua = h.get("sec-ch-ua");
+  if (chua && /headless/i.test(chua)) return true;
+  const m = (h.get("user-agent") ?? "").match(/Chrome\/(\d+)/);
+  if (m && Number(m[1]) >= 89 && !chua) return true;
+  if (!h.get("accept-language")) return true; // browserele reale îl trimit mereu
+  return false;
+}
+
 // IP-uri excluse (ca DataFast Settings → Exclusions). CSV în env: "1.2.3.4, 5.6.7.8".
 const EXCLUDED_IPS = new Set(
   (process.env.ANALYTICS_EXCLUDE_IPS ?? "")
@@ -85,11 +97,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
-  // Boți cu UA curat (headless cu UA de Chrome, agenți AI cu browser real):
-  // singurul semnal e IP-ul de datacenter. Nu-i aruncăm — îi marcăm, iar
-  // graficele citesc doar events_human (WHERE NOT is_datacenter).
-  const isDatacenter = await isDatacenterIp(ip);
-
   // Lookup site — necunoscut → ignorăm silențios (nu stricăm clientul).
   const siteRows = await db
     .select({ id: websites.id, domain: websites.domain })
@@ -128,6 +135,16 @@ export async function POST(req: NextRequest) {
 
   // ── User agent ──
   const { browser, os, device } = parseUserAgent(h.get("user-agent"));
+
+  // Boți cu UA curat (headless cu stealth, agenți AI, fleet-uri de scraping):
+  // IP de datacenter, headere care nu bat cu UA-ul sau profilul Chrome-pe-Linux
+  // (datele pe 30 zile: 100% vizitatori single-hit, ~2 vizite reale RO/lună).
+  // Nu-i aruncăm — îi marcăm, iar graficele citesc doar events_human
+  // (WHERE NOT is_datacenter).
+  const isDatacenter =
+    (await isDatacenterIp(ip)) ||
+    isSpoofedChromium(h) ||
+    (browser === "Chrome" && os === "Linux" && device === "desktop");
 
   // ── Sesiune + bounce (fereastră de 30 min pe vizitator) ──
   const since = new Date(Date.now() - SESSION_WINDOW_MS);
