@@ -53,7 +53,9 @@ export async function POST(req: Request) {
   }
 
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
-  const state = rows[0]?.state as { tasksByDate?: Record<string, Task[]> } | null;
+  const state = rows[0]?.state as
+    | { tasksByDate?: Record<string, Task[]>; savedAt?: number }
+    | null;
   if (!state?.tasksByDate) {
     return NextResponse.json({ error: "No state" }, { status: 404 });
   }
@@ -72,6 +74,8 @@ export async function POST(req: Request) {
     ...rest.filter((t) => t.completed),
     done,
   ];
+  // Ca pagina web să nu creadă că snapshot-ul ei local (mai vechi) e mai nou.
+  state.savedAt = Date.now();
 
   await db
     .update(eliteDeuxState)

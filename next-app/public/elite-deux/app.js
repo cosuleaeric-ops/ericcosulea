@@ -207,6 +207,50 @@ async function init() {
   });
 
   await reconcileWithServer();
+  startRemotePolling();
+}
+
+// Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
+function startRemotePolling() {
+  if (!HAS_REMOTE_STORAGE) {
+    return;
+  }
+
+  window.setInterval(async () => {
+    if (document.visibilityState !== "visible" || !remoteInitSucceeded || remoteSaveTimer) {
+      return;
+    }
+
+    // Nu suprascrie cât timp userul scrie sau trage un task.
+    const active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      return;
+    }
+    if (document.querySelector(".task-item.dragging")) {
+      return;
+    }
+
+    const before = JSON.stringify(state.tasksByDate);
+    let remote;
+    try {
+      remote = await fetchRemoteSnapshot();
+    } catch {
+      return;
+    }
+
+    // Dacă între timp s-a schimbat ceva local, câștigă localul.
+    if (!remote || remoteSaveTimer || JSON.stringify(state.tasksByDate) !== before) {
+      return;
+    }
+
+    if (JSON.stringify(remote.tasksByDate) === before) {
+      return;
+    }
+
+    state.tasksByDate = remote.tasksByDate;
+    persistLocalSnapshot();
+    renderWeek();
+  }, 3000);
 }
 
 function countTasksInSnapshot(snapshot) {
