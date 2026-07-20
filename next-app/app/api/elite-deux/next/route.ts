@@ -21,11 +21,14 @@ function todayKey(): string {
   }).format(new Date());
 }
 
-export async function GET(req: Request) {
+async function authorize(req: Request): Promise<boolean> {
   const secret = process.env.ELITE_DEUX_SECRET;
-  const authorized =
-    (secret && req.headers.get("x-elite-secret") === secret) || (await isAuthenticated());
-  if (!authorized) {
+  if (secret && req.headers.get("x-elite-secret") === secret) return true;
+  return isAuthenticated();
+}
+
+export async function GET(req: Request) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
@@ -41,4 +44,39 @@ export async function GET(req: Request) {
     remaining: tasks.filter((t) => !t.completed).length,
     total: tasks.length,
   });
+}
+
+// Bifează primul task de azi și îl trimite la finalul listei, ca în aplicația web.
+export async function POST(req: Request) {
+  if (!(await authorize(req))) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
+  const state = rows[0]?.state as { tasksByDate?: Record<string, Task[]> } | null;
+  if (!state?.tasksByDate) {
+    return NextResponse.json({ error: "No state" }, { status: 404 });
+  }
+
+  const key = todayKey();
+  const tasks = state.tasksByDate[key] ?? [];
+  const target = tasks[0];
+  if (!target || target.completed) {
+    return NextResponse.json({ error: "Nothing to complete" }, { status: 404 });
+  }
+
+  const rest = tasks.slice(1);
+  const done = { ...target, completed: true };
+  state.tasksByDate[key] = [
+    ...rest.filter((t) => !t.completed),
+    ...rest.filter((t) => t.completed),
+    done,
+  ];
+
+  await db
+    .update(eliteDeuxState)
+    .set({ state, updatedAt: new Date() })
+    .where(eq(eliteDeuxState.id, ROW_ID));
+
+  return NextResponse.json({ ok: true, completed: target.text ?? null });
 }

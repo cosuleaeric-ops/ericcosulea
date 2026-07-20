@@ -48,6 +48,7 @@ final class Controller: NSObject, NSApplicationDelegate {
 
     func buildMenu(remaining: Int, total: Int) {
         let menu = NSMenu()
+        menu.autoenablesItems = false
         let head = NSMenuItem(title: fullText, action: nil, keyEquivalent: "")
         head.isEnabled = false
         menu.addItem(head)
@@ -56,6 +57,10 @@ final class Controller: NSObject, NSApplicationDelegate {
             count.isEnabled = false
             menu.addItem(count)
         }
+        menu.addItem(.separator())
+        let doneItem = NSMenuItem(title: "Done", action: #selector(markDone), keyEquivalent: "d")
+        doneItem.isEnabled = remaining > 0
+        menu.addItem(doneItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: textHidden ? "Arată textul" : "Ascunde textul",
                                 action: #selector(toggleText), keyEquivalent: "h"))
@@ -72,6 +77,16 @@ final class Controller: NSObject, NSApplicationDelegate {
     }
 
     @objc func reload() { refresh() }
+
+    @objc func markDone() {
+        guard var req = URL(string: baseURL + "/api/elite-deux/next").map({ URLRequest(url: $0) }) else { return }
+        req.httpMethod = "POST"
+        req.setValue(secret, forHTTPHeaderField: "x-elite-secret")
+        req.timeoutInterval = 15
+        URLSession.shared.dataTask(with: req) { [weak self] _, _, _ in
+            DispatchQueue.main.async { self?.refresh() }
+        }.resume()
+    }
 
     @objc func toggleText() {
         textHidden.toggle()
