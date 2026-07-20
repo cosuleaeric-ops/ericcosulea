@@ -19,6 +19,9 @@ final class Controller: NSObject, NSApplicationDelegate {
     var timer: Timer?
     var fullText = "—"
     var lastPayload = ""
+    var lastTitle = ""
+    var textHidden = UserDefaults.standard.bool(forKey: "textHidden")
+    var lastCounts = (remaining: 0, total: 0)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         item.button?.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
@@ -55,6 +58,8 @@ final class Controller: NSObject, NSApplicationDelegate {
             menu.addItem(count)
         }
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: textHidden ? "Arată textul" : "Ascunde textul",
+                                action: #selector(toggleText), keyEquivalent: "h"))
         menu.addItem(NSMenuItem(title: "Deschide Elite Deux", action: #selector(open), keyEquivalent: "o"))
         menu.addItem(NSMenuItem(title: "Reîmprospătează", action: #selector(reload), keyEquivalent: "r"))
         menu.addItem(.separator())
@@ -69,8 +74,24 @@ final class Controller: NSObject, NSApplicationDelegate {
 
     @objc func reload() { refresh() }
 
+    @objc func toggleText() {
+        textHidden.toggle()
+        UserDefaults.standard.set(textHidden, forKey: "textHidden")
+        applyTitle()
+        buildMenu(remaining: lastCounts.remaining, total: lastCounts.total)
+    }
+
     func setTitle(_ text: String) {
-        let trimmed = text.count > 42 ? String(text.prefix(41)) + "…" : text
+        lastTitle = text
+        applyTitle()
+    }
+
+    func applyTitle() {
+        guard !textHidden else {
+            item.button?.title = ""
+            return
+        }
+        let trimmed = lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle
         item.button?.title = " " + trimmed
     }
 
@@ -103,6 +124,7 @@ final class Controller: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard payload != self.lastPayload else { return }
                 self.lastPayload = payload
+                self.lastCounts = (remaining, total)
                 self.fullText = full
                 self.setTitle(title)
                 self.buildMenu(remaining: remaining, total: total)
