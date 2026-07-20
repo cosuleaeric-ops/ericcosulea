@@ -20,6 +20,7 @@ final class Controller: NSObject, NSApplicationDelegate {
     var fullText = "—"
     var lastPayload = ""
     var lastTitle = ""
+    var lastAllDone = false
     var textHidden = UserDefaults.standard.bool(forKey: "textHidden")
     var lastCounts = (remaining: 0, total: 0)
 
@@ -95,8 +96,9 @@ final class Controller: NSObject, NSApplicationDelegate {
         buildMenu(remaining: lastCounts.remaining, total: lastCounts.total)
     }
 
-    func setTitle(_ text: String) {
+    func setTitle(_ text: String, allDone: Bool = false) {
         lastTitle = text
+        lastAllDone = allDone
         applyTitle()
     }
 
@@ -104,13 +106,16 @@ final class Controller: NSObject, NSApplicationDelegate {
         let text = textHidden
             ? ""
             : (lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle)
+        let color = lastAllDone
+            ? NSColor(red: 0x1d / 255, green: 0xa1 / 255, blue: 0x5c / 255, alpha: 1)
+            : NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1)
         item.button?.title = ""
-        item.button?.image = badge(text: text)
+        item.button?.image = badge(text: text, color: color)
         item.button?.image?.isTemplate = false
     }
 
-    /// Capsulă magenta (culoarea Elite Deux) cu bifă + text, ca să sară în ochi în topbar.
-    func badge(text: String) -> NSImage {
+    /// Etichetă colorată cu bifă + text (verde când e totul bifat), ca să sară în ochi în topbar.
+    func badge(text: String, color: NSColor) -> NSImage {
         let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
         let check = "✓"
@@ -124,8 +129,8 @@ final class Controller: NSObject, NSApplicationDelegate {
         let image = NSImage(size: NSSize(width: width, height: height))
         image.lockFocus()
         let rect = NSRect(x: 0, y: 0, width: width, height: height)
-        NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1).setFill()
-        NSBezierPath(roundedRect: rect, xRadius: height / 2, yRadius: height / 2).fill()
+        color.setFill()
+        NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5).fill()
         (label as NSString).draw(
             at: NSPoint(x: padX, y: (height - size.height) / 2),
             withAttributes: attrs
@@ -144,6 +149,7 @@ final class Controller: NSObject, NSApplicationDelegate {
             var title = "Elite Deux ?"
             var full = "Nu am putut citi lista"
             var remaining = 0, total = 0
+            var allDone = false
             if let http = response as? HTTPURLResponse, http.statusCode == 401 {
                 title = "Elite Deux: secret invalid"
                 full = "Verifică ~/.elitedeux-menubar"
@@ -155,17 +161,18 @@ final class Controller: NSObject, NSApplicationDelegate {
                     title = text
                     full = text
                 } else {
-                    title = total > 0 ? "Gata pe azi" : "Niciun task azi"
+                    allDone = total > 0
+                    title = allDone ? "Gata pe azi" : "Niciun task azi"
                     full = title
                 }
             }
-            let payload = "\(title)|\(full)|\(remaining)/\(total)"
+            let payload = "\(title)|\(full)|\(remaining)/\(total)|\(allDone)"
             DispatchQueue.main.async {
                 guard payload != self.lastPayload else { return }
                 self.lastPayload = payload
                 self.lastCounts = (remaining, total)
                 self.fullText = full
-                self.setTitle(title)
+                self.setTitle(title, allDone: allDone)
                 self.buildMenu(remaining: remaining, total: total)
             }
         }.resume()
