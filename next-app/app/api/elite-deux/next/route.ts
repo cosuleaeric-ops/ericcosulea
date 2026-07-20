@@ -32,14 +32,13 @@ export async function GET(req: Request) {
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
   const state = rows[0]?.state as { tasksByDate?: Record<string, Task[]> } | null;
   const tasks = state?.tasksByDate?.[todayKey()] ?? [];
-  const pending = tasks.filter((t) => !t.completed);
-  const next = pending[0];
+  const next = tasks[0];
 
   return NextResponse.json({
     date: todayKey(),
     text: next?.text ?? null,
     id: next?.id ?? null,
-    remaining: pending.length,
+    remaining: tasks.filter((t) => !t.completed).length,
     total: tasks.length,
   });
 }
