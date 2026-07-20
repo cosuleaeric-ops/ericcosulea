@@ -18,13 +18,30 @@ final class Controller: NSObject, NSApplicationDelegate {
     let secret = loadSecret()
     var timer: Timer?
     var fullText = "—"
+    var lastPayload = ""
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         item.button?.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
         item.button?.imagePosition = .imageLeading
         buildMenu(remaining: 0, total: 0)
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refresh() }
+        startTimer()
+
+        // Nu interoga serverul cât Mac-ul doarme.
+        let nc = NSWorkspace.shared.notificationCenter
+        nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.timer?.invalidate()
+            self?.timer = nil
+        }
+        nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.refresh()
+            self?.startTimer()
+        }
+    }
+
+    func startTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
     func buildMenu(remaining: Int, total: Int) {
@@ -82,7 +99,10 @@ final class Controller: NSObject, NSApplicationDelegate {
                     full = title
                 }
             }
+            let payload = "\(title)|\(full)|\(remaining)/\(total)"
             DispatchQueue.main.async {
+                guard payload != self.lastPayload else { return }
+                self.lastPayload = payload
                 self.fullText = full
                 self.setTitle(title)
                 self.buildMenu(remaining: remaining, total: total)
