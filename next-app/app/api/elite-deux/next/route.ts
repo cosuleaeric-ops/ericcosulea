@@ -35,7 +35,8 @@ export async function GET(req: Request) {
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
   const state = rows[0]?.state as { tasksByDate?: Record<string, Task[]> } | null;
   const tasks = state?.tasksByDate?.[todayKey()] ?? [];
-  const next = tasks[0];
+  // Când tot ce e pe azi e bifat, topbar-ul arată un mesaj, nu ultimul task făcut.
+  const next = tasks.some((t) => !t.completed) ? tasks[0] : undefined;
 
   return NextResponse.json({
     date: todayKey(),

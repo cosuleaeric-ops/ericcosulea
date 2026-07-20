@@ -155,7 +155,7 @@ final class Controller: NSObject, NSApplicationDelegate {
                     title = text
                     full = text
                 } else {
-                    title = total > 0 ? "Toate bifate ✓" : "Niciun task azi"
+                    title = total > 0 ? "Gata pe azi" : "Niciun task azi"
                     full = title
                 }
             }
