@@ -24,8 +24,7 @@ final class Controller: NSObject, NSApplicationDelegate {
     var lastCounts = (remaining: 0, total: 0)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        item.button?.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
-        item.button?.imagePosition = .imageLeading
+        applyTitle()
         buildMenu(remaining: 0, total: 0)
         refresh()
         startTimer()
@@ -87,12 +86,37 @@ final class Controller: NSObject, NSApplicationDelegate {
     }
 
     func applyTitle() {
-        guard !textHidden else {
-            item.button?.title = ""
-            return
-        }
-        let trimmed = lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle
-        item.button?.title = " " + trimmed
+        let text = textHidden
+            ? ""
+            : (lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle)
+        item.button?.title = ""
+        item.button?.image = badge(text: text)
+        item.button?.image?.isTemplate = false
+    }
+
+    /// Capsulă magenta (culoarea Elite Deux) cu bifă + text, ca să sară în ochi în topbar.
+    func badge(text: String) -> NSImage {
+        let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
+        let check = "✓"
+        let label = text.isEmpty ? check : "\(check)  \(text)"
+        let size = (label as NSString).size(withAttributes: attrs)
+
+        let padX: CGFloat = 8
+        let height: CGFloat = 18
+        let width = ceil(size.width) + padX * 2
+
+        let image = NSImage(size: NSSize(width: width, height: height))
+        image.lockFocus()
+        let rect = NSRect(x: 0, y: 0, width: width, height: height)
+        NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1).setFill()
+        NSBezierPath(roundedRect: rect, xRadius: height / 2, yRadius: height / 2).fill()
+        (label as NSString).draw(
+            at: NSPoint(x: padX, y: (height - size.height) / 2),
+            withAttributes: attrs
+        )
+        image.unlockFocus()
+        return image
     }
 
     func refresh() {
