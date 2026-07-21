@@ -97,6 +97,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
+  // Boți cu UA curat (headless cu stealth, fleet-uri cu proxy rezidențial):
+  // headere care nu bat cu UA-ul, profilul Chrome-pe-Linux (datele pe 30 zile:
+  // 100% vizitatori single-hit, ~2 vizite reale RO/lună) sau IP de datacenter.
+  // Se aruncă ÎNAINTE de orice query: picurau non-stop și țineau Neon-ul
+  // treaz 24/7, iar compute-ul pe planul free e limitat. Istoricul marcat
+  // is_datacenter rămâne filtrat de view-ul events_human.
+  const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
+  if (
+    isSpoofedChromium(req.headers) ||
+    (browser === "Chrome" && os === "Linux" && device === "desktop") ||
+    (await isDatacenterIp(ip))
+  ) {
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
+  }
+
   // Lookup site — necunoscut → ignorăm silențios (nu stricăm clientul).
   const siteRows = await db
     .select({ id: websites.id, domain: websites.domain })
@@ -132,19 +147,6 @@ export async function POST(req: NextRequest) {
   const country = h.get("x-vercel-ip-country") || null;
   const region = h.get("x-vercel-ip-country-region") || null;
   const city = decodeHeader(h.get("x-vercel-ip-city"));
-
-  // ── User agent ──
-  const { browser, os, device } = parseUserAgent(h.get("user-agent"));
-
-  // Boți cu UA curat (headless cu stealth, agenți AI, fleet-uri de scraping):
-  // IP de datacenter, headere care nu bat cu UA-ul sau profilul Chrome-pe-Linux
-  // (datele pe 30 zile: 100% vizitatori single-hit, ~2 vizite reale RO/lună).
-  // Nu-i aruncăm — îi marcăm, iar graficele citesc doar events_human
-  // (WHERE NOT is_datacenter).
-  const isDatacenter =
-    (await isDatacenterIp(ip)) ||
-    isSpoofedChromium(h) ||
-    (browser === "Chrome" && os === "Linux" && device === "desktop");
 
   // ── Sesiune + bounce (fereastră de 30 min pe vizitator) ──
   const since = new Date(Date.now() - SESSION_WINDOW_MS);
@@ -196,7 +198,6 @@ export async function POST(req: NextRequest) {
     visitorId,
     sessionId,
     isBounce,
-    isDatacenter,
   });
 
   return NextResponse.json({ ok: true }, { status: 202, headers: CORS });

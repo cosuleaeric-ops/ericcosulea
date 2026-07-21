@@ -211,12 +211,23 @@ async function init() {
 }
 
 // Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
+// Interval mare + sync imediat când pagina redevine vizibilă: poll-ul la câteva
+// secunde ținea DB-ul (Neon free, compute limitat) treaz non-stop.
 function startRemotePolling() {
   if (!HAS_REMOTE_STORAGE) {
     return;
   }
 
-  window.setInterval(async () => {
+  window.setInterval(pollRemoteChanges, 60000);
+  window.addEventListener("focus", pollRemoteChanges);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      pollRemoteChanges();
+    }
+  });
+}
+
+async function pollRemoteChanges() {
     if (document.visibilityState !== "visible" || !remoteInitSucceeded || remoteSaveTimer) {
       return;
     }
@@ -250,7 +261,6 @@ function startRemotePolling() {
     state.tasksByDate = remote.tasksByDate;
     persistLocalSnapshot();
     renderWeek();
-  }, 3000);
 }
 
 function countTasksInSnapshot(snapshot) {

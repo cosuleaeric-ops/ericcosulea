@@ -13,7 +13,7 @@ func loadSecret() -> String {
     return ""
 }
 
-final class Controller: NSObject, NSApplicationDelegate {
+final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let secret = loadSecret()
     var timer: Timer?
@@ -42,9 +42,15 @@ final class Controller: NSObject, NSApplicationDelegate {
         }
     }
 
+    // 10 minute, nu secunde: fiecare request ține Neon-ul (free, compute limitat)
+    // treaz. Refresh imediat există la: deschiderea meniului, Done, wake, manual.
     func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in self?.refresh() }
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        refresh()
     }
 
     func buildMenu(remaining: Int, total: Int) {
@@ -70,6 +76,7 @@ final class Controller: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Ieși", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         for i in menu.items where i.action != nil { i.target = i.action == #selector(NSApplication.terminate(_:)) ? nil : self }
+        menu.delegate = self
         item.menu = menu
     }
 
