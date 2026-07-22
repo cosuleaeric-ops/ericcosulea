@@ -971,9 +971,14 @@
   (document.head || document.documentElement).appendChild(style);
 
   // ── Loop: poll + re-render la schimbări de DOM ────────────────────────────
+  // Poll rar și doar cu tab-ul vizibil: la 20s din fiecare tab Gmail, DB-ul
+  // (Neon free, autosuspend 5 min) nu adormea niciodată cât era Chrome deschis.
+  // Refresh instant există la revenirea pe tab.
   const obs = new MutationObserver(() => scheduleRender());
   obs.observe(document.body, { childList: true, subtree: true });
-  setInterval(poll, 20000);
+  setInterval(() => {
+    if (!document.hidden) poll();
+  }, 300000);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) poll();
   });

@@ -42,11 +42,12 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    // 10 minute, nu secunde: fiecare request ține Neon-ul (free, compute limitat)
-    // treaz. Refresh imediat există la: deschiderea meniului, Done, wake, manual.
+    // 30 de minute, nu secunde: fiecare request trezește Neon-ul (free, compute
+    // limitat) pentru încă 5 min, deci și 10 min însemna DB pornit jumătate din
+    // timp. Refresh imediat există la: deschiderea meniului, Done, wake, manual.
     func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
