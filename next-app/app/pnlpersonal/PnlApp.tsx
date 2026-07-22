@@ -28,7 +28,6 @@ const CAT_COLORS = [
 
 type Props = PnlDataInput & {
   todayKey: string;
-  showWalletBanner: boolean;
   catVenit: string[];
   catChelt: string[];
   latestPortofel: Portofel | null;
@@ -60,7 +59,6 @@ export default function PnlApp(props: Props) {
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
   const [hideSums, setHideSums] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [bannerClosed, setBannerClosed] = useState(false);
   const [rankingExpanded, setRankingExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -188,15 +186,6 @@ export default function PnlApp(props: Props) {
           >Ieși</button>
         </div>
       </header>
-
-      {props.showWalletBanner && !bannerClosed && (
-        <div className="monday-banner visible">
-          <span className="banner-icon">🔔</span>
-          <span className="banner-text">Actualizează valorile din portofel pentru săptămâna aceasta.</span>
-          <button className="banner-btn" onClick={() => setModal({ kind: "portofel", row: null, prefill: portofelPrefill() })}>Actualizează portofelul</button>
-          <button className="banner-close" onClick={() => setBannerClosed(true)}>×</button>
-        </div>
-      )}
 
       <main className="container">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -455,7 +444,7 @@ export default function PnlApp(props: Props) {
           row={modal.row}
           prefill={modal.prefill ?? null}
           onClose={() => setModal({ kind: "none" })}
-          onSaved={() => { setModal({ kind: "none" }); setBannerClosed(true); onDataChange(); }}
+          onSaved={() => { setModal({ kind: "none" }); onDataChange(); }}
         />
       )}
     </>

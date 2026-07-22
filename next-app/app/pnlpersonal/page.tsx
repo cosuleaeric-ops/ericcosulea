@@ -8,7 +8,7 @@ import {
   getPortofelByYear,
   getVenituriByYear,
 } from "@/lib/db/queries";
-import { needsWalletUpdate, todayInRo } from "./utils";
+import { todayInRo } from "./utils";
 import "./style.css";
 import PnlApp from "./PnlApp";
 
@@ -34,15 +34,12 @@ export default async function PnlPage() {
     getDistinctMonthsWithEntries(),
   ]);
 
-  const showWalletBanner = needsWalletUpdate(latest?.data);
-
   return (
     <PnlApp
       initialMonth={initialMonth}
       loadedYear={initialYear}
       availableMonths={availableMonths}
       todayKey={todayKey}
-      showWalletBanner={showWalletBanner}
       venituri={venituri.map((v) => ({ id: v.id, data: v.data, descriere: v.descriere, suma: v.suma }))}
       cheltuieli={cheltuieli.map((c) => ({ id: c.id, data: c.data, categorie: c.categorie, detalii: c.detalii, suma: c.suma }))}
       catVenit={catVenit.map((c) => c.nume)}

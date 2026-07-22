@@ -114,60 +114,6 @@ body {
   .quick-add-btn { padding: 14px 16px; }
 }
 
-/* ── Monday Banner ── */
-.monday-banner {
-  display: none;
-  background: linear-gradient(135deg, #FFF8E1, #FFF3C4);
-  border-bottom: 1px solid #F5D76E;
-  padding: 12px 24px;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  color: #7A5C00;
-}
-
-.monday-banner.visible {
-  display: flex;
-}
-
-.monday-banner .banner-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.monday-banner .banner-text {
-  flex: 1;
-  font-weight: 500;
-}
-
-.monday-banner .banner-btn {
-  background: #B8860B;
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-
-.monday-banner .banner-btn:hover { background: #9A6F09; }
-
-.monday-banner .banner-close {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #B8860B;
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.monday-banner .banner-close:hover { color: #7A5C00; }
-
 /* ── Header ── */
 .app-header {
   background: var(--card);
