@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, syncAdminHintCookie, type Session } from "@/lib/session-config";
-import { detectCrawler } from "@/lib/analytics/crawlers";
 
 const PUBLIC_ELITE_DEUX_FILES = new Set([
   "/elite-deux/manifest.json",
@@ -30,27 +29,8 @@ function isProtected(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Crawlere AI: self-tracking pentru ericcosulea.ro ──
-  // Ele nu rulează JS (deci nu trec prin /api/event); le prindem aici după UA
-  // și le raportăm la colector. Nu le trecem prin auth pe paginile publice.
-  const crawler = detectCrawler(request.headers.get("user-agent"));
-  if (crawler) {
-    try {
-      await fetch(new URL("/api/crawler", request.url), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          domain: request.nextUrl.hostname,
-          path: pathname,
-          ua: request.headers.get("user-agent"),
-        }),
-      });
-    } catch {
-      /* best-effort, nu blocăm requestul crawlerului */
-    }
-    if (!isProtected(pathname)) return NextResponse.next();
-    // dacă un crawler cere o pagină protejată, cade în auth normal mai jos
-  }
+  // Crawler tracking scos (iul 2026): crawlerele lovesc site-ul non-stop și
+  // fiecare hit scria în Neon → compute-ul free nu adormea niciodată.
 
   // ── Pagini publice: fără gate de auth (comportament ca înainte) ──
   if (!isProtected(pathname)) return NextResponse.next();
