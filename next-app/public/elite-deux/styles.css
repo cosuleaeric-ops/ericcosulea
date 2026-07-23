@@ -330,6 +330,15 @@ body[data-bullets="none"] .check-btn {
   color: var(--ink);
 }
 
+/* Buton pin activ: task-ul e în topbar-ul macOS. */
+.pin-btn.pinned {
+  background: color-mix(in srgb, #d91f7f 22%, transparent);
+}
+
+.pin-btn.pinned:hover {
+  background: color-mix(in srgb, #d91f7f 32%, transparent);
+}
+
 .trash-zone {
   position: fixed;
   bottom: 32px;

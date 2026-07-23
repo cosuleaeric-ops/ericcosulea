@@ -99,15 +99,38 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applyTitle() {
+        // Nimic pinuit: doar o bifă discretă monocromă, fără pastila roz.
+        if !lastPinned {
+            item.button?.title = ""
+            item.button?.image = plainIcon()
+            item.button?.image?.isTemplate = true
+            return
+        }
         let text = textHidden
             ? ""
             : (lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle)
-        let color = lastAllDone
-            ? NSColor(red: 0x1d / 255, green: 0xa1 / 255, blue: 0x5c / 255, alpha: 1)
-            : NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1)
+        let color = NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1)
         item.button?.title = ""
         item.button?.image = badge(text: text, color: color)
         item.button?.image?.isTemplate = false
+    }
+
+    /// Bifă simplă monocromă pentru starea „nimic pinuit” — se topește în topbar.
+    func plainIcon() -> NSImage {
+        if let sym = NSImage(systemSymbolName: "checkmark", accessibilityDescription: "Elite Deux") {
+            return sym
+        }
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+            .foregroundColor: NSColor.black,
+        ]
+        let str = "✓" as NSString
+        let size = str.size(withAttributes: attrs)
+        let image = NSImage(size: NSSize(width: ceil(size.width) + 4, height: 18))
+        image.lockFocus()
+        str.draw(at: NSPoint(x: 2, y: (18 - size.height) / 2), withAttributes: attrs)
+        image.unlockFocus()
+        return image
     }
 
     /// Etichetă colorată cu bifă + text (verde când e totul bifat), ca să sară în ochi în topbar.
