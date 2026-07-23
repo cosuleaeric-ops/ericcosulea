@@ -3,10 +3,11 @@ const LOCALE = "ro-RO";
 const COLOR_ORDER = ["none", "yellow", "blue", "green", "pink", "orange"];
 const APP_CONFIG = window.ELITE_DEUX_CONFIG || {};
 const SERVER_STATE_URL = typeof APP_CONFIG.stateUrl === "string" ? APP_CONFIG.stateUrl : "";
-// Endpoint-ul topbar-ului macOS (pin manual cu 📌); derivat din stateUrl.
-const SERVER_TOPBAR_URL = SERVER_STATE_URL ? SERVER_STATE_URL.replace(/\/state$/, "/next") : "";
-// Id-ul task-ului pinuit acum în topbar (null = nimic). Sursă unică pentru
-// starea butoanelor 📌/📍; se încarcă o dată la init.
+// Topbar-ul macOS ascultă local (app-ul de menu bar rulează un mic server pe
+// loopback). Pin-ul NU trece prin DB — zero compute Neon în fundal.
+const TOPBAR_LOCAL_URL = "http://127.0.0.1:17872";
+// Id-ul task-ului pinuit acum în topbar (null = nimic). Stare locală optimistă
+// pentru butoanele 📌/📍 (se resetează la reîncărcarea paginii).
 let pinnedTaskId = null;
 const CSRF_TOKEN = typeof APP_CONFIG.csrfToken === "string" ? APP_CONFIG.csrfToken : "";
 const HAS_REMOTE_STORAGE = Boolean(SERVER_STATE_URL);
@@ -213,7 +214,6 @@ async function init() {
 
   await reconcileWithServer();
   startRemotePolling();
-  loadPinnedState();
 }
 
 // Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
@@ -794,50 +794,27 @@ function applyPinButtonState(btn, pinned) {
   btn.title = pinned ? "Scoate din topbar-ul macOS" : "Trimite în topbar-ul macOS";
 }
 
-// Trimite/scoate task-ul în/din topbar-ul macOS (PUT pe /next; același id = unpin).
+// Trimite/scoate task-ul în/din topbar-ul macOS prin serverul local al app-ului
+// de menu bar (loopback). Al doilea click pe același task = unpin. Zero DB.
 async function pinToTopbar(task, btn) {
-  if (!SERVER_TOPBAR_URL) return;
+  const willUnpin = pinnedTaskId === task.id;
   btn.disabled = true;
   try {
-    const response = await fetch(SERVER_TOPBAR_URL, {
-      method: "PUT",
-      credentials: "same-origin",
+    await fetch(TOPBAR_LOCAL_URL + (willUnpin ? "/unpin" : "/pin"), {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: task.id }),
+      body: JSON.stringify({ id: task.id, text: task.text }),
     });
-    if (!response.ok) throw new Error(String(response.status));
-    const data = await response.json();
-    pinnedTaskId = data.pinned ? task.id : null;
-    // Re-randează săptămâna: exact un task e pinuit, deci toate butoanele
-    // trebuie readuse la 📌 și doar cel curent la 📍.
+    pinnedTaskId = willUnpin ? null : task.id;
+    // Re-randează: exact un task e pinuit, restul revin la 📌.
     renderWeek();
   } catch {
-    btn.textContent = "!";
-    window.setTimeout(() => applyPinButtonState(btn, task.id === pinnedTaskId), 1200);
+    // Menu bar-ul nu rulează sau browserul a blocat loopback-ul.
+    btn.textContent = "⚠";
+    btn.title = "App-ul EliteDeux din bara de meniu nu răspunde";
+    window.setTimeout(() => applyPinButtonState(btn, task.id === pinnedTaskId), 1600);
   } finally {
     btn.disabled = false;
-  }
-}
-
-// Încarcă o dată ce task e pinuit (la deschiderea paginii), ca butoanele să
-// pornească în starea corectă. Un singur fetch, nu polling.
-async function loadPinnedState() {
-  if (!SERVER_TOPBAR_URL) return;
-  try {
-    const response = await fetch(SERVER_TOPBAR_URL, {
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    const next = data.pinned ? data.id : null;
-    if (next !== pinnedTaskId) {
-      pinnedTaskId = next;
-      renderWeek();
-    }
-  } catch {
-    /* topbar indisponibil — butoanele rămân pe 📌 */
   }
 }
 

@@ -1,8 +1,16 @@
 import AppKit
+import Network
 
-// Elite Deux menu bar: arată primul task nebifat de azi în topbar-ul macOS.
+// Elite Deux menu bar: arată DOAR task-ul pinuit manual din app.
+//
+// ZERO acces la DB în fundal: aplicația web trimite pin/unpin printr-un mic
+// server local pe 127.0.0.1 (nu prin Neon), deci nimic nu interoghează baza de
+// date cât timp stai. Iconița e ascunsă complet cât nu e nimic pinuit.
+// Singura atingere de rețea e „Done” — un singur POST la server care marchează
+// task-ul complet (acțiune la click, nu polling).
 
 let baseURL = ProcessInfo.processInfo.environment["ELITE_DEUX_URL"] ?? "https://www.ericcosulea.ro"
+let pinPort: UInt16 = 17872
 
 func loadSecret() -> String {
     if let s = ProcessInfo.processInfo.environment["ELITE_DEUX_SECRET"], !s.isEmpty { return s }
@@ -13,71 +21,130 @@ func loadSecret() -> String {
     return ""
 }
 
-final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
+// ── Server local: primește pin/unpin de la app-ul web pe loopback ──
+final class PinServer {
+    private var listener: NWListener?
+    let onMessage: (_ path: String, _ id: String?, _ text: String?) -> Void
+
+    init(onMessage: @escaping (String, String?, String?) -> Void) { self.onMessage = onMessage }
+
+    func start() {
+        let params = NWParameters.tcp
+        params.requiredInterfaceType = .loopback // doar 127.0.0.1, niciodată din rețea
+        params.allowLocalEndpointReuse = true
+        guard let port = NWEndpoint.Port(rawValue: pinPort),
+              let l = try? NWListener(using: params, on: port) else {
+            NSLog("EliteDeux: nu am putut deschide portul \(pinPort)")
+            return
+        }
+        listener = l
+        l.newConnectionHandler = { [weak self] c in self?.accept(c) }
+        l.start(queue: .main)
+    }
+
+    private func accept(_ conn: NWConnection) {
+        conn.start(queue: .main)
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
+            guard let self else { conn.cancel(); return }
+            if let data, let req = String(data: data, encoding: .utf8) {
+                let firstLine = req.components(separatedBy: "\r\n").first ?? ""
+                let parts = firstLine.components(separatedBy: " ")
+                let method = parts.first ?? ""
+                let path = parts.count > 1 ? parts[1] : "/"
+                if method == "POST" {
+                    var id: String?, text: String?
+                    if let r = req.range(of: "\r\n\r\n") {
+                        let body = String(req[r.upperBound...])
+                        if let bd = body.data(using: .utf8),
+                           let j = try? JSONSerialization.jsonObject(with: bd) as? [String: Any] {
+                            id = j["id"] as? String
+                            text = j["text"] as? String
+                        }
+                    }
+                    DispatchQueue.main.async { self.onMessage(path, id, text) }
+                }
+                // (OPTIONS preflight: doar răspundem cu headerele de mai jos.)
+            }
+            // Headere care lasă browserul (inclusiv Private Network Access) să
+            // accepte requestul din pagina https către loopback.
+            let resp = "HTTP/1.1 200 OK\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Access-Control-Allow-Methods: POST, OPTIONS\r\n" +
+                "Access-Control-Allow-Headers: Content-Type\r\n" +
+                "Access-Control-Allow-Private-Network: true\r\n" +
+                "Content-Length: 0\r\nConnection: close\r\n\r\n"
+            conn.send(content: resp.data(using: .utf8), completion: .contentProcessed { _ in conn.cancel() })
+        }
+    }
+}
+
+final class Controller: NSObject, NSApplicationDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let secret = loadSecret()
-    var timer: Timer?
-    var fullText = "—"
-    var lastPayload = ""
-    var lastTitle = ""
-    var lastPinned = false
+    var server: PinServer?
+    var pinnedId: String?
+    var pinnedText = ""
     var textHidden = UserDefaults.standard.bool(forKey: "textHidden")
-    var lastCounts = (remaining: 0, total: 0)
+
+    var isPinned: Bool { pinnedId != nil }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        applyTitle()   // pornește ascuns (nimic pinuit) — fără flash de iconiță
-        buildMenu(remaining: 0, total: 0)
-        refresh()
-        startTimer()
-
-        // Iconița e ascunsă cât timp nimic nu e pinuit, deci nu există meniu de
-        // deschis ca să detecteze un pin nou → un timer e obligatoriu. Îl oprim
-        // cât Mac-ul doarme, ca Neon-ul (free) să adoarmă și el peste noapte;
-        // net, DB e trezit doar în orele în care Mac-ul e pornit.
-        let nc = NSWorkspace.shared.notificationCenter
-        nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.timer?.invalidate()
-            self?.timer = nil
+        applyTitle()   // pornește ascuns — nimic pinuit
+        buildMenu()
+        server = PinServer { [weak self] path, id, text in
+            self?.handleMessage(path: path, id: id, text: text)
         }
-        nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.refresh()
-            self?.startTimer()
+        server?.start()
+    }
+
+    // Pin/unpin venit de la app-ul web (loopback).
+    func handleMessage(path: String, id: String?, text: String?) {
+        if path.contains("unpin") || id == nil {
+            pinnedId = nil
+            pinnedText = ""
+        } else {
+            pinnedId = id
+            pinnedText = text ?? ""
         }
+        applyTitle()
+        buildMenu()
     }
 
-    func startTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in self?.refresh() }
+    func applyTitle() {
+        // Nimic pinuit → iconița dispare complet din bara de meniu.
+        guard isPinned, let button = item.button else {
+            item.isVisible = false
+            return
+        }
+        item.isVisible = true
+        let text = textHidden
+            ? ""
+            : (pinnedText.count > 42 ? String(pinnedText.prefix(41)) + "…" : pinnedText)
+        let color = NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1)
+        button.title = ""
+        button.image = badge(text: text, color: color)
+        button.image?.isTemplate = false
     }
 
-    func menuWillOpen(_ menu: NSMenu) {
-        refresh()
-    }
-
-    func buildMenu(remaining: Int, total: Int) {
+    func buildMenu() {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        let head = NSMenuItem(title: fullText, action: nil, keyEquivalent: "")
+        let head = NSMenuItem(title: isPinned ? pinnedText : "Nimic pinuit", action: nil, keyEquivalent: "")
         head.isEnabled = false
         menu.addItem(head)
-        if total > 0 {
-            let count = NSMenuItem(title: "\(total - remaining)/\(total) bifate azi", action: nil, keyEquivalent: "")
-            count.isEnabled = false
-            menu.addItem(count)
-        }
         menu.addItem(.separator())
         let doneItem = NSMenuItem(title: "Done", action: #selector(markDone), keyEquivalent: "d")
-        doneItem.isEnabled = lastPinned
+        doneItem.isEnabled = isPinned
         menu.addItem(doneItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: textHidden ? "Arată textul" : "Ascunde textul",
                                 action: #selector(toggleText), keyEquivalent: "h"))
         menu.addItem(NSMenuItem(title: "Deschide Elite Deux", action: #selector(open), keyEquivalent: "o"))
-        menu.addItem(NSMenuItem(title: "Reîmprospătează", action: #selector(reload), keyEquivalent: "r"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Ieși", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        for i in menu.items where i.action != nil { i.target = i.action == #selector(NSApplication.terminate(_:)) ? nil : self }
-        menu.delegate = self
+        for i in menu.items where i.action != nil {
+            i.target = i.action == #selector(NSApplication.terminate(_:)) ? nil : self
+        }
         item.menu = menu
     }
 
@@ -85,44 +152,28 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let url = URL(string: baseURL + "/elite-deux") { NSWorkspace.shared.open(url) }
     }
 
-    @objc func reload() { refresh() }
-
+    // Marchează task-ul pinuit complet (un singur POST) și golește pin-ul local.
     @objc func markDone() {
-        guard var req = URL(string: baseURL + "/api/elite-deux/next").map({ URLRequest(url: $0) }) else { return }
+        guard let id = pinnedId,
+              var req = URL(string: baseURL + "/api/elite-deux/next").map({ URLRequest(url: $0) }) else { return }
         req.httpMethod = "POST"
         req.setValue(secret, forHTTPHeaderField: "x-elite-secret")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["id": id])
         req.timeoutInterval = 15
-        URLSession.shared.dataTask(with: req) { [weak self] _, _, _ in
-            DispatchQueue.main.async { self?.refresh() }
-        }.resume()
+        URLSession.shared.dataTask(with: req).resume()
+
+        pinnedId = nil
+        pinnedText = ""
+        applyTitle()
+        buildMenu()
     }
 
     @objc func toggleText() {
         textHidden.toggle()
         UserDefaults.standard.set(textHidden, forKey: "textHidden")
         applyTitle()
-        buildMenu(remaining: lastCounts.remaining, total: lastCounts.total)
-    }
-
-    func setTitle(_ text: String) {
-        lastTitle = text
-        applyTitle()
-    }
-
-    func applyTitle() {
-        // Nimic pinuit → iconița dispare complet din bara de meniu.
-        guard lastPinned, let button = item.button else {
-            item.isVisible = false
-            return
-        }
-        item.isVisible = true
-        let text = textHidden
-            ? ""
-            : (lastTitle.count > 42 ? String(lastTitle.prefix(41)) + "…" : lastTitle)
-        let color = NSColor(red: 0xd9 / 255, green: 0x1f / 255, blue: 0x7f / 255, alpha: 1)
-        button.title = ""
-        button.image = badge(text: text, color: color)
-        button.image?.isTemplate = false
+        buildMenu()
     }
 
     /// Etichetă roz cu bifă + text pentru task-ul pinuit — sare în ochi în topbar.
@@ -148,47 +199,6 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         image.unlockFocus()
         return image
-    }
-
-    func refresh() {
-        guard var req = URL(string: baseURL + "/api/elite-deux/next").map({ URLRequest(url: $0) }) else { return }
-        req.setValue(secret, forHTTPHeaderField: "x-elite-secret")
-        req.cachePolicy = .reloadIgnoringLocalCacheData
-        req.timeoutInterval = 15
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
-            guard let self else { return }
-            var title = "Elite Deux ?"
-            var full = "Nu am putut citi lista"
-            var remaining = 0, total = 0
-            var pinned = false
-            if let http = response as? HTTPURLResponse, http.statusCode == 401 {
-                title = "Elite Deux: secret invalid"
-                full = "Verifică ~/.elitedeux-menubar"
-            } else if let data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                remaining = json["remaining"] as? Int ?? 0
-                total = json["total"] as? Int ?? 0
-                pinned = json["pinned"] as? Bool ?? false
-                if pinned, let text = json["text"] as? String {
-                    title = text
-                    full = text
-                } else {
-                    // Nimic pinuit → iconița se ascunde (vezi applyTitle).
-                    title = ""
-                    full = "Nimic în topbar — apasă 📌 pe un task în app"
-                }
-            }
-            let payload = "\(title)|\(full)|\(remaining)/\(total)|\(pinned)"
-            DispatchQueue.main.async {
-                guard payload != self.lastPayload else { return }
-                self.lastPayload = payload
-                self.lastCounts = (remaining, total)
-                self.lastPinned = pinned
-                self.fullText = full
-                self.setTitle(title)
-                self.buildMenu(remaining: remaining, total: total)
-            }
-        }.resume()
     }
 }
 
