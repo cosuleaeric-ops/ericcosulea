@@ -3,6 +3,8 @@ const LOCALE = "ro-RO";
 const COLOR_ORDER = ["none", "yellow", "blue", "green", "pink", "orange"];
 const APP_CONFIG = window.ELITE_DEUX_CONFIG || {};
 const SERVER_STATE_URL = typeof APP_CONFIG.stateUrl === "string" ? APP_CONFIG.stateUrl : "";
+// Endpoint-ul topbar-ului macOS (pin manual cu 📌); derivat din stateUrl.
+const SERVER_TOPBAR_URL = SERVER_STATE_URL ? SERVER_STATE_URL.replace(/\/state$/, "/next") : "";
 const CSRF_TOKEN = typeof APP_CONFIG.csrfToken === "string" ? APP_CONFIG.csrfToken : "";
 const HAS_REMOTE_STORAGE = Boolean(SERVER_STATE_URL);
 
@@ -781,6 +783,30 @@ function focusTodayComposer() {
   }
 }
 
+// Trimite/scoate task-ul în/din topbar-ul macOS (PUT pe /next; același id = unpin).
+async function pinToTopbar(task, btn) {
+  if (!SERVER_TOPBAR_URL) return;
+  const restore = () => {
+    window.setTimeout(() => {
+      btn.textContent = "📌";
+    }, 1200);
+  };
+  try {
+    const response = await fetch(SERVER_TOPBAR_URL, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: task.id }),
+    });
+    if (!response.ok) throw new Error(String(response.status));
+    const data = await response.json();
+    btn.textContent = data.pinned ? "✓" : "○";
+  } catch {
+    btn.textContent = "!";
+  }
+  restore();
+}
+
 function isTypingTarget(target) {
   if (!target) {
     return false;
@@ -796,6 +822,15 @@ function renderTask(dateKey, task) {
   const checkBtn = fragment.querySelector(".check-btn");
   const content = fragment.querySelector(".task-content");
   const editBtn = fragment.querySelector(".edit-btn");
+  const pinBtn = fragment.querySelector(".pin-btn");
+
+  if (pinBtn) {
+    if (!HAS_REMOTE_STORAGE || task.completed) {
+      pinBtn.remove();
+    } else {
+      pinBtn.addEventListener("click", () => pinToTopbar(task, pinBtn));
+    }
+  }
 
   node.dataset.taskId = task.id;
   node.dataset.dateKey = dateKey;

@@ -137,6 +137,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
           <button class="check-btn" aria-label="Marchează completat"></button>
           <div class="task-content"></div>
           <div class="task-actions">
+            <button class="tiny-btn pin-btn" title="Trimite în topbar-ul macOS">📌</button>
             <button class="tiny-btn edit-btn" title="Editează">✎</button>
           </div>
         </li>

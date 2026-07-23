@@ -20,6 +20,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var lastPayload = ""
     var lastTitle = ""
     var lastAllDone = false
+    var lastPinned = false
     var textHidden = UserDefaults.standard.bool(forKey: "textHidden")
     var lastCounts = (remaining: 0, total: 0)
 
@@ -54,7 +55,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(.separator())
         let doneItem = NSMenuItem(title: "Done", action: #selector(markDone), keyEquivalent: "d")
-        doneItem.isEnabled = remaining > 0
+        doneItem.isEnabled = lastPinned
         menu.addItem(doneItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: textHidden ? "Arată textul" : "Ascunde textul",
@@ -145,6 +146,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var full = "Nu am putut citi lista"
             var remaining = 0, total = 0
             var allDone = false
+            var pinned = false
             if let http = response as? HTTPURLResponse, http.statusCode == 401 {
                 title = "Elite Deux: secret invalid"
                 full = "Verifică ~/.elitedeux-menubar"
@@ -152,20 +154,23 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 remaining = json["remaining"] as? Int ?? 0
                 total = json["total"] as? Int ?? 0
-                if let text = json["text"] as? String {
+                pinned = json["pinned"] as? Bool ?? false
+                if pinned, let text = json["text"] as? String {
                     title = text
                     full = text
                 } else {
-                    allDone = total > 0
-                    title = allDone ? "Gata pe azi" : "Niciun task azi"
-                    full = title
+                    // Nimic pinuit: doar badge-ul (verde când totul e bifat).
+                    allDone = total > 0 && remaining == 0
+                    title = ""
+                    full = "Nimic în topbar — apasă 📌 pe un task în app"
                 }
             }
-            let payload = "\(title)|\(full)|\(remaining)/\(total)|\(allDone)"
+            let payload = "\(title)|\(full)|\(remaining)/\(total)|\(allDone)|\(pinned)"
             DispatchQueue.main.async {
                 guard payload != self.lastPayload else { return }
                 self.lastPayload = payload
                 self.lastCounts = (remaining, total)
+                self.lastPinned = pinned
                 self.fullText = full
                 self.setTitle(title, allDone: allDone)
                 self.buildMenu(remaining: remaining, total: total)

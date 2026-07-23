@@ -16,6 +16,9 @@ type State = {
   lastSeenDate?: string;
   savedAt?: number;
 };
+// Task-ul pinuit manual din app (butonul 📌). Topbar-ul arată DOAR asta —
+// nu mai există logică automată de „primul task nebifat".
+type TopbarPin = { id: string; text: string } | null;
 
 function todayKey(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -31,7 +34,7 @@ function uid(): string {
 }
 
 // Mută taskurile restante din zilele trecute în ziua curentă, ca în aplicația web.
-// Rulează la citire, deci rollover-ul se întâmplă la 00:00 chiar dacă pagina nu e deschisă.
+// Rulează la citire, deci rollover-ul se întâmplă la primul refresh de după 00:00.
 function rolloverToToday(state: State): boolean {
   const byDate = state.tasksByDate;
   if (!byDate) return false;
@@ -72,12 +75,15 @@ async function authorize(req: Request): Promise<boolean> {
   return isAuthenticated();
 }
 
-async function loadState(): Promise<State | null> {
+async function loadRow(): Promise<{ state: State | null; topbar: TopbarPin }> {
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
-  return (rows[0]?.state as State | undefined) ?? null;
+  return {
+    state: (rows[0]?.state as State | undefined) ?? null,
+    topbar: (rows[0]?.topbar as TopbarPin | undefined) ?? null,
+  };
 }
 
-async function persist(state: State): Promise<void> {
+async function persistState(state: State): Promise<void> {
   state.savedAt = Date.now();
   await db
     .update(eliteDeuxState)
@@ -85,58 +91,125 @@ async function persist(state: State): Promise<void> {
     .where(eq(eliteDeuxState.id, ROW_ID));
 }
 
+async function persistTopbar(topbar: TopbarPin): Promise<void> {
+  await db
+    .update(eliteDeuxState)
+    .set({ topbar, updatedAt: new Date() })
+    .where(eq(eliteDeuxState.id, ROW_ID));
+}
+
+// Caută task-ul pinuit în orice zi (pin-ul poate fi pe azi sau pe o zi viitoare).
+function findTask(state: State, id: string): { task: Task; dateKey: string } | null {
+  for (const [dateKey, tasks] of Object.entries(state.tasksByDate ?? {})) {
+    const task = (tasks ?? []).find((t) => t.id === id);
+    if (task) return { task, dateKey };
+  }
+  return null;
+}
+
 export async function GET(req: Request) {
   if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const state = await loadState();
+  const { state, topbar } = await loadRow();
   if (state && rolloverToToday(state)) {
-    await persist(state);
+    await persistState(state);
   }
 
   const tasks = state?.tasksByDate?.[todayKey()] ?? [];
-  // Primul task nebifat; când tot e bifat, topbar-ul arată un mesaj, nu ultimul task făcut.
-  const next = tasks.find((t) => !t.completed);
+
+  // Pin-ul e valid doar cât timp task-ul există și e nebifat; altfel se consumă.
+  // (La rollover-ul de la 00:00 task-urile restante primesc id nou → pin-ul vechi
+  // se golește singur aici.)
+  let pin = topbar;
+  if (pin && state) {
+    const found = findTask(state, pin.id);
+    if (!found || found.task.completed) {
+      pin = null;
+      await persistTopbar(null);
+    } else if (found.task.text && found.task.text !== pin.text) {
+      pin = { id: pin.id, text: found.task.text }; // textul editat în app
+      await persistTopbar(pin);
+    }
+  }
 
   return NextResponse.json({
     date: todayKey(),
-    text: next?.text ?? null,
-    id: next?.id ?? null,
+    text: pin?.text ?? null,
+    id: pin?.id ?? null,
+    pinned: pin !== null,
     remaining: tasks.filter((t) => !t.completed).length,
     total: tasks.length,
   });
 }
 
-// Bifează primul task nebifat de azi și îl trimite la finalul listei, ca în aplicația web.
+// Pin/unpin din app (butonul 📌 de pe task). Același id de două ori = unpin.
+export async function PUT(req: Request) {
+  if (!(await authorize(req))) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  let body: { id?: string };
+  try {
+    body = JSON.parse(await req.text());
+  } catch {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const id = body.id;
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
+
+  const { state, topbar } = await loadRow();
+  if (!state?.tasksByDate) {
+    return NextResponse.json({ error: "No state" }, { status: 404 });
+  }
+
+  if (topbar?.id === id) {
+    await persistTopbar(null);
+    return NextResponse.json({ ok: true, pinned: false });
+  }
+
+  const found = findTask(state, id);
+  if (!found || found.task.completed) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
+  await persistTopbar({ id, text: found.task.text ?? "" });
+  return NextResponse.json({ ok: true, pinned: true, text: found.task.text ?? "" });
+}
+
+// Bifează task-ul pinuit (butonul Done din topbar) și consumă pin-ul.
 export async function POST(req: Request) {
   if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const state = await loadState();
-  if (!state?.tasksByDate) {
-    return NextResponse.json({ error: "No state" }, { status: 404 });
+  const { state, topbar } = await loadRow();
+  if (!state?.tasksByDate || !topbar) {
+    return NextResponse.json({ error: "Nothing pinned" }, { status: 404 });
   }
   rolloverToToday(state);
 
-  const key = todayKey();
-  const tasks = state.tasksByDate[key] ?? [];
-  const idx = tasks.findIndex((t) => !t.completed);
-  if (idx === -1) {
+  const found = findTask(state, topbar.id);
+  if (!found || found.task.completed) {
+    await persistTopbar(null);
     return NextResponse.json({ error: "Nothing to complete" }, { status: 404 });
   }
 
-  const target = tasks[idx];
-  const rest = tasks.filter((_, i) => i !== idx);
-  const done = { ...target, completed: true };
-  state.tasksByDate[key] = [
+  // Bifat + trimis la finalul listei zilei lui, ca în aplicația web.
+  const tasks = state.tasksByDate[found.dateKey] ?? [];
+  const rest = tasks.filter((t) => t.id !== topbar.id);
+  const done = { ...found.task, completed: true };
+  state.tasksByDate[found.dateKey] = [
     ...rest.filter((t) => !t.completed),
     ...rest.filter((t) => t.completed),
     done,
   ];
 
-  await persist(state);
+  await persistState(state);
+  await persistTopbar(null);
 
-  return NextResponse.json({ ok: true, completed: target.text ?? null });
+  return NextResponse.json({ ok: true, completed: found.task.text ?? null });
 }
