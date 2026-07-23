@@ -16,7 +16,6 @@ func loadSecret() -> String {
 final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let secret = loadSecret()
-    var timer: Timer?
     var fullText = "—"
     var lastPayload = ""
     var lastTitle = ""
@@ -28,26 +27,14 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
         applyTitle()
         buildMenu(remaining: 0, total: 0)
         refresh()
-        startTimer()
 
-        // Nu interoga serverul cât Mac-ul doarme.
+        // Fără timer de fundal: orice interval trezește Neon-ul (free, compute
+        // limitat) pentru câte 5 min. Refresh doar la: pornire, wake,
+        // deschiderea meniului, Done, manual.
         let nc = NSWorkspace.shared.notificationCenter
-        nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.timer?.invalidate()
-            self?.timer = nil
-        }
         nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             self?.refresh()
-            self?.startTimer()
         }
-    }
-
-    // 30 de minute, nu secunde: fiecare request trezește Neon-ul (free, compute
-    // limitat) pentru încă 5 min, deci și 10 min însemna DB pornit jumătate din
-    // timp. Refresh imediat există la: deschiderea meniului, Done, wake, manual.
-    func startTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
     func menuWillOpen(_ menu: NSMenu) {

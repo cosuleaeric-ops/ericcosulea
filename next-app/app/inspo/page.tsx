@@ -4,7 +4,7 @@ import { getAllImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
 import InspoGallery from "./InspoGallery";
 
-export const revalidate = 3600;
+export const revalidate = 86400; // o dată pe zi — publicarea dă revalidatePath, restul e static (Neon compute)
 
 export const metadata: Metadata = {
   title: "inspo - Eric Cosulea",

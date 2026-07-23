@@ -13,6 +13,9 @@ const PUBLIC_ELITE_DEUX_FILES = new Set([
 ]);
 
 // Paginile care cer autentificare (fostul matcher). Restul trec liber.
+// /admin, /brain și /elitedata sunt gate-uite AICI, nu doar în layout: în App
+// Router pagina se randează concurent cu layout-ul, deci un scanner care
+// lovește /admin pornea query-urile paginii în Neon deși primea redirect.
 const PROTECTED_PREFIXES = [
   "/dogu",
   "/vanzaridogu",
@@ -20,9 +23,18 @@ const PROTECTED_PREFIXES = [
   "/reviewsdogu",
   "/elite-deux",
   "/pnlpersonal",
+  "/admin",
+  "/brain",
+  "/elitedata",
 ];
 
+// Sub /admin, dar publice (altfel redirectul către login ar bucla).
+const PUBLIC_ADMIN_PREFIXES = ["/admin/login"];
+
 function isProtected(pathname: string): boolean {
+  if (PUBLIC_ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return false;
+  }
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 

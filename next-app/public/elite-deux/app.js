@@ -211,14 +211,13 @@ async function init() {
 }
 
 // Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
-// Sync la focus/vizibilitate + plasă de siguranță la 15 min: orice interval sub
-// 5 min anulează autosuspend-ul Neon (free, compute limitat) cât e pagina deschisă.
+// Fără timer de fundal — sync doar la focus/vizibilitate: orice interval
+// trezește Neon-ul (free, compute limitat) cât timp pagina e deschisă.
 function startRemotePolling() {
   if (!HAS_REMOTE_STORAGE) {
     return;
   }
 
-  window.setInterval(pollRemoteChanges, 900000);
   window.addEventListener("focus", pollRemoteChanges);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {

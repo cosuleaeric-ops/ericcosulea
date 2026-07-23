@@ -207,10 +207,13 @@ export default function Dashboard({
     load("full");
   }, [load]);
 
-  // Mod live: la "Now" reîmprospătează silențios la fiecare 10s.
+  // Mod live: la "Now" reîmprospătează silențios la fiecare 10s — dar doar cu
+  // tab-ul vizibil, altfel un tab uitat pe "Now" ține Neon-ul treaz non-stop.
   useEffect(() => {
     if (!isLive(period)) return;
-    const id = setInterval(() => load("silent"), 10_000);
+    const id = setInterval(() => {
+      if (!document.hidden) load("silent");
+    }, 10_000);
     return () => clearInterval(id);
   }, [period, load]);
 

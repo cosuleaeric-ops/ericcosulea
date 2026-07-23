@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getPageBySlug } from "@/lib/db/queries";
 import { rewriteUploadUrls } from "@/lib/blob";
 
-export const revalidate = 3600;
+export const revalidate = 86400; // o dată pe zi — publicarea dă revalidatePath, restul e static (Neon compute)
 
 export const metadata: Metadata = {
   title: "tools - Eric Cosulea",

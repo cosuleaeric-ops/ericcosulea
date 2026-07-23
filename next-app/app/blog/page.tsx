@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllPosts } from "@/lib/db/queries";
 
-export const revalidate = 3600;
+export const revalidate = 86400; // o dată pe zi — publicarea dă revalidatePath, restul e static (Neon compute)
 
 export const metadata: Metadata = {
   title: "articole - Eric Cosulea",

@@ -99,10 +99,20 @@ export default function MailClient({ initial }: { initial: EmailRow[] }) {
     }
   }, []);
 
-  // Auto-refresh la fiecare 30s.
+  // Auto-refresh la 5 min, doar cu tab-ul vizibil (30s ținea Neon-ul treaz
+  // cât era pagina deschisă); la revenirea pe tab, refresh imediat.
   useEffect(() => {
-    const t = setInterval(refresh, 30_000);
-    return () => clearInterval(t);
+    const t = setInterval(() => {
+      if (!document.hidden) refresh();
+    }, 300_000);
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refresh]);
 
   const totalOpened = emails.filter((e) => e.opens > 0).length;

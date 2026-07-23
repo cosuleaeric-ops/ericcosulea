@@ -4,7 +4,7 @@ import { getProjectsForHome, getLatestImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
 import OldProjects from "./old-projects";
 
-export const revalidate = 3600;
+export const revalidate = 86400; // o dată pe zi — publicarea dă revalidatePath, restul e static (Neon compute)
 
 // proiecte vechi (inactive) — restul rămân active by default
 const OLD_PROJECTS = ["robotache", "sportivoo", "storyhub", "capsuladefotbal"];
