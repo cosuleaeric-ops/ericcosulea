@@ -23,17 +23,16 @@ export function getClient(): Sql {
   if (!_client) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL not set");
-    // max:1 — pe Vercel serverless, fiecare instanță warm ține conexiunile
-    // deschise; cu max mare × multe instanțe se epuiza pooler-ul Supabase free
-    // și query-urile atârnau (timeout). Cu 1 conexiune/instanță, Supavisor
-    // multiplexează, iar postgres.js face pipelining pe query-urile paralele
-    // ale unei pagini (Promise.all) — deci nu se pierde viteză reală.
+    // Config minimal recomandat de Supabase pentru serverless: prepare:false
+    // (obligatoriu pe pooler-ul de tranzacții). max:5 lasă build-ul să
+    // prerandeze paginile ISR în paralel; FĂRĂ idle_timeout, conexiunile rămân
+    // calde între request-uri (reuse) — stabilirea unei conexiuni noi spre
+    // Supavisor e lentă, deci reconectările dese (idle_timeout mic) provocau
+    // exact timeout-urile intermitente.
     _client = postgres(url, {
       ssl: "require",
       prepare: false,
-      max: 1,
-      idle_timeout: 20,
-      connect_timeout: 15,
+      max: 5,
     });
   }
   return _client;
