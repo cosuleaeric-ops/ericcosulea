@@ -509,9 +509,12 @@ SELECT * FROM ft`;
   }
 
   // „page": conversii per pagina unde s-a dat click (total, per-eveniment).
+  // `${fc}` folosește parametrul filtrului ($4+) — altfel node-postgres crapă cu
+  // 42P18 „could not determine data type" pe param nefolosit — și ține numărătoarea
+  // consistentă cu CTE-ul `convs`, care filtrează același set de evenimente.
   const pageRows = await q<{ key: string; n: number }>(
     `SELECT path AS key, count(*)::int n FROM events_human
-     WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
+     WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
        AND type='custom' AND name=${g} AND path IS NOT NULL AND path <> ''
      GROUP BY path`,
     params,
