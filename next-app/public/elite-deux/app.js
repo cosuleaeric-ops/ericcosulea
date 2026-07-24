@@ -3,12 +3,6 @@ const LOCALE = "ro-RO";
 const COLOR_ORDER = ["none", "yellow", "blue", "green", "pink", "orange"];
 const APP_CONFIG = window.ELITE_DEUX_CONFIG || {};
 const SERVER_STATE_URL = typeof APP_CONFIG.stateUrl === "string" ? APP_CONFIG.stateUrl : "";
-// Topbar-ul macOS ascultă local (app-ul de menu bar rulează un mic server pe
-// loopback). Pin-ul NU trece prin DB — zero compute Neon în fundal.
-const TOPBAR_LOCAL_URL = "http://127.0.0.1:17872";
-// Id-ul task-ului pinuit acum în topbar (null = nimic). Stare locală optimistă
-// pentru butoanele 📌/📍 (se resetează la reîncărcarea paginii).
-let pinnedTaskId = null;
 const CSRF_TOKEN = typeof APP_CONFIG.csrfToken === "string" ? APP_CONFIG.csrfToken : "";
 const HAS_REMOTE_STORAGE = Boolean(SERVER_STATE_URL);
 
@@ -217,22 +211,12 @@ async function init() {
 }
 
 // Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
-// Fără timer de fundal — sync doar la focus/vizibilitate: orice interval
-// trezește Neon-ul (free, compute limitat) cât timp pagina e deschisă.
 function startRemotePolling() {
   if (!HAS_REMOTE_STORAGE) {
     return;
   }
 
-  window.addEventListener("focus", pollRemoteChanges);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      pollRemoteChanges();
-    }
-  });
-}
-
-async function pollRemoteChanges() {
+  window.setInterval(async () => {
     if (document.visibilityState !== "visible" || !remoteInitSucceeded || remoteSaveTimer) {
       return;
     }
@@ -266,6 +250,7 @@ async function pollRemoteChanges() {
     state.tasksByDate = remote.tasksByDate;
     persistLocalSnapshot();
     renderWeek();
+  }, 3000);
 }
 
 function countTasksInSnapshot(snapshot) {
@@ -787,37 +772,6 @@ function focusTodayComposer() {
   }
 }
 
-// Reflectă în buton dacă task-ul e pinuit: 📍 activ (roz) vs 📌 inactiv.
-function applyPinButtonState(btn, pinned) {
-  btn.classList.toggle("pinned", pinned);
-  btn.textContent = pinned ? "📍" : "📌";
-  btn.title = pinned ? "Scoate din topbar-ul macOS" : "Trimite în topbar-ul macOS";
-}
-
-// Trimite/scoate task-ul în/din topbar-ul macOS prin serverul local al app-ului
-// de menu bar (loopback). Al doilea click pe același task = unpin. Zero DB.
-async function pinToTopbar(task, btn) {
-  const willUnpin = pinnedTaskId === task.id;
-  btn.disabled = true;
-  try {
-    await fetch(TOPBAR_LOCAL_URL + (willUnpin ? "/unpin" : "/pin"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: task.id, text: task.text }),
-    });
-    pinnedTaskId = willUnpin ? null : task.id;
-    // Re-randează: exact un task e pinuit, restul revin la 📌.
-    renderWeek();
-  } catch {
-    // Menu bar-ul nu rulează sau browserul a blocat loopback-ul.
-    btn.textContent = "⚠";
-    btn.title = "App-ul EliteDeux din bara de meniu nu răspunde";
-    window.setTimeout(() => applyPinButtonState(btn, task.id === pinnedTaskId), 1600);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 function isTypingTarget(target) {
   if (!target) {
     return false;
@@ -833,16 +787,6 @@ function renderTask(dateKey, task) {
   const checkBtn = fragment.querySelector(".check-btn");
   const content = fragment.querySelector(".task-content");
   const editBtn = fragment.querySelector(".edit-btn");
-  const pinBtn = fragment.querySelector(".pin-btn");
-
-  if (pinBtn) {
-    if (!HAS_REMOTE_STORAGE || task.completed) {
-      pinBtn.remove();
-    } else {
-      applyPinButtonState(pinBtn, task.id === pinnedTaskId);
-      pinBtn.addEventListener("click", () => pinToTopbar(task, pinBtn));
-    }
-  }
 
   node.dataset.taskId = task.id;
   node.dataset.dateKey = dateKey;

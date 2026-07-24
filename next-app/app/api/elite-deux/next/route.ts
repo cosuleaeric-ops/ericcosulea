@@ -7,11 +7,6 @@ import { isAuthenticated } from "@/lib/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Pin-ul topbar-ului macOS trăiește acum LOCAL (app web → server local 127.0.0.1
-// din elitedeux-menubar), ca nimic să nu interogheze Neon în fundal. Ruta asta
-// mai face un singur lucru: butonul „Done” din topbar marchează task-ul pinuit
-// complet — un POST cu {id}, la click, nu polling.
-
 const ROW_ID = 1;
 const TZ = "Europe/Bucharest";
 
@@ -36,9 +31,10 @@ function uid(): string {
 }
 
 // Mută taskurile restante din zilele trecute în ziua curentă, ca în aplicația web.
-function rolloverToToday(state: State): void {
+// Rulează la citire, deci rollover-ul se întâmplă la 00:00 chiar dacă pagina nu e deschisă.
+function rolloverToToday(state: State): boolean {
   const byDate = state.tasksByDate;
-  if (!byDate) return;
+  if (!byDate) return false;
 
   const today = todayKey();
   const past = Object.keys(byDate)
@@ -46,17 +42,28 @@ function rolloverToToday(state: State): void {
     .sort();
 
   const carried: Task[] = [];
+  let changed = false;
+
   for (const key of past) {
     const tasks = byDate[key] ?? [];
     const incomplete = tasks.filter((t) => !t.completed);
     if (incomplete.length === 0) continue;
+
     carried.push(...incomplete.map((t) => ({ ...t, id: uid() })));
     byDate[key] = tasks.filter((t) => t.completed);
+    changed = true;
   }
+
   if (carried.length > 0) {
     byDate[today] = [...carried, ...(byDate[today] ?? [])];
   }
-  state.lastSeenDate = today;
+
+  if (state.lastSeenDate !== today) {
+    state.lastSeenDate = today;
+    changed = true;
+  }
+
+  return changed;
 }
 
 async function authorize(req: Request): Promise<boolean> {
@@ -70,7 +77,7 @@ async function loadState(): Promise<State | null> {
   return (rows[0]?.state as State | undefined) ?? null;
 }
 
-async function persistState(state: State): Promise<void> {
+async function persist(state: State): Promise<void> {
   state.savedAt = Date.now();
   await db
     .update(eliteDeuxState)
@@ -78,30 +85,33 @@ async function persistState(state: State): Promise<void> {
     .where(eq(eliteDeuxState.id, ROW_ID));
 }
 
-function findTask(state: State, id: string): { task: Task; dateKey: string } | null {
-  for (const [dateKey, tasks] of Object.entries(state.tasksByDate ?? {})) {
-    const task = (tasks ?? []).find((t) => t.id === id);
-    if (task) return { task, dateKey };
-  }
-  return null;
-}
-
-// Bifează task-ul cu id-ul dat (butonul Done din topbar) și îl trimite la
-// finalul listei zilei lui, ca în aplicația web.
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  let body: { id?: string };
-  try {
-    body = JSON.parse(await req.text());
-  } catch {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  const state = await loadState();
+  if (state && rolloverToToday(state)) {
+    await persist(state);
   }
-  const id = body.id;
-  if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  const tasks = state?.tasksByDate?.[todayKey()] ?? [];
+  // Primul task nebifat; când tot e bifat, topbar-ul arată un mesaj, nu ultimul task făcut.
+  const next = tasks.find((t) => !t.completed);
+
+  return NextResponse.json({
+    date: todayKey(),
+    text: next?.text ?? null,
+    id: next?.id ?? null,
+    remaining: tasks.filter((t) => !t.completed).length,
+    total: tasks.length,
+  });
+}
+
+// Bifează primul task nebifat de azi și îl trimite la finalul listei, ca în aplicația web.
+export async function POST(req: Request) {
+  if (!(await authorize(req))) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const state = await loadState();
@@ -110,20 +120,23 @@ export async function POST(req: Request) {
   }
   rolloverToToday(state);
 
-  const found = findTask(state, id);
-  if (!found || found.task.completed) {
+  const key = todayKey();
+  const tasks = state.tasksByDate[key] ?? [];
+  const idx = tasks.findIndex((t) => !t.completed);
+  if (idx === -1) {
     return NextResponse.json({ error: "Nothing to complete" }, { status: 404 });
   }
 
-  const tasks = state.tasksByDate[found.dateKey] ?? [];
-  const rest = tasks.filter((t) => t.id !== id);
-  const done = { ...found.task, completed: true };
-  state.tasksByDate[found.dateKey] = [
+  const target = tasks[idx];
+  const rest = tasks.filter((_, i) => i !== idx);
+  const done = { ...target, completed: true };
+  state.tasksByDate[key] = [
     ...rest.filter((t) => !t.completed),
     ...rest.filter((t) => t.completed),
     done,
   ];
 
-  await persistState(state);
-  return NextResponse.json({ ok: true, completed: found.task.text ?? null });
+  await persist(state);
+
+  return NextResponse.json({ ok: true, completed: target.text ?? null });
 }
