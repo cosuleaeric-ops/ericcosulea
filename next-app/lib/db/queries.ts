@@ -83,7 +83,7 @@ export async function getDistinctMonthsWithEntries(): Promise<string[]> {
     ) AS months
     ORDER BY month DESC
   `);
-  return result.rows.map((r) => r.month);
+  return result.map((r) => r.month);
 }
 
 export async function getCategoriiVenit() {

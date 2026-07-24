@@ -1,7 +1,6 @@
 import "server-only";
-import { neon } from "@neondatabase/serverless";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, sqlQuery } from "@/lib/db";
 import { websites, goals, funnels } from "@/lib/db/schema";
 import {
   type Range,
@@ -11,20 +10,11 @@ import {
   previousRange,
 } from "./range";
 
-// ───────────────────────── raw SQL client (aggregation in DB) ─────────────────────────
-let _raw: ReturnType<typeof neon> | undefined;
-function raw() {
-  if (!_raw) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL not set");
-    _raw = neon(url);
-  }
-  return _raw;
-}
+// ───────────────────────── raw SQL de agregare (în DB) ─────────────────────────
+// Prin clientul postgres.js partajat din lib/db (search_path=ericcosulea).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function q<T = any>(text: string, params: unknown[]): Promise<T[]> {
-  // neon http driver: .query(textWith$Params, params) -> rows[]
-  return (raw() as unknown as { query: (t: string, p: unknown[]) => Promise<T[]> }).query(text, params);
+  return sqlQuery<T>(text, params);
 }
 
 // channelOf(referrer_source, utm_medium) reprodus EXACT ca expresie SQL (vezi parse.ts).

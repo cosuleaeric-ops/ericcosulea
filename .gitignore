@@ -27,3 +27,5 @@ uploads/
 
 # Worktrees Claude Code
 .claude/worktrees/
+.vercel
+db-backups/
