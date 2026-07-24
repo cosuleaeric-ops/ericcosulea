@@ -2,16 +2,17 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-// Supabase Postgres prin pooler-ul de tranzacții (port 6543). Tabelele stau în
-// schema `ericcosulea` (izolată de deep-work care e în `public`). search_path-ul
-// e setat ca DEFAULT PE ROL în Supabase (`ALTER ROLE postgres SET search_path TO
-// ericcosulea, public`), NU ca parametru de startup pe conexiune: pooler-ul de
-// tranzacții (Supavisor) se împiedica de startup param sub concurență → pagini
-// cu multe query-uri paralele (ex. pnlpersonal) picau intermitent 500/timeout.
-// Default-ul pe rol se aplică server-side pe fiecare conexiune, fiabil.
+// Supabase Postgres prin pooler-ul de SESIUNE (port 5432). Tabelele stau în
+// schema `ericcosulea` (izolată de deep-work din `public`); search_path setat ca
+// DEFAULT PE ROL în Supabase (`ALTER ROLE postgres SET search_path TO
+// ericcosulea, public`), aplicat server-side pe fiecare conexiune.
 //
-// prepare:false e obligatoriu pe pooler-ul de tranzacții (nu suportă prepared
-// statements).
+// De ce sesiune (5432) și NU tranzacții (6543): pooler-ul de tranzacții +
+// postgres.js îngheață query-urile la reutilizarea conexiunii (prima cerere
+// merge, următoarele pe aceeași instanță warm dau statement timeout / atârnă).
+// Pooler-ul de sesiune ține o conexiune stabilă și reutilizabilă — reuse-ul
+// merge instant. La traficul redus de aici, numărul de conexiuni nu e o
+// problemă (Postgres are 60). prepare:false rămâne, inofensiv.
 
 type Sql = ReturnType<typeof postgres>;
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
