@@ -3,13 +3,15 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 // Supabase Postgres prin pooler-ul de tranzacții (port 6543). Tabelele stau în
-// schema `ericcosulea` (izolată de deep-work care e în `public`), setată prin
-// search_path pe conexiune — așa atât query-urile Drizzle cât și SQL-ul brut
-// (ex. view-ul events_human) rezolvă necalificat în schema noastră.
+// schema `ericcosulea` (izolată de deep-work care e în `public`). search_path-ul
+// e setat ca DEFAULT PE ROL în Supabase (`ALTER ROLE postgres SET search_path TO
+// ericcosulea, public`), NU ca parametru de startup pe conexiune: pooler-ul de
+// tranzacții (Supavisor) se împiedica de startup param sub concurență → pagini
+// cu multe query-uri paralele (ex. pnlpersonal) picau intermitent 500/timeout.
+// Default-ul pe rol se aplică server-side pe fiecare conexiune, fiabil.
 //
 // prepare:false e obligatoriu pe pooler-ul de tranzacții (nu suportă prepared
-// statements). DB_SEARCH_PATH lipsă → comportament standard (public), ca la
-// rollback pe Neon codul să meargă fără modificări.
+// statements).
 
 type Sql = ReturnType<typeof postgres>;
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
@@ -21,14 +23,12 @@ export function getClient(): Sql {
   if (!_client) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL not set");
-    const searchPath = process.env.DB_SEARCH_PATH;
     _client = postgres(url, {
       ssl: "require",
       prepare: false,
       max: 5,
       idle_timeout: 20,
       connect_timeout: 15,
-      ...(searchPath ? { connection: { search_path: searchPath } } : {}),
     });
   }
   return _client;
