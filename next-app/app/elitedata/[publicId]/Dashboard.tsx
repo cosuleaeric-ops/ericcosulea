@@ -20,7 +20,7 @@ import {
 import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { countryName } from "@/lib/analytics/labels";
-import { DASH_PERIOD_COOKIE, type InitialTabs } from "../period-persistence";
+import { dashPeriodCookie, type InitialTabs } from "../period-persistence";
 
 const FILTER_LABEL: Record<string, string> = {
   path: "Page",
@@ -69,11 +69,11 @@ type WebsiteProp = SiteLite & {
 };
 type Custom = { from: string; to: string };
 
-// Perioada aleasă persistă într-un cookie (citit și pe server, ca să randăm din
-// prima vederea corectă, fără flash last7 → 24h). Doar preset-uri, nu "custom".
-function persistPeriod(p: PeriodKey) {
+// Perioada aleasă persistă într-un cookie PER PROIECT (citit și pe server, ca să
+// randăm din prima vederea corectă, fără flash last7 → 24h). Doar preset-uri.
+function persistPeriod(publicId: string, p: PeriodKey) {
   try {
-    document.cookie = `${DASH_PERIOD_COOKIE}=${p};path=/;max-age=31536000;SameSite=Lax`;
+    document.cookie = `${dashPeriodCookie(publicId)}=${p};path=/;max-age=31536000;SameSite=Lax`;
   } catch {
     /* ignore */
   }
@@ -237,38 +237,15 @@ export default function Dashboard({
     };
   }, [website.publicId, period, offset, custom, granularity, drill]);
 
-  // Scurtături de tastatură (ca în DataFast).
-  useEffect(() => {
-    const map: Record<string, PeriodKey> = {
-      n: "now",
-      t: "today",
-      y: "yesterday",
-      d: "last24h",
-      w: "last7",
-      "3": "last30",
-    };
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
-      const p = map[e.key.toLowerCase()];
-      if (p) {
-        e.preventDefault();
-        changePeriod(p);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Scurtăturile de tastatură (N/T/Y/D/W/3) sunt gestionate în PeriodPicker, care
+  // deține starea dropdown-ului și îl poate închide la apăsare.
   function changePeriod(p: PeriodKey) {
     setDrill(null);
     setPeriod(p);
     setOffset(0);
     setCustom(null);
     setGranularity(defaultGranularity(p));
-    persistPeriod(p);
+    persistPeriod(website.publicId, p);
   }
 
   function applyCustom(from: string, to: string) {

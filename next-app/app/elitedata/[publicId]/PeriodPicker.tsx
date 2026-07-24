@@ -10,6 +10,14 @@ import {
   type PeriodKey,
 } from "@/lib/analytics/range";
 
+// Mapă tastă → perioadă, derivată din PERIOD_SHORTCUTS (sursă unică, aceeași cu
+// badge-urile afișate). Ex: { n:"now", t:"today", d:"last24h", w:"last7", "3":"last30" }.
+const SHORTCUT_TO_PERIOD: Record<string, PeriodKey> = Object.fromEntries(
+  PERIOD_ORDER.flatMap((k) =>
+    PERIOD_SHORTCUTS[k] ? [[PERIOD_SHORTCUTS[k]!.toLowerCase(), k]] : [],
+  ),
+);
+
 function todayStr(offsetDays = 0): string {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
@@ -54,6 +62,27 @@ export function PeriodPicker({
   useEffect(() => {
     if (!open) setShowCustom(false);
   }, [open]);
+
+  // Scurtături de tastatură (N/T/Y/D/W/3): selectează perioada și închide
+  // dropdown-ul, ca un click. Listener global (activ mereu, nu doar când e deschis),
+  // dezactivat când focusul e într-un input. Ref pt. onSelect → ne abonăm o dată.
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+      const p = SHORTCUT_TO_PERIOD[e.key.toLowerCase()];
+      if (p) {
+        e.preventDefault();
+        onSelectRef.current(p);
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="dfa-dd" ref={ref}>

@@ -4,7 +4,7 @@ import { getStats, getWebsiteByPublicId, listWebsites } from "@/lib/analytics/qu
 import { computeRange, defaultGranularity, PERIOD_ORDER, type PeriodKey } from "@/lib/analytics/range";
 import Dashboard from "./Dashboard";
 import {
-  DASH_PERIOD_COOKIE,
+  dashPeriodCookie,
   TAB_COOKIES,
   type InitialTabs,
   type TabGroup,
@@ -30,9 +30,9 @@ export default async function SiteDashboardPage({
 
   const jar = await cookies();
 
-  // Perioada salvată e într-un cookie (server-readable) ca să randăm din prima
-  // vederea corectă — fără flash last7 → 24h de după hidratare.
-  const saved = jar.get(DASH_PERIOD_COOKIE)?.value as PeriodKey | undefined;
+  // Perioada salvată e într-un cookie PER PROIECT (server-readable) ca să randăm
+  // din prima vederea corectă — fără flash last7 → 24h de după hidratare.
+  const saved = jar.get(dashPeriodCookie(publicId))?.value as PeriodKey | undefined;
   const period: PeriodKey =
     saved && PERIOD_ORDER.includes(saved) ? saved : "last7";
 

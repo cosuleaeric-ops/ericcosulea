@@ -6,6 +6,11 @@ import type { PeriodKey } from "@/lib/analytics/range";
 export const DASH_PERIOD_COOKIE = "dfa_dash_period";
 export const OV_PERIOD_COOKIE = "dfa_ov_period";
 
+// Perioada pe dashboard se salvează PER PROIECT (altfel outglow și cesaicumpar
+// s-ar suprascrie reciproc). Numele cookie-ului include publicId-ul site-ului.
+export const dashPeriodCookie = (publicId: string) =>
+  `${DASH_PERIOD_COOKIE}_${publicId}`;
+
 // Perioadele disponibile pe homepage (overview) — subset din PeriodKey.
 export const OVERVIEW_PERIODS = ["today", "last24h", "last7", "last30"] as const;
 export const isOverviewPeriod = (k: string): k is PeriodKey =>
