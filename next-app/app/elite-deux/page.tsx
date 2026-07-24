@@ -34,9 +34,9 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
                 type="button"
                 aria-expanded="true"
                 aria-controls="listsBody"
+                aria-label="Pliază sau desfășoară listele"
               >
                 <span className="lists-chevron" aria-hidden="true">⌄</span>
-                <span className="lists-bar-title">Liste</span>
               </button>
               <button id="addListBtn" className="ghost-btn ghost-btn--small" type="button">+ Listă nouă</button>
             </div>
@@ -166,7 +166,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
         <span className="trash-label">Trage aici pentru a șterge</span>
       </div>
 
-      <Script src="/elite-deux/app.js" strategy="afterInteractive" />
+      <Script src="/elite-deux/app.js?v=11" strategy="afterInteractive" />
     </>
   );
 }

@@ -672,11 +672,12 @@ body[data-bullets="none"] .check-btn {
   }
 }
 
-/* ─────────── Liste permanente (secțiunea de jos, ca TeuxDeux) ─────────── */
+/* ─────────── Liste permanente (design ca TeuxDeux) ─────────── */
 .lists-section {
-  margin-top: 20px;
-  padding-top: 6px;
+  margin-top: 18px;
+  padding: 8px 8px 22px;
   border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 45%, var(--bg));
 }
 
 .lists-bar {
@@ -684,35 +685,30 @@ body[data-bullets="none"] .check-btn {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 4px 10px;
+  padding: 4px 6px 12px;
 }
 
 .lists-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   border: none;
   background: transparent;
-  color: var(--ink);
+  color: var(--muted);
   cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
   padding: 4px 6px;
   border-radius: 8px;
 }
 
 .lists-toggle:hover {
   background: color-mix(in srgb, var(--line) 55%, transparent);
+  color: var(--ink);
 }
 
 .lists-chevron {
   display: inline-block;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
-  color: var(--muted);
   transition: transform 0.18s ease;
 }
 
@@ -722,32 +718,35 @@ body[data-bullets="none"] .check-btn {
 
 .lists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0;
   align-items: start;
 }
 
+/* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux). */
 .list-column {
   display: flex;
   flex-direction: column;
-  min-height: 120px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  min-height: 90px;
+  padding: 0 16px;
+  border-left: 1px solid var(--line);
+}
+
+.list-column:first-child {
+  border-left: none;
 }
 
 .list-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 12px 8px;
-  border-bottom: calc(var(--row-line-opacity) * 1px) dashed var(--line);
+  padding: 4px 0 8px;
 }
 
 .list-title {
   flex: 1;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1.2;
   cursor: text;
   word-break: break-word;
@@ -756,7 +755,8 @@ body[data-bullets="none"] .check-btn {
 .list-title-input {
   flex: 1;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 19px;
+  padding: 2px 0;
 }
 
 .list-delete {
@@ -772,10 +772,10 @@ body[data-bullets="none"] .check-btn {
 .list-items {
   list-style: none;
   margin: 0;
-  padding: 6px 10px 10px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--task-gap);
+  gap: 0;
   flex: 1;
   cursor: text;
 }
@@ -783,9 +783,49 @@ body[data-bullets="none"] .check-btn {
 .list-items:not(:has(.composer-row)):hover::after {
   content: "+ Adaugă un element";
   color: var(--muted);
-  opacity: 0.55;
+  opacity: 0.5;
   font-size: var(--task-font-size);
-  padding: var(--task-padding-y) 8px;
+  padding: 8px 0;
+}
+
+/* Element: text simplu cu linie subțire sub el; bulina/checkbox-ul apare doar
+   la hover (sau când e bifat); tăiat + gri când e gata. */
+.list-item {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 8px 2px 8px 22px;
+}
+
+.list-item .check-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  transform: translateY(-50%);
+  opacity: 0;
+}
+
+/* Ascunde bulina și pe item-ul bifat (regula .task-item.completed o forța
+   vizibilă) — apare doar la hover, ca în TeuxDeux. */
+.list-item.completed .check-btn {
+  opacity: 0;
+}
+
+.list-item:hover .check-btn,
+.list-item.completed:hover .check-btn {
+  opacity: 1;
+}
+
+.list-item .check-btn:active {
+  transform: translateY(-50%) scale(0.88);
 }
 
 .list-item .task-content {
@@ -794,6 +834,10 @@ body[data-bullets="none"] .check-btn {
 
 @media (hover: none) {
   .list-delete {
+    opacity: 1;
+  }
+
+  .list-item .check-btn {
     opacity: 1;
   }
 
