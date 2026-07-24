@@ -25,6 +25,25 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
 
         <main>
           <div id="weekGrid" className="week-grid" aria-live="polite"></div>
+
+          <section id="listsSection" className="lists-section" aria-label="Liste permanente">
+            <div className="lists-bar">
+              <button
+                id="listsToggle"
+                className="lists-toggle"
+                type="button"
+                aria-expanded="true"
+                aria-controls="listsBody"
+              >
+                <span className="lists-chevron" aria-hidden="true">⌄</span>
+                <span className="lists-bar-title">Liste</span>
+              </button>
+              <button id="addListBtn" className="ghost-btn ghost-btn--small" type="button">+ Listă nouă</button>
+            </div>
+            <div id="listsBody" className="lists-body">
+              <div id="listsGrid" className="lists-grid" aria-live="polite"></div>
+            </div>
+          </section>
         </main>
       </div>
 

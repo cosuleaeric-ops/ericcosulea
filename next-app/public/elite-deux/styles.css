@@ -671,3 +671,133 @@ body[data-bullets="none"] .check-btn {
     overflow-x: auto;
   }
 }
+
+/* ─────────── Liste permanente (secțiunea de jos, ca TeuxDeux) ─────────── */
+.lists-section {
+  margin-top: 20px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.lists-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 10px;
+}
+
+.lists-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.lists-toggle:hover {
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.lists-chevron {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.lists-section.collapsed .lists-chevron {
+  transform: rotate(-90deg);
+}
+
+.lists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.list-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  border-bottom: calc(var(--row-line-opacity) * 1px) dashed var(--line);
+}
+
+.list-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+  cursor: text;
+  word-break: break-word;
+}
+
+.list-title-input {
+  flex: 1;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.list-delete {
+  flex: none;
+  opacity: 0;
+}
+
+.list-column:hover .list-delete,
+.list-column:focus-within .list-delete {
+  opacity: 1;
+}
+
+.list-items {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--task-gap);
+  flex: 1;
+  cursor: text;
+}
+
+.list-items:not(:has(.composer-row)):hover::after {
+  content: "+ Adaugă un element";
+  color: var(--muted);
+  opacity: 0.55;
+  font-size: var(--task-font-size);
+  padding: var(--task-padding-y) 8px;
+}
+
+.list-item .task-content {
+  cursor: text;
+}
+
+@media (hover: none) {
+  .list-delete {
+    opacity: 1;
+  }
+
+  .list-items::after {
+    display: none;
+  }
+}

@@ -25,6 +25,7 @@ const SETTINGS_DEFAULTS = {
   showLines: true,
   display: "light",
   celebrations: true,
+  listsCollapsed: false,
 };
 
 const TEXT_SIZE_MAP = {
@@ -42,6 +43,7 @@ const SPACING_MAP = {
 const state = {
   dayOffset: 0,
   tasksByDate: {},
+  lists: [], // liste permanente (nu se rulează zilnic): [{id, name, items:[{id,text,done}]}]
   settings: { ...SETTINGS_DEFAULTS },
   ui: {
     prefsOpen: false,
@@ -69,8 +71,21 @@ const exportDataBtn = document.getElementById("exportData");
 const importDataBtn = document.getElementById("importData");
 const importFileInput = document.getElementById("importFile");
 const trashZone = document.getElementById("trashZone");
+const listsSection = document.getElementById("listsSection");
+const listsBody = document.getElementById("listsBody");
+const listsGrid = document.getElementById("listsGrid");
+const listsToggle = document.getElementById("listsToggle");
+const addListBtn = document.getElementById("addListBtn");
 let remoteSaveTimer = null;
 let remoteInitSucceeded = false;
+
+listsToggle?.addEventListener("click", () => {
+  state.settings.listsCollapsed = !state.settings.listsCollapsed;
+  applyListsCollapsed();
+  saveState();
+});
+
+addListBtn?.addEventListener("click", () => addList());
 
 prevWeekBtn.addEventListener("click", () => {
   state.dayOffset -= 1;
@@ -192,6 +207,7 @@ async function init() {
   syncSettingsUI();
   applyVisualSettings();
   renderWeek();
+  renderLists();
 
   document.addEventListener("dragover", onGlobalDragOver);
   document.addEventListener("drop", onGlobalDrop);
@@ -318,6 +334,7 @@ function applyRemoteAndRender(snapshot) {
   syncSettingsUI();
   applyVisualSettings();
   renderWeek();
+  renderLists();
 }
 
 function readLocalSnapshot() {
@@ -336,8 +353,29 @@ function readLocalSnapshot() {
 function applyStateSnapshot(snapshot) {
   state.dayOffset = 0;
   state.tasksByDate = snapshot.tasksByDate;
+  state.lists = snapshot.lists;
   state.settings = snapshot.settings;
   state.lastSeenDate = snapshot.lastSeenDate;
+}
+
+function sanitizeListItem(item) {
+  return {
+    id: item?.id || uid(),
+    text: String(item?.text || ""),
+    done: Boolean(item?.done),
+  };
+}
+
+function sanitizeList(list) {
+  return {
+    id: list?.id || uid(),
+    name: String(list?.name || "Listă"),
+    items: (Array.isArray(list?.items) ? list.items : []).map(sanitizeListItem),
+  };
+}
+
+function sanitizeLists(source) {
+  return Array.isArray(source) ? source.map(sanitizeList) : [];
 }
 
 function sanitizeStateSnapshot(source = {}) {
@@ -353,6 +391,7 @@ function sanitizeStateSnapshot(source = {}) {
 
   return {
     tasksByDate: nextByDate,
+    lists: sanitizeLists(source.lists),
     settings: sanitizeSettings(source.settings || {}),
     lastSeenDate: parseDateKey(source.lastSeenDate) ? source.lastSeenDate : formatDateKey(new Date()),
     savedAt: typeof source.savedAt === "number" ? source.savedAt : 0,
@@ -362,6 +401,7 @@ function sanitizeStateSnapshot(source = {}) {
 function buildStateSnapshot() {
   return {
     tasksByDate: state.tasksByDate,
+    lists: state.lists,
     settings: state.settings,
     lastSeenDate: state.lastSeenDate,
     savedAt: Date.now(),
@@ -403,6 +443,7 @@ function sanitizeSettings(source) {
   settings.hideCompleted = Boolean(settings.hideCompleted);
   settings.showLines = Boolean(settings.showLines);
   settings.celebrations = Boolean(settings.celebrations);
+  settings.listsCollapsed = Boolean(settings.listsCollapsed);
 
   return settings;
 }
@@ -1288,6 +1329,368 @@ function setPreferencesPanel(visible) {
   prefsPanel.setAttribute("aria-hidden", String(!visible));
   prefsOverlay.hidden = !visible;
   prefsToggleBtn.setAttribute("aria-expanded", String(visible));
+}
+
+// ─────────────────────────── Liste permanente ───────────────────────────
+// Secțiune separată de task-urile zilnice: NU se rulează la miezul nopții, rămân
+// acolo cât vrei (ca partea de jos din TeuxDeux). Pliabilă din bara proprie.
+
+function applyListsCollapsed() {
+  const collapsed = Boolean(state.settings.listsCollapsed);
+  listsSection?.classList.toggle("collapsed", collapsed);
+  if (listsBody) listsBody.hidden = collapsed;
+  if (addListBtn) addListBtn.hidden = collapsed;
+  listsToggle?.setAttribute("aria-expanded", String(!collapsed));
+}
+
+function renderLists() {
+  applyListsCollapsed();
+  if (!listsGrid) {
+    return;
+  }
+
+  listsGrid.innerHTML = "";
+  state.lists.forEach((list) => listsGrid.appendChild(renderListColumn(list)));
+}
+
+// Re-randează o singură coloană de listă, păstrând composer-ul deschis (ca la zile).
+function renderListColumnById(listId) {
+  const col = listsGrid?.querySelector(`.list-column[data-list-id="${listId}"]`);
+  const list = findList(listId);
+  if (!col || !list) {
+    renderLists();
+    return;
+  }
+
+  const input = col.querySelector(".list-composer-input");
+  const draft = input ? input.value : null;
+  const hadFocus = input && document.activeElement === input;
+
+  const fresh = renderListColumn(list);
+  col.replaceWith(fresh);
+
+  if (draft !== null) {
+    const next = openListComposer(fresh.querySelector(".list-items"), listId, { focus: Boolean(hadFocus) });
+    if (next) {
+      next.value = draft;
+    }
+  }
+}
+
+function renderListColumn(list) {
+  const column = document.createElement("section");
+  column.className = "list-column";
+  column.dataset.listId = list.id;
+
+  const header = document.createElement("div");
+  header.className = "list-header";
+
+  const title = document.createElement("div");
+  title.className = "list-title";
+  title.textContent = list.name;
+  title.title = "Click pentru a redenumi";
+  title.addEventListener("click", () => beginListRename(title, list));
+
+  const del = document.createElement("button");
+  del.className = "tiny-btn list-delete";
+  del.type = "button";
+  del.title = "Șterge lista";
+  del.textContent = "🗑";
+  del.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (list.items.length === 0 || window.confirm(`Ștergi lista „${list.name}”?`)) {
+      deleteList(list.id);
+    }
+  });
+
+  header.append(title, del);
+
+  const items = document.createElement("ul");
+  items.className = "list-items";
+
+  const visible = state.settings.hideCompleted ? list.items.filter((it) => !it.done) : list.items;
+  visible.forEach((item) => items.appendChild(renderListItem(list, item)));
+
+  items.addEventListener("click", (event) => {
+    if (event.target.closest(".task-item") || event.target.closest(".composer-row")) {
+      return;
+    }
+    openListComposer(items, list.id);
+  });
+
+  column.append(header, items);
+  return column;
+}
+
+function renderListItem(list, item) {
+  const li = document.createElement("li");
+  li.className = "task-item list-item";
+  li.dataset.itemId = item.id;
+  if (item.done) {
+    li.classList.add("completed");
+  }
+
+  const check = document.createElement("button");
+  check.className = "check-btn";
+  check.type = "button";
+  check.setAttribute("aria-label", "Marchează completat");
+  check.addEventListener("click", () => {
+    const became = toggleListItem(list.id, item.id);
+    if (became && state.settings.celebrations) {
+      spawnConfettiBurst();
+    }
+  });
+
+  const content = document.createElement("div");
+  content.className = "task-content";
+  content.textContent = item.text;
+  content.addEventListener("click", () => beginListItemEdit(content, list.id, item));
+
+  const actions = document.createElement("div");
+  actions.className = "task-actions";
+  const edit = document.createElement("button");
+  edit.className = "tiny-btn";
+  edit.type = "button";
+  edit.title = "Editează";
+  edit.textContent = "✎";
+  edit.addEventListener("click", () => beginListItemEdit(content, list.id, item));
+  actions.appendChild(edit);
+
+  li.append(check, content, actions);
+  return li;
+}
+
+function openListComposer(itemsEl, listId, options = {}) {
+  if (!itemsEl) {
+    return null;
+  }
+
+  const existing = itemsEl.querySelector(".list-composer-input");
+  if (existing) {
+    existing.focus();
+    return existing;
+  }
+
+  const row = document.createElement("li");
+  row.className = "composer-row";
+  const input = document.createElement("input");
+  input.className = "add-input list-composer-input";
+  input.placeholder = "Adaugă un element...";
+
+  let committed = false;
+  const commit = (keepOpen) => {
+    if (committed) {
+      return;
+    }
+    const text = input.value.trim();
+    if (!keepOpen) {
+      committed = true;
+      row.remove();
+      if (text) {
+        addListItem(listId, text);
+      }
+      return;
+    }
+    if (!text) {
+      committed = true;
+      row.remove();
+      return;
+    }
+    input.value = "";
+    committed = true;
+    addListItem(listId, text);
+  };
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commit(true);
+    } else if (event.key === "Escape") {
+      committed = true;
+      row.remove();
+    }
+  });
+  input.addEventListener("blur", () => commit(false));
+
+  row.appendChild(input);
+  itemsEl.appendChild(row);
+  if (options.focus !== false) {
+    input.focus();
+  }
+  return input;
+}
+
+function beginListRename(titleNode, list) {
+  const column = titleNode.closest(".list-column");
+  if (column?.querySelector(".list-title-input")) {
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.className = "add-input list-title-input";
+  input.value = list.name;
+
+  let done = false;
+  const finish = (save) => {
+    if (done) {
+      return;
+    }
+    done = true;
+    if (save) {
+      const name = input.value.trim();
+      renameList(list.id, name || list.name);
+    } else {
+      renderListColumnById(list.id);
+    }
+  };
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      finish(true);
+    } else if (event.key === "Escape") {
+      finish(false);
+    }
+  });
+  input.addEventListener("blur", () => finish(true));
+  titleNode.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+function beginListItemEdit(contentNode, listId, item) {
+  const li = contentNode.closest(".task-item");
+  if (li?.querySelector(".edit-input")) {
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.className = "edit-input";
+  input.value = item.text;
+
+  let done = false;
+  const cancel = () => {
+    if (done) {
+      return;
+    }
+    done = true;
+    renderListColumnById(listId);
+  };
+  const save = () => {
+    if (done) {
+      return;
+    }
+    done = true;
+    const text = input.value.trim();
+    if (!text) {
+      removeListItem(listId, item.id);
+      return;
+    }
+    updateListItem(listId, item.id, (current) => ({ ...current, text }));
+  };
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      save();
+    } else if (event.key === "Escape") {
+      cancel();
+    }
+  });
+  input.addEventListener("blur", save);
+  contentNode.replaceWith(input);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+
+function findList(listId) {
+  return state.lists.find((list) => list.id === listId) || null;
+}
+
+function addList(name = "Listă nouă") {
+  const list = { id: uid(), name, items: [] };
+  state.lists.push(list);
+  if (state.settings.listsCollapsed) {
+    state.settings.listsCollapsed = false;
+  }
+  saveState();
+  renderLists();
+
+  // Redenumire imediată a listei nou create.
+  const col = listsGrid?.querySelector(`.list-column[data-list-id="${list.id}"]`);
+  const title = col?.querySelector(".list-title");
+  if (title) {
+    beginListRename(title, list);
+  }
+}
+
+function renameList(listId, name) {
+  const list = findList(listId);
+  if (!list) {
+    return;
+  }
+  list.name = name;
+  saveState();
+  renderListColumnById(listId);
+}
+
+function deleteList(listId) {
+  state.lists = state.lists.filter((list) => list.id !== listId);
+  saveState();
+  renderLists();
+}
+
+function addListItem(listId, text) {
+  const list = findList(listId);
+  if (!list) {
+    return;
+  }
+  const entry = { id: uid(), text, done: false };
+  const firstDone = list.items.findIndex((item) => item.done);
+  if (firstDone === -1) {
+    list.items.push(entry);
+  } else {
+    list.items.splice(firstDone, 0, entry);
+  }
+  saveState();
+  renderListColumnById(listId);
+}
+
+function updateListItem(listId, itemId, updater) {
+  const list = findList(listId);
+  if (!list) {
+    return;
+  }
+  list.items = list.items.map((item) => (item.id === itemId ? updater(item) : item));
+  saveState();
+  renderListColumnById(listId);
+}
+
+function toggleListItem(listId, itemId) {
+  const list = findList(listId);
+  if (!list) {
+    return false;
+  }
+  const item = list.items.find((entry) => entry.id === itemId);
+  if (!item) {
+    return false;
+  }
+  item.done = !item.done;
+  // Bifate la fund, ordinea din fiecare grup păstrată.
+  const active = list.items.filter((entry) => !entry.done);
+  const done = list.items.filter((entry) => entry.done);
+  list.items = [...active, ...done];
+  saveState();
+  renderListColumnById(listId);
+  return item.done;
+}
+
+function removeListItem(listId, itemId) {
+  const list = findList(listId);
+  if (!list) {
+    return;
+  }
+  list.items = list.items.filter((item) => item.id !== itemId);
+  saveState();
+  renderListColumnById(listId);
 }
 
 // Service worker: cache offline pentru shell + assets (deschidere instant ca PWA).
