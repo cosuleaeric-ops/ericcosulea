@@ -1,56 +1,47 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-// Supabase Postgres prin pooler-ul de SESIUNE (port 5432). Tabelele stau în
-// schema `ericcosulea` (izolată de deep-work din `public`); search_path setat ca
-// DEFAULT PE ROL în Supabase (`ALTER ROLE postgres SET search_path TO
-// ericcosulea, public`), aplicat server-side pe fiecare conexiune.
-//
-// De ce sesiune (5432) și NU tranzacții (6543): pooler-ul de tranzacții +
-// postgres.js îngheață query-urile la reutilizarea conexiunii (prima cerere
-// merge, următoarele pe aceeași instanță warm dau statement timeout / atârnă).
-// Pooler-ul de sesiune ține o conexiune stabilă și reutilizabilă — reuse-ul
-// merge instant. La traficul redus de aici, numărul de conexiuni nu e o
-// problemă (Postgres are 60). prepare:false rămâne, inofensiv.
+// Supabase Postgres prin pooler-ul de TRANZACȚII (port 6543), cu driverul
+// node-postgres (`pg`).
+// - Pooler-ul de SESIUNE (5432) are limită dură de 15 clienți pe free →
+//   serverless-ul îl epuiza (EMAXCONNSESSION) și paginile dinamice picau.
+// - Tranzacții (6543) multiplexează mulți clienți pe puține conexiuni server.
+// - postgres.js îngheța pe 6543 la reutilizarea conexiunii (pipeline-ul lui e
+//   incompatibil cu transaction pooling). node-postgres NU face pipelining —
+//   fiecare query e o tranzacție curată, exact ce așteaptă pooler-ul. E driverul
+//   recomandat pentru pgbouncer/Supavisor.
+// search_path e setat ca DEFAULT PE ROL în Supabase
+// (`ALTER ROLE postgres SET search_path TO ericcosulea, public`).
 
-type Sql = ReturnType<typeof postgres>;
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 
-let _client: Sql | undefined;
+let _pool: Pool | undefined;
 let _db: DrizzleDb | undefined;
 
-export function getClient(): Sql {
-  if (!_client) {
+function getPool(): Pool {
+  if (!_pool) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL not set");
-    // Config minimal recomandat de Supabase pentru serverless: prepare:false
-    // (obligatoriu pe pooler-ul de tranzacții). max:5 lasă build-ul să
-    // prerandeze paginile ISR în paralel; FĂRĂ idle_timeout, conexiunile rămân
-    // calde între request-uri (reuse) — stabilirea unei conexiuni noi spre
-    // Supavisor e lentă, deci reconectările dese (idle_timeout mic) provocau
-    // exact timeout-urile intermitente.
-    _client = postgres(url, {
-      ssl: "require",
-      prepare: false,
+    _pool = new Pool({
+      connectionString: url,
+      ssl: { rejectUnauthorized: false },
       max: 5,
+      idleTimeoutMillis: 20_000,
+      connectionTimeoutMillis: 15_000,
     });
   }
-  return _client;
+  return _pool;
 }
 
 export function getDb(): DrizzleDb {
-  if (!_db) _db = drizzle(getClient(), { schema });
+  if (!_db) _db = drizzle(getPool(), { schema });
   return _db;
 }
 
-// SQL brut cu parametri poziționali ($1,$2…) → rows[]. Înlocuiește neon .query()
-// pentru agregările din lib/analytics; folosește același client (search_path).
-//
-// Array-urile se serializează ca literal Postgres `{...}`: driverul neon accepta
-// un array JS ca parametru `type[]`, dar postgres.js nu (aruncă „Received an
-// instance of Array" prin .unsafe). Cu cast-urile `$N::timestamptz[]` din query,
-// literalul se parsează corect.
+// SQL brut cu parametri poziționali ($1,$2…) → rows[], pentru agregările din
+// lib/analytics. Array-urile se serializează ca literal Postgres `{...}` (cast-urile
+// `$N::timestamptz[]` din query le parsează) — robust indiferent de driver.
 function toPgArrayLiteral(arr: unknown[]): string {
   return (
     "{" +
@@ -65,12 +56,13 @@ function toPgArrayLiteral(arr: unknown[]): string {
   );
 }
 
-export function sqlQuery<T = Record<string, unknown>>(
+export async function sqlQuery<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
   const prepared = params.map((p) => (Array.isArray(p) ? toPgArrayLiteral(p) : p));
-  return getClient().unsafe(text, prepared as never[]) as unknown as Promise<T[]>;
+  const res = await getPool().query(text, prepared);
+  return res.rows as T[];
 }
 
 // Lazy proxy — backward compatible cu toate import { db } existente
