@@ -88,6 +88,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400, headers: CORS });
   }
 
+  // Admin logat = noi înșine. Cookie-ul hint (SameSite=None) e trimis de browser
+  // și cross-site, deci ne excludem pe TOATE site-urile, nu doar ericcosulea.ro.
+  if (req.cookies.get("ericcosulea_admin_hint")?.value === "1") {
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
+  }
+
   // Filtru boți + IP-uri excluse — respinge înainte de orice DB write (202, fără eroare la client).
   if (isBot(req.headers.get("user-agent"))) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });

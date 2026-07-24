@@ -102,6 +102,7 @@
           method: "POST",
           body: body,
           keepalive: true,
+          credentials: "include", // trimite cookie-ul de admin cross-site (self-exclude)
           headers: { "Content-Type": "text/plain" },
         });
       }
