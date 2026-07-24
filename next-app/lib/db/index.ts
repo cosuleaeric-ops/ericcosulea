@@ -41,11 +41,31 @@ export function getDb(): DrizzleDb {
 
 // SQL brut cu parametri poziționali ($1,$2…) → rows[]. Înlocuiește neon .query()
 // pentru agregările din lib/analytics; folosește același client (search_path).
+//
+// Array-urile se serializează ca literal Postgres `{...}`: driverul neon accepta
+// un array JS ca parametru `type[]`, dar postgres.js nu (aruncă „Received an
+// instance of Array" prin .unsafe). Cu cast-urile `$N::timestamptz[]` din query,
+// literalul se parsează corect.
+function toPgArrayLiteral(arr: unknown[]): string {
+  return (
+    "{" +
+    arr
+      .map((v) =>
+        v === null || v === undefined
+          ? "NULL"
+          : `"${String(v).replace(/(["\\])/g, "\\$1")}"`,
+      )
+      .join(",") +
+    "}"
+  );
+}
+
 export function sqlQuery<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  return getClient().unsafe(text, params as never[]) as unknown as Promise<T[]>;
+  const prepared = params.map((p) => (Array.isArray(p) ? toPgArrayLiteral(p) : p));
+  return getClient().unsafe(text, prepared as never[]) as unknown as Promise<T[]>;
 }
 
 // Lazy proxy — backward compatible cu toate import { db } existente
