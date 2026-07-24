@@ -33,6 +33,22 @@
     /\.local$/.test(host);
   if (isLocal && !includeLocalhost) return;
 
+  // ── Opt-out prin URL: ?elitedata_ignore=1 setează un flag persistent în ACEST
+  //    browser (=0 îl scoate). Un click/link o dată pe fiecare site & dispozitiv,
+  //    apoi vizitele proprii nu mai sunt contorizate. Merge pe orice domeniu —
+  //    e singura cale de self-exclude cross-domeniu (cookie-ul de admin e doar pe
+  //    ericcosulea.ro). ──
+  try {
+    var ignoreParam = new URLSearchParams(location.search).get("elitedata_ignore");
+    if (ignoreParam !== null) {
+      if (ignoreParam === "0" || ignoreParam === "false") {
+        localStorage.removeItem("elitedata_ignore");
+      } else {
+        localStorage.setItem("elitedata_ignore", "true");
+      }
+    }
+  } catch (e) {}
+
   // ── Opt-out propriu: localStorage.elitedata_ignore=true ──
   try {
     if (localStorage.getItem("elitedata_ignore") === "true") return;
