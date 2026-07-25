@@ -43,6 +43,17 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
             <div id="listsBody" className="lists-body">
               <div id="listsGrid" className="lists-grid" aria-live="polite"></div>
             </div>
+            <div
+              id="listsResize"
+              className="lists-resize"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Trage pentru a schimba înălțimea secțiunii de liste"
+              tabIndex={0}
+              title="Trage ca să faci secțiunea mai înaltă sau mai scundă"
+            >
+              <span className="lists-resize-grip" aria-hidden="true"></span>
+            </div>
           </section>
         </main>
       </div>
@@ -166,7 +177,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
         <span className="trash-label">Trage aici pentru a șterge</span>
       </div>
 
-      <Script src="/elite-deux/app.js?v=12" strategy="afterInteractive" />
+      <Script src="/elite-deux/app.js?v=13" strategy="afterInteractive" />
     </>
   );
 }

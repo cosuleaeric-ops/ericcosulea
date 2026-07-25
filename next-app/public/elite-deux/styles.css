@@ -746,14 +746,51 @@ body[data-bullets="none"] .check-btn {
 }
 
 /* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux).
-   min-height în vh → secțiunea de jos e o bandă vizibilă (~20% din ecran),
-   scalează cu fereastra. */
+   Înălțimea (--lists-h) e reglabilă din mânerul de jos; default 20vh. */
 .list-column {
   display: flex;
   flex-direction: column;
-  min-height: 20vh;
+  min-height: var(--lists-h, 20vh);
   padding: 0 16px;
   border-left: 1px solid var(--line);
+}
+
+/* Mâner de redimensionare: bară de „grab" la baza secțiunii. */
+.lists-resize {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  margin-top: 4px;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.lists-resize-grip {
+  width: 46px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  transition: background 0.15s ease, width 0.15s ease;
+}
+
+.lists-resize:hover .lists-resize-grip,
+.lists-resize:focus-visible .lists-resize-grip {
+  background: var(--theme);
+  width: 60px;
+}
+
+.lists-resize:focus-visible {
+  outline: none;
+}
+
+.lists-section.collapsed .lists-resize {
+  display: none;
+}
+
+body.lists-resizing {
+  cursor: row-resize;
+  user-select: none;
 }
 
 .list-column:first-child {

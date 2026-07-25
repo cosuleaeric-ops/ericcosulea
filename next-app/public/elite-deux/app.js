@@ -26,6 +26,7 @@ const SETTINGS_DEFAULTS = {
   display: "light",
   celebrations: true,
   listsCollapsed: false,
+  listsHeight: 0, // 0 = auto (20vh); >0 = înălțime setată manual (px)
 };
 
 const TEXT_SIZE_MAP = {
@@ -76,6 +77,7 @@ const listsBody = document.getElementById("listsBody");
 const listsGrid = document.getElementById("listsGrid");
 const listsToggle = document.getElementById("listsToggle");
 const addListBtn = document.getElementById("addListBtn");
+const listsResize = document.getElementById("listsResize");
 let remoteSaveTimer = null;
 let remoteInitSucceeded = false;
 
@@ -86,6 +88,57 @@ listsToggle?.addEventListener("click", () => {
 });
 
 addListBtn?.addEventListener("click", () => addList());
+
+// Mâner de redimensionare: tragi în jos → secțiune mai înaltă, în sus → mai scundă.
+// Reglează --lists-h (înălțimea minimă a coloanelor de listă); se salvează.
+const LISTS_MIN_H = 60;
+const listsMaxH = () => Math.round(window.innerHeight * 0.85);
+const listsDefaultH = () => Math.round(window.innerHeight * 0.2); // 20vh, fallback-ul CSS
+if (listsResize) {
+  let dragging = false;
+  let startY = 0;
+  let startH = 0;
+  let curH = 0;
+
+  const onMove = (event) => {
+    if (!dragging) return;
+    curH = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), startH + (event.clientY - startY)));
+    document.documentElement.style.setProperty("--lists-h", curH + "px");
+  };
+
+  const onEnd = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("lists-resizing");
+    try { listsResize.releasePointerCapture(event.pointerId); } catch {}
+    state.settings.listsHeight = curH;
+    saveState();
+  };
+
+  listsResize.addEventListener("pointerdown", (event) => {
+    dragging = true;
+    startY = event.clientY;
+    startH = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
+    curH = startH;
+    document.body.classList.add("lists-resizing");
+    try { listsResize.setPointerCapture(event.pointerId); } catch {}
+    event.preventDefault();
+  });
+  listsResize.addEventListener("pointermove", onMove);
+  listsResize.addEventListener("pointerup", onEnd);
+  listsResize.addEventListener("pointercancel", onEnd);
+
+  // Accesibilitate: săgeți sus/jos (Shift = pas mai mare).
+  listsResize.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const cur = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
+    const step = (event.shiftKey ? 40 : 16) * (event.key === "ArrowDown" ? 1 : -1);
+    state.settings.listsHeight = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), cur + step));
+    applyListsHeight();
+    saveState();
+  });
+}
 
 prevWeekBtn.addEventListener("click", () => {
   state.dayOffset -= 1;
@@ -444,6 +497,9 @@ function sanitizeSettings(source) {
   settings.showLines = Boolean(settings.showLines);
   settings.celebrations = Boolean(settings.celebrations);
   settings.listsCollapsed = Boolean(settings.listsCollapsed);
+
+  const lh = Number(settings.listsHeight);
+  settings.listsHeight = Number.isFinite(lh) && lh > 0 ? Math.round(lh) : 0;
 
   return settings;
 }
@@ -1345,8 +1401,18 @@ function applyListsCollapsed() {
   listsToggle?.setAttribute("aria-expanded", String(!collapsed));
 }
 
+function applyListsHeight() {
+  const h = state.settings.listsHeight;
+  if (h > 0) {
+    document.documentElement.style.setProperty("--lists-h", h + "px");
+  } else {
+    document.documentElement.style.removeProperty("--lists-h");
+  }
+}
+
 function renderLists() {
   applyListsCollapsed();
+  applyListsHeight();
   if (!listsGrid) {
     return;
   }
