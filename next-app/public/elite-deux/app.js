@@ -102,7 +102,8 @@ if (listsResize) {
 
   const onMove = (event) => {
     if (!dragging) return;
-    curH = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), startH + (event.clientY - startY)));
+    // Mânerul e în capul secțiunii: tragi în SUS → mai înaltă, în JOS → mai scundă.
+    curH = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), startH + (startY - event.clientY)));
     document.documentElement.style.setProperty("--lists-h", curH + "px");
   };
 
@@ -133,7 +134,7 @@ if (listsResize) {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
     const cur = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
-    const step = (event.shiftKey ? 40 : 16) * (event.key === "ArrowDown" ? 1 : -1);
+    const step = (event.shiftKey ? 40 : 16) * (event.key === "ArrowUp" ? 1 : -1);
     state.settings.listsHeight = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), cur + step));
     applyListsHeight();
     saveState();

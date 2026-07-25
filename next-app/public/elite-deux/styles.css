@@ -755,29 +755,29 @@ body[data-bullets="none"] .check-btn {
   border-left: 1px solid var(--line);
 }
 
-/* Mâner de redimensionare: bară de „grab" la baza secțiunii. */
+/* Mâner de redimensionare: bară de „grab" în capul secțiunii (vizibilă imediat). */
 .lists-resize {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 16px;
-  margin-top: 4px;
+  height: 20px;
+  margin: 0 0 2px;
   cursor: row-resize;
   touch-action: none;
 }
 
 .lists-resize-grip {
-  width: 46px;
-  height: 4px;
+  width: 54px;
+  height: 5px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
   transition: background 0.15s ease, width 0.15s ease;
 }
 
 .lists-resize:hover .lists-resize-grip,
 .lists-resize:focus-visible .lists-resize-grip {
   background: var(--theme);
-  width: 60px;
+  width: 76px;
 }
 
 .lists-resize:focus-visible {
