@@ -692,17 +692,23 @@ body[data-bullets="none"] .check-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--paper);
   color: var(--muted);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 6px 12px;
   border-radius: 8px;
 }
 
 .lists-toggle:hover {
-  background: color-mix(in srgb, var(--line) 55%, transparent);
+  border-color: var(--theme);
   color: var(--ink);
+}
+
+.add-list-btn {
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 12px;
 }
 
 .lists-chevron {
@@ -716,18 +722,32 @@ body[data-bullets="none"] .check-btn {
   transform: rotate(-90deg);
 }
 
+/* Colapsare: grid-template-rows 1fr→0fr ascunde complet secțiunea (înălțime 0 +
+   clip pe .lists-grid). Fără tranziție pe grid-template-rows — interpolarea `fr`
+   rămâne blocată în Chromium; colapsarea e instantă, chevron-ul rotit dă feedback. */
+.lists-body {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.lists-section.collapsed .lists-body {
+  grid-template-rows: 0fr;
+}
+
 .lists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 0;
   align-items: start;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux). */
 .list-column {
   display: flex;
   flex-direction: column;
-  min-height: 90px;
+  min-height: 108px;
   padding: 0 16px;
   border-left: 1px solid var(--line);
 }

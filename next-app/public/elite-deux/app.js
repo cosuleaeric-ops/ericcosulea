@@ -1337,8 +1337,10 @@ function setPreferencesPanel(visible) {
 
 function applyListsCollapsed() {
   const collapsed = Boolean(state.settings.listsCollapsed);
+  // Colapsarea o face CSS-ul (animație pe grid-template-rows via clasa .collapsed);
+  // `inert` scoate conținutul ascuns din focus/tab, fără a rupe animația.
   listsSection?.classList.toggle("collapsed", collapsed);
-  if (listsBody) listsBody.hidden = collapsed;
+  if (listsBody) listsBody.inert = collapsed;
   if (addListBtn) addListBtn.hidden = collapsed;
   listsToggle?.setAttribute("aria-expanded", String(!collapsed));
 }
