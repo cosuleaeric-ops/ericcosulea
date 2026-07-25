@@ -736,7 +736,9 @@ body[data-bullets="none"] .check-btn {
 
 .lists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  /* auto-FIT (nu fill): coloanele se întind să umple 100% din lățime, fără
+     tracks goale la dreapta. O listă → lățime totală; două → jumătate fiecare. */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 0;
   align-items: start;
   min-height: 0;
