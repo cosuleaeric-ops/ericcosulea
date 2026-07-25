@@ -92,8 +92,10 @@ addListBtn?.addEventListener("click", () => addList());
 // Mâner de redimensionare: tragi în jos → secțiune mai înaltă, în sus → mai scundă.
 // Reglează --lists-h (înălțimea minimă a coloanelor de listă); se salvează.
 const LISTS_MIN_H = 60;
-const listsMaxH = () => Math.round(window.innerHeight * 0.85);
-const listsDefaultH = () => Math.round(window.innerHeight * 0.2); // 20vh, fallback-ul CSS
+const listsMaxH = () => Math.round(window.innerHeight * 0.8); // lasă loc zilelor
+const listsDefaultH = () => Math.round(window.innerHeight * 0.3); // 30vh, fallback-ul CSS
+const listsCurrentH = () =>
+  listsSection ? Math.round(listsSection.getBoundingClientRect().height) : listsDefaultH();
 if (listsResize) {
   let dragging = false;
   let startY = 0;
@@ -124,7 +126,7 @@ if (listsResize) {
   listsResize.addEventListener("pointerdown", (event) => {
     dragging = true;
     startY = event.clientY;
-    startH = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
+    startH = listsCurrentH(); // înălțimea reală a secțiunii acum
     curH = startH;
     document.body.classList.add("lists-resizing");
     window.addEventListener("pointermove", onMove);
@@ -137,7 +139,7 @@ if (listsResize) {
   listsResize.addEventListener("keydown", (event) => {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
-    const cur = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
+    const cur = listsCurrentH();
     const step = (event.shiftKey ? 40 : 16) * (event.key === "ArrowUp" ? 1 : -1);
     state.settings.listsHeight = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), cur + step));
     applyListsHeight();
@@ -1407,13 +1409,27 @@ function applyListsCollapsed() {
 }
 
 function applyListsHeight() {
-  const h = state.settings.listsHeight;
+  let h = state.settings.listsHeight;
+  // Valoare mai mare decât tot ecranul = gunoi (de pe vremea drag-ului nelimitat)
+  // → revino la default (30vh). Se auto-vindecă la următorul drag.
+  if (h > window.innerHeight) {
+    h = 0;
+    state.settings.listsHeight = 0;
+  }
   if (h > 0) {
-    document.documentElement.style.setProperty("--lists-h", h + "px");
+    // Clamp la ecran: nu strivim zilele, nu depășim viewport-ul.
+    const clamped = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), h));
+    document.documentElement.style.setProperty("--lists-h", clamped + "px");
   } else {
     document.documentElement.style.removeProperty("--lists-h");
   }
 }
+
+// La redimensionarea ferestrei, re-clampează (altfel o secțiune mare rămâne mai
+// înaltă decât noul ecran).
+window.addEventListener("resize", () => {
+  if (state.settings.listsHeight > 0) applyListsHeight();
+});
 
 function renderLists() {
   applyListsCollapsed();
