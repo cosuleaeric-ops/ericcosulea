@@ -799,10 +799,12 @@ body[data-bullets="none"] .check-btn {
   padding: 0 2px;
 }
 
-/* Corpul tabului activ: o singură listă, pe toată lățimea. */
+/* Corpul tabului activ: o singură listă, pe toată lățimea și toată înălțimea
+   panoului (ca zona de click pentru „adaugă" să acopere tot spațiul gol). */
 .list-active {
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto;
   min-height: 0;
   padding: 0 8px;
 }
@@ -860,6 +862,10 @@ body[data-bullets="none"] .check-btn {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 6px 10px;
+  /* flex column + copil care crește → lista umple tot panoul, deci poți da click
+     oriunde în zona goală ca să adaugi un element (nu doar lângă text). */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Colapsat: secțiunea se strânge la bară (înălțimea auto învinge --lists-h). */
@@ -872,12 +878,12 @@ body[data-bullets="none"] .check-btn {
 }
 
 .lists-grid {
-  display: grid;
-  /* auto-FIT (nu fill): coloanele se întind să umple 100% din lățime, fără
-     tracks goale la dreapta. O listă → lățime totală; două → jumătate fiecare. */
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* Cu taburi se vede o singură listă → nu mai e grid de coloane, ci un container
+     care umple panoul (zona de click pentru „adaugă" acoperă tot spațiul gol). */
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
   gap: 0;
-  align-items: start;
   min-height: 0;
 }
 
