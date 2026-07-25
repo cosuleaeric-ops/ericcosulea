@@ -743,11 +743,13 @@ body[data-bullets="none"] .check-btn {
   overflow: hidden;
 }
 
-/* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux). */
+/* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux).
+   min-height în vh → secțiunea de jos e o bandă vizibilă (~20% din ecran),
+   scalează cu fereastra. */
 .list-column {
   display: flex;
   flex-direction: column;
-  min-height: 108px;
+  min-height: 20vh;
   padding: 0 16px;
   border-left: 1px solid var(--line);
 }
