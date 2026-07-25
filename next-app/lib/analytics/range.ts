@@ -38,7 +38,7 @@ export const PERIOD_SHORTCUTS: Partial<Record<PeriodKey, string>> = {
   yesterday: "Y",
   last24h: "D",
   last7: "W",
-  last30: "3",
+  last30: "M",
 };
 
 // Ordinea din dropdown (custom e randat separat, cu calendar).
