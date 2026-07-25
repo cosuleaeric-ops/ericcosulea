@@ -700,18 +700,28 @@ body[data-bullets="none"] .check-btn {
   overflow: hidden;
 }
 
+/* Bara de taburi stă LIPITĂ de panoul de conținut (design clasic de tab-uri:
+   tabul activ e din aceeași hârtie ca panoul și fără linie între ele). */
 .lists-bar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 2px 4px 8px;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 2px 4px 0;
+  margin-bottom: -1px; /* tabul activ acoperă bordura de sus a panoului */
+  position: relative;
+  z-index: 1;
+}
+
+.lists-bar .lists-toggle,
+.lists-bar .add-list-btn {
+  margin-bottom: 7px; /* butoanele rămân centrate față de taburi */
 }
 
 /* Bara de taburi (o listă = un tab). Se derulează orizontal dacă sunt multe. */
 .lists-tabs {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: flex-end;
+  gap: 2px;
   flex: 1;
   min-width: 0;
   overflow-x: auto;
@@ -725,12 +735,13 @@ body[data-bullets="none"] .check-btn {
 .list-tab {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 0 0 auto;
   max-width: 220px;
-  padding: 5px 10px;
+  padding: 8px 16px 9px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
   cursor: pointer;
   color: var(--muted);
   font-weight: 600;
@@ -740,10 +751,12 @@ body[data-bullets="none"] .check-btn {
 }
 
 .list-tab:hover {
-  background: color-mix(in srgb, var(--line) 45%, transparent);
+  background: color-mix(in srgb, var(--line) 40%, transparent);
   color: var(--ink);
 }
 
+/* Tabul activ: aceeași hârtie ca panoul, chenar pe laterale/sus, deschis jos —
+   pare „decupat" din panou, ca un tab de browser. */
 .list-tab.is-active {
   color: var(--ink);
   background: var(--paper);
@@ -833,10 +846,16 @@ body[data-bullets="none"] .check-btn {
 /* Colapsare: grid-template-rows 1fr→0fr ascunde complet secțiunea (înălțime 0 +
    clip pe .lists-grid). Fără tranziție pe grid-template-rows — interpolarea `fr`
    rămâne blocată în Chromium; colapsarea e instantă, chevron-ul rotit dă feedback. */
+/* Panoul de conținut al tabului activ: card de hârtie cu chenar, de care se
+   lipește tabul activ (colțul din stânga-sus drept, sub primul tab). */
 .lists-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto; /* liste lungi → scroll în secțiune, nu în pagină */
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 10px;
 }
 
 /* Colapsat: secțiunea se strânge la bară (înălțimea auto învinge --lists-h). */

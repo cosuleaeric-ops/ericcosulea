@@ -240,9 +240,11 @@ export function MainChart({
     [series, compareSeries, tz],
   );
   const hasCompare = !!compareSeries;
-  // Bara portocalie de conversii apare doar dacă există un KPI cu conversii > 0.
-  const hasGoal =
-    showGoal && !!goalName && data.some((d) => (d.goalValue ?? 0) > 0);
+  // Bara de conversii rămâne în arbore ori de câte ori există date de conversii;
+  // toggle-ul „showGoal" doar o ascunde (hide). Așa setul de serii nu se schimbă
+  // și recharts nu reia animația graficului principal la apăsarea butonului.
+  const goalData = !!goalName && data.some((d) => (d.goalValue ?? 0) > 0);
+  const hasGoal = showGoal && goalData;
   const [openDeploys, setOpenDeploys] = useState<Deploy[] | null>(null);
 
   return (
@@ -294,10 +296,11 @@ export function MainChart({
               content={<ChartTooltip hasCompare={hasCompare} goalName={hasGoal ? goalName : null} deploysByDay={deploysByDay} />}
               cursor={{ stroke: "rgba(255,255,255,0.22)", strokeWidth: 1 }}
             />
-            {hasGoal && (
+            {goalData && (
               <Bar
                 yAxisId="goal"
                 dataKey="goalValue"
+                hide={!showGoal}
                 fill="var(--dfa-goal, #f59e0b)"
                 fillOpacity={0.85}
                 radius={[3, 3, 0, 0]}
