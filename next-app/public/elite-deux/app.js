@@ -105,13 +105,18 @@ if (listsResize) {
     // Mânerul e în capul secțiunii: tragi în SUS → mai înaltă, în JOS → mai scundă.
     curH = Math.max(LISTS_MIN_H, Math.min(listsMaxH(), startH + (startY - event.clientY)));
     document.documentElement.style.setProperty("--lists-h", curH + "px");
+    event.preventDefault();
   };
 
-  const onEnd = (event) => {
+  const onEnd = () => {
     if (!dragging) return;
     dragging = false;
     document.body.classList.remove("lists-resizing");
-    try { listsResize.releasePointerCapture(event.pointerId); } catch {}
+    // Ascultătorii pe window (nu pe mâner): drag-ul merge oriunde ai duce
+    // cursorul, fără să depindă de pointer capture.
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("pointercancel", onEnd);
     state.settings.listsHeight = curH;
     saveState();
   };
@@ -122,12 +127,11 @@ if (listsResize) {
     startH = state.settings.listsHeight > 0 ? state.settings.listsHeight : listsDefaultH();
     curH = startH;
     document.body.classList.add("lists-resizing");
-    try { listsResize.setPointerCapture(event.pointerId); } catch {}
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
     event.preventDefault();
   });
-  listsResize.addEventListener("pointermove", onMove);
-  listsResize.addEventListener("pointerup", onEnd);
-  listsResize.addEventListener("pointercancel", onEnd);
 
   // Accesibilitate: săgeți sus/jos (Shift = pas mai mare).
   listsResize.addEventListener("keydown", (event) => {
