@@ -707,17 +707,18 @@ body[data-bullets="none"] .check-btn {
   align-items: flex-end;
   gap: 8px;
   padding: 2px 4px 0;
-  margin-bottom: -1px; /* tabul activ acoperă bordura de sus a panoului */
-  position: relative;
-  z-index: 1;
 }
 
+/* Butoanele stau în dreapta, deasupra liniei panoului — fără margine negativă,
+   ca să nu se suprapună peste panou/taburi. */
 .lists-bar .lists-toggle,
 .lists-bar .add-list-btn {
-  margin-bottom: 7px; /* butoanele rămân centrate față de taburi */
+  flex: 0 0 auto;
+  margin-bottom: 6px;
 }
 
-/* Bara de taburi (o listă = un tab). Se derulează orizontal dacă sunt multe. */
+/* Banda de taburi (o listă = un tab). Doar EA e trasă cu -1px, ca tabul activ să
+   acopere bordura de sus a panoului. Derulează orizontal dacă sunt multe. */
 .lists-tabs {
   display: flex;
   align-items: flex-end;
@@ -726,6 +727,9 @@ body[data-bullets="none"] .check-btn {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
 }
 
 .lists-tabs::-webkit-scrollbar {

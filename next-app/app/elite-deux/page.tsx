@@ -39,6 +39,8 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
               <span className="lists-resize-grip" aria-hidden="true"></span>
             </div>
             <div className="lists-bar">
+              <div id="listsTabs" className="lists-tabs" role="tablist"></div>
+              <button id="addListBtn" className="ghost-btn ghost-btn--small add-list-btn" type="button" aria-label="Listă nouă" title="Listă nouă">+</button>
               <button
                 id="listsToggle"
                 className="lists-toggle"
@@ -49,8 +51,6 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
               >
                 <span className="lists-chevron" aria-hidden="true">⌄</span>
               </button>
-              <div id="listsTabs" className="lists-tabs" role="tablist"></div>
-              <button id="addListBtn" className="ghost-btn ghost-btn--small add-list-btn" type="button" aria-label="Listă nouă" title="Listă nouă">+</button>
             </div>
             <div id="listsBody" className="lists-body">
               <div id="listsGrid" className="lists-grid" aria-live="polite"></div>
