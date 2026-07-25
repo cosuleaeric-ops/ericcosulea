@@ -703,9 +703,97 @@ body[data-bullets="none"] .check-btn {
 .lists-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 6px 12px;
+  gap: 10px;
+  padding: 2px 4px 8px;
+}
+
+/* Bara de taburi (o listă = un tab). Se derulează orizontal dacă sunt multe. */
+.lists-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lists-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.list-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  max-width: 220px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.list-tab:hover {
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+  color: var(--ink);
+}
+
+.list-tab.is-active {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+.list-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-tab-del {
+  display: none;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 1px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.list-tab:hover .list-tab-del,
+.list-tab.is-active .list-tab-del {
+  display: inline-block;
+}
+
+.list-tab-del:hover {
+  color: #e03030;
+}
+
+.list-tab-input {
+  width: 130px;
+  max-width: 180px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+/* Corpul tabului activ: o singură listă, pe toată lățimea. */
+.list-active {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 8px;
+}
+
+.lists-empty {
+  padding: 18px 10px;
+  color: var(--muted);
+  font-size: var(--task-font-size);
 }
 
 .lists-toggle {

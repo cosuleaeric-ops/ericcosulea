@@ -27,6 +27,7 @@ const SETTINGS_DEFAULTS = {
   celebrations: true,
   listsCollapsed: false,
   listsHeight: 0, // 0 = auto (20vh); >0 = înălțime setată manual (px)
+  activeListId: null, // tabul de listă deschis
 };
 
 const TEXT_SIZE_MAP = {
@@ -76,6 +77,7 @@ const listsSection = document.getElementById("listsSection");
 const listsBody = document.getElementById("listsBody");
 const listsGrid = document.getElementById("listsGrid");
 const listsToggle = document.getElementById("listsToggle");
+const listsTabs = document.getElementById("listsTabs");
 const addListBtn = document.getElementById("addListBtn");
 const listsResize = document.getElementById("listsResize");
 let remoteSaveTimer = null;
@@ -507,6 +509,8 @@ function sanitizeSettings(source) {
 
   const lh = Number(settings.listsHeight);
   settings.listsHeight = Number.isFinite(lh) && lh > 0 ? Math.round(lh) : 0;
+
+  settings.activeListId = typeof settings.activeListId === "string" ? settings.activeListId : null;
 
   return settings;
 }
@@ -1434,65 +1438,113 @@ window.addEventListener("resize", () => {
 function renderLists() {
   applyListsCollapsed();
   applyListsHeight();
-  if (!listsGrid) {
-    return;
-  }
-
-  listsGrid.innerHTML = "";
-  state.lists.forEach((list) => listsGrid.appendChild(renderListColumn(list)));
+  renderTabs();
+  renderBody();
 }
 
-// Re-randează o singură coloană de listă, păstrând composer-ul deschis (ca la zile).
-function renderListColumnById(listId) {
-  const col = listsGrid?.querySelector(`.list-column[data-list-id="${listId}"]`);
-  const list = findList(listId);
-  if (!col || !list) {
-    renderLists();
+// Id-ul listei active (tabul deschis). Cade pe prima listă dacă cel salvat lipsește.
+function getActiveListId() {
+  const id = state.settings.activeListId;
+  if (id && state.lists.some((l) => l.id === id)) return id;
+  return state.lists[0] ? state.lists[0].id : null;
+}
+
+function setActiveList(id) {
+  state.settings.activeListId = id;
+  saveState();
+  renderTabs();
+  renderBody();
+}
+
+// Bara de taburi: fiecare listă = un tab. Click pe alt tab → comută; click pe tabul
+// activ → redenumire inline; × → șterge.
+function renderTabs() {
+  if (!listsTabs) return;
+  listsTabs.innerHTML = "";
+  const activeId = getActiveListId();
+
+  state.lists.forEach((list) => {
+    const tab = document.createElement("div");
+    tab.className = "list-tab" + (list.id === activeId ? " is-active" : "");
+    tab.dataset.listId = list.id;
+    tab.setAttribute("role", "button");
+    tab.tabIndex = 0;
+    tab.title = list.id === activeId ? "Click pentru a redenumi" : "Comută la această listă";
+
+    const name = document.createElement("span");
+    name.className = "list-tab-name";
+    name.textContent = list.name;
+
+    const del = document.createElement("span");
+    del.className = "list-tab-del";
+    del.title = "Șterge lista";
+    del.textContent = "×";
+    del.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (list.items.length === 0 || window.confirm(`Ștergi lista „${list.name}”?`)) {
+        deleteList(list.id);
+      }
+    });
+
+    tab.append(name, del);
+
+    const activate = () => {
+      if (list.id === getActiveListId()) beginTabRename(name, list);
+      else setActiveList(list.id);
+    };
+    tab.addEventListener("click", activate);
+    tab.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        activate();
+      }
+    });
+
+    listsTabs.appendChild(tab);
+  });
+}
+
+function renderBody() {
+  if (!listsGrid) return;
+  listsGrid.innerHTML = "";
+  const list = findList(getActiveListId());
+  if (!list) {
+    const empty = document.createElement("div");
+    empty.className = "lists-empty";
+    empty.textContent = "Nicio listă încă. Apasă + ca să creezi una.";
+    listsGrid.appendChild(empty);
+    return;
+  }
+  listsGrid.appendChild(renderActiveList(list));
+}
+
+// Re-randează corpul listei active, păstrând composer-ul deschis (ca la zile).
+function refreshListBody() {
+  const list = findList(getActiveListId());
+  const wrap = listsGrid?.querySelector(".list-active");
+  if (!list || !wrap) {
+    renderBody();
     return;
   }
 
-  const input = col.querySelector(".list-composer-input");
+  const input = wrap.querySelector(".list-composer-input");
   const draft = input ? input.value : null;
   const hadFocus = input && document.activeElement === input;
 
-  const fresh = renderListColumn(list);
-  col.replaceWith(fresh);
+  const fresh = renderActiveList(list);
+  wrap.replaceWith(fresh);
 
   if (draft !== null) {
-    const next = openListComposer(fresh.querySelector(".list-items"), listId, { focus: Boolean(hadFocus) });
-    if (next) {
-      next.value = draft;
-    }
+    const next = openListComposer(fresh.querySelector(".list-items"), list.id, { focus: Boolean(hadFocus) });
+    if (next) next.value = draft;
   }
 }
 
-function renderListColumn(list) {
-  const column = document.createElement("section");
-  column.className = "list-column";
-  column.dataset.listId = list.id;
-
-  const header = document.createElement("div");
-  header.className = "list-header";
-
-  const title = document.createElement("div");
-  title.className = "list-title";
-  title.textContent = list.name;
-  title.title = "Click pentru a redenumi";
-  title.addEventListener("click", () => beginListRename(title, list));
-
-  const del = document.createElement("button");
-  del.className = "tiny-btn list-delete";
-  del.type = "button";
-  del.title = "Șterge lista";
-  del.textContent = "🗑";
-  del.addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (list.items.length === 0 || window.confirm(`Ștergi lista „${list.name}”?`)) {
-      deleteList(list.id);
-    }
-  });
-
-  header.append(title, del);
+// Corpul listei active: elementele pe toată lățimea (un singur tab pe rând).
+function renderActiveList(list) {
+  const wrap = document.createElement("div");
+  wrap.className = "list-active";
+  wrap.dataset.listId = list.id;
 
   const items = document.createElement("ul");
   items.className = "list-items";
@@ -1507,8 +1559,8 @@ function renderListColumn(list) {
     openListComposer(items, list.id);
   });
 
-  column.append(header, items);
-  return column;
+  wrap.appendChild(items);
+  return wrap;
 }
 
 function renderListItem(list, item) {
@@ -1609,14 +1661,14 @@ function openListComposer(itemsEl, listId, options = {}) {
   return input;
 }
 
-function beginListRename(titleNode, list) {
-  const column = titleNode.closest(".list-column");
-  if (column?.querySelector(".list-title-input")) {
+function beginTabRename(nameNode, list) {
+  const tab = nameNode.closest(".list-tab");
+  if (tab?.querySelector(".list-tab-input")) {
     return;
   }
 
   const input = document.createElement("input");
-  input.className = "add-input list-title-input";
+  input.className = "add-input list-tab-input";
   input.value = list.name;
 
   let done = false;
@@ -1629,19 +1681,21 @@ function beginListRename(titleNode, list) {
       const name = input.value.trim();
       renameList(list.id, name || list.name);
     } else {
-      renderListColumnById(list.id);
+      renderTabs();
     }
   };
 
   input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
     if (event.key === "Enter") {
       finish(true);
     } else if (event.key === "Escape") {
       finish(false);
     }
   });
+  input.addEventListener("click", (event) => event.stopPropagation());
   input.addEventListener("blur", () => finish(true));
-  titleNode.replaceWith(input);
+  nameNode.replaceWith(input);
   input.focus();
   input.select();
 }
@@ -1662,7 +1716,7 @@ function beginListItemEdit(contentNode, listId, item) {
       return;
     }
     done = true;
-    renderListColumnById(listId);
+    refreshListBody();
   };
   const save = () => {
     if (done) {
@@ -1697,17 +1751,17 @@ function findList(listId) {
 function addList(name = "Listă nouă") {
   const list = { id: uid(), name, items: [] };
   state.lists.push(list);
+  state.settings.activeListId = list.id; // tabul nou devine activ
   if (state.settings.listsCollapsed) {
     state.settings.listsCollapsed = false;
   }
   saveState();
   renderLists();
 
-  // Redenumire imediată a listei nou create.
-  const col = listsGrid?.querySelector(`.list-column[data-list-id="${list.id}"]`);
-  const title = col?.querySelector(".list-title");
-  if (title) {
-    beginListRename(title, list);
+  // Redenumire imediată a tabului nou.
+  const nameNode = listsTabs?.querySelector(`.list-tab[data-list-id="${list.id}"] .list-tab-name`);
+  if (nameNode) {
+    beginTabRename(nameNode, list);
   }
 }
 
@@ -1718,11 +1772,14 @@ function renameList(listId, name) {
   }
   list.name = name;
   saveState();
-  renderListColumnById(listId);
+  renderTabs();
 }
 
 function deleteList(listId) {
   state.lists = state.lists.filter((list) => list.id !== listId);
+  if (state.settings.activeListId === listId) {
+    state.settings.activeListId = state.lists[0] ? state.lists[0].id : null;
+  }
   saveState();
   renderLists();
 }
@@ -1740,7 +1797,7 @@ function addListItem(listId, text) {
     list.items.splice(firstDone, 0, entry);
   }
   saveState();
-  renderListColumnById(listId);
+  refreshListBody();
 }
 
 function updateListItem(listId, itemId, updater) {
@@ -1750,7 +1807,7 @@ function updateListItem(listId, itemId, updater) {
   }
   list.items = list.items.map((item) => (item.id === itemId ? updater(item) : item));
   saveState();
-  renderListColumnById(listId);
+  refreshListBody();
 }
 
 function toggleListItem(listId, itemId) {
@@ -1768,7 +1825,7 @@ function toggleListItem(listId, itemId) {
   const done = list.items.filter((entry) => entry.done);
   list.items = [...active, ...done];
   saveState();
-  renderListColumnById(listId);
+  refreshListBody();
   return item.done;
 }
 
@@ -1779,7 +1836,7 @@ function removeListItem(listId, itemId) {
   }
   list.items = list.items.filter((item) => item.id !== itemId);
   saveState();
-  renderListColumnById(listId);
+  refreshListBody();
 }
 
 // Service worker: cache offline pentru shell + assets (deschidere instant ca PWA).
