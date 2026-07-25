@@ -1029,6 +1029,17 @@ body.lists-resizing {
   cursor: text;
 }
 
+/* × de ștergere pe fiecare element din listă (apare la hover, ca ✎). */
+.list-item-del {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.list-item-del:hover {
+  background: color-mix(in srgb, #e03030 16%, transparent);
+  color: #e03030;
+}
+
 @media (hover: none) {
   .list-delete {
     opacity: 1;

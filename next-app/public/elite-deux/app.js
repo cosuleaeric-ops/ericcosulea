@@ -1595,7 +1595,15 @@ function renderListItem(list, item) {
   edit.title = "Editează";
   edit.textContent = "✎";
   edit.addEventListener("click", () => beginListItemEdit(content, list.id, item));
-  actions.appendChild(edit);
+
+  const del = document.createElement("button");
+  del.className = "tiny-btn list-item-del";
+  del.type = "button";
+  del.title = "Șterge";
+  del.textContent = "×";
+  del.addEventListener("click", () => removeListItem(list.id, item.id));
+
+  actions.append(edit, del);
 
   li.append(check, content, actions);
   return li;
