@@ -179,7 +179,8 @@ main {
 .day-column {
   display: flex;
   flex-direction: column;
-  min-height: 72vh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -217,6 +218,8 @@ main {
   flex-direction: column;
   gap: var(--task-gap);
   flex: 1;
+  min-height: 0;
+  overflow-y: auto; /* zi lungă → derulează în coloană, nu în pagină */
   cursor: text;
 }
 
@@ -682,11 +685,19 @@ body[data-bullets="none"] .check-btn {
 }
 
 /* ─────────── Liste permanente (design ca TeuxDeux) ─────────── */
+/* Secțiunea de liste stă JOS, cu înălțime fixă reglabilă (--lists-h). Ia din
+   spațiul zilelor (nu crește pagina): mai înaltă → zilele mai scunde. Fără scroll
+   de pagină; dacă listele sunt lungi, derulează în interiorul secțiunii. */
 .lists-section {
-  margin-top: 18px;
-  padding: 8px 8px 22px;
+  flex: 0 0 auto;
+  height: var(--lists-h, 30vh);
+  margin-top: 10px;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--paper) 45%, var(--bg));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .lists-bar {
@@ -735,12 +746,18 @@ body[data-bullets="none"] .check-btn {
    clip pe .lists-grid). Fără tranziție pe grid-template-rows — interpolarea `fr`
    rămâne blocată în Chromium; colapsarea e instantă, chevron-ul rotit dă feedback. */
 .lists-body {
-  display: grid;
-  grid-template-rows: 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto; /* liste lungi → scroll în secțiune, nu în pagină */
+}
+
+/* Colapsat: secțiunea se strânge la bară (înălțimea auto învinge --lists-h). */
+.lists-section.collapsed {
+  height: auto;
 }
 
 .lists-section.collapsed .lists-body {
-  grid-template-rows: 0fr;
+  display: none;
 }
 
 .lists-grid {
@@ -751,15 +768,14 @@ body[data-bullets="none"] .check-btn {
   gap: 0;
   align-items: start;
   min-height: 0;
-  overflow: hidden;
 }
 
 /* Coloane fără chenar, separate doar de o linie subțire (ca în TeuxDeux).
-   Înălțimea (--lists-h) e reglabilă din mânerul de jos; default 20vh. */
+   Înălțimea o dă secțiunea (--lists-h) prin mânerul de sus. */
 .list-column {
   display: flex;
   flex-direction: column;
-  min-height: var(--lists-h, 20vh);
+  min-height: 0;
   padding: 0 16px;
   border-left: 1px solid var(--line);
 }

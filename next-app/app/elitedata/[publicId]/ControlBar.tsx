@@ -9,6 +9,7 @@ import {
   RefreshCw,
   GitCompare,
   BarChart3,
+  GitBranch,
 } from "lucide-react";
 import { Dropdown } from "../_components/Dropdown";
 import { PeriodPicker } from "./PeriodPicker";
@@ -42,6 +43,8 @@ export function ControlBar({
   hasGoal,
   showGoalBars,
   onToggleGoalBars,
+  showDeploys,
+  onToggleDeploys,
   onPeriod,
   onCustom,
   onShift,
@@ -64,6 +67,8 @@ export function ControlBar({
   hasGoal: boolean;
   showGoalBars: boolean;
   onToggleGoalBars: () => void;
+  showDeploys: boolean;
+  onToggleDeploys: () => void;
   onPeriod: (p: PeriodKey) => void;
   onCustom: (from: string, to: string) => void;
   onShift: (dir: -1 | 1) => void;
@@ -146,6 +151,14 @@ export function ControlBar({
             <BarChart3 size={16} />
           </button>
         )}
+
+        <button
+          className={`dfa-btn dfa-btn-icon${showDeploys ? " is-active" : ""}`}
+          onClick={onToggleDeploys}
+          title={showDeploys ? "Ascunde marcajele de deploy" : "Arată marcajele de deploy"}
+        >
+          <GitBranch size={16} />
+        </button>
 
         <Dropdown
           align="right"

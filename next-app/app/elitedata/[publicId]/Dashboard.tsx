@@ -119,6 +119,7 @@ export default function Dashboard({
   );
   const [compare, setCompare] = useState(false);
   const [showGoalBars, setShowGoalBars] = useState(true);
+  const [showDeploys, setShowDeploys] = useState(true);
   const [filters, setFilters] = useState<Partial<Record<keyof Filters, string>>>({});
   const [drill, setDrill] = useState<{ from: string; to: string } | null>(null);
   const [data, setData] = useState<StatsPayload | null>(initialData);
@@ -133,11 +134,14 @@ export default function Dashboard({
   const reqId = useRef(0);
   const first = useRef(true);
 
-  // Preferința „arată barele de conversii" persistă în localStorage (per browser).
+  // Preferințele „arată barele de conversii" / „arată marcajele de deploy"
+  // persistă în localStorage (per browser).
   useEffect(() => {
     try {
       if (localStorage.getItem("elitedata:showGoalBars") === "0")
         setShowGoalBars(false);
+      if (localStorage.getItem("elitedata:showDeploys") === "0")
+        setShowDeploys(false);
     } catch {
       /* ignore */
     }
@@ -147,6 +151,16 @@ export default function Dashboard({
       const next = !v;
       try {
         localStorage.setItem("elitedata:showGoalBars", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  const toggleDeploys = () =>
+    setShowDeploys((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("elitedata:showDeploys", next ? "1" : "0");
       } catch {
         /* ignore */
       }
@@ -304,6 +318,8 @@ export default function Dashboard({
         hasGoal={!!kpis.kpi1Name}
         showGoalBars={showGoalBars}
         onToggleGoalBars={toggleGoalBars}
+        showDeploys={showDeploys}
+        onToggleDeploys={toggleDeploys}
         onPeriod={changePeriod}
         onCustom={applyCustom}
         onShift={(dir) => {
@@ -358,7 +374,7 @@ export default function Dashboard({
           key={drawGen}
           series={data?.series ?? []}
           compareSeries={data?.compareSeries ?? null}
-          deploysByDay={gran === "daily" ? deploysByDay : {}}
+          deploysByDay={showDeploys && gran === "daily" ? deploysByDay : {}}
           tz={tz}
           loading={noData || refreshing}
           goalName={kpis.kpi1Name}
