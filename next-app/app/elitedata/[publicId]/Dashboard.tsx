@@ -125,6 +125,11 @@ export default function Dashboard({
   const [deploysByDay, setDeploysByDay] = useState<Record<string, Deploy[]>>({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Se incrementeaza doar la un "full load" (schimbare deliberata de perioada/
+  // interval/compare/filtru) si e cheia graficului → remonteaza MainChart ca
+  // recharts sa reia MEREU aceeasi animatie de montare, nu un morph din datele
+  // vechi. Poll-urile live ("silent") si deploy-urile nu ating drawGen.
+  const [drawGen, setDrawGen] = useState(0);
   const reqId = useRef(0);
   const first = useRef(true);
 
@@ -184,7 +189,10 @@ export default function Dashboard({
       try {
         const res = await fetch(`/api/analytics/stats?${params}`, { cache: "no-store" });
         if (id !== reqId.current) return;
-        if (res.ok) setData(await res.json());
+        if (res.ok) {
+          setData(await res.json());
+          if (mode === "full") setDrawGen((g) => g + 1);
+        }
       } catch {
         /* ignore */
       } finally {
@@ -347,6 +355,7 @@ export default function Dashboard({
       <div className="dfa-card dfa-kpi-chart-panel">
         <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
         <MainChart
+          key={drawGen}
           series={data?.series ?? []}
           compareSeries={data?.compareSeries ?? null}
           deploysByDay={gran === "daily" ? deploysByDay : {}}
