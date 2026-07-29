@@ -82,6 +82,9 @@ const addListBtn = document.getElementById("addListBtn");
 const listsResize = document.getElementById("listsResize");
 let remoteSaveTimer = null;
 let remoteInitSucceeded = false;
+// Ultima versiune (updated_at) cunoscută de pe server — poll-ul o compară ca să
+// evite descărcarea stării complete când nu s-a schimbat nimic.
+let remoteVersion = null;
 
 listsToggle?.addEventListener("click", () => {
   state.settings.listsCollapsed = !state.settings.listsCollapsed;
@@ -289,6 +292,9 @@ async function init() {
 }
 
 // Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
+// Poll-ul cere ÎNTÂI doar versiunea (zeci de octeți) și descarcă starea completă
+// (~24 kB) doar dacă s-a schimbat ceva — altfel un tab lăsat deschis consuma
+// singur ~0,7 GB de egress pe zi.
 function startRemotePolling() {
   if (!HAS_REMOTE_STORAGE) {
     return;
@@ -305,6 +311,16 @@ function startRemotePolling() {
       return;
     }
     if (document.querySelector(".task-item.dragging")) {
+      return;
+    }
+
+    // Verificare ieftină: dacă versiunea de pe server e aceeași, nu descărcăm nimic.
+    try {
+      const version = await fetchRemoteVersion();
+      if (remoteVersion !== null && version === remoteVersion) {
+        return;
+      }
+    } catch {
       return;
     }
 
@@ -551,6 +567,22 @@ function scheduleRemoteSave() {
   }, 250);
 }
 
+// Doar marcajul de timp al stării de pe server (zeci de octeți).
+async function fetchRemoteVersion() {
+  const response = await fetch(`${SERVER_STATE_URL}?only=version`, {
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Remote version failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  return typeof payload?.version === "number" ? payload.version : 0;
+}
+
 async function fetchRemoteSnapshot() {
   const response = await fetch(SERVER_STATE_URL, {
     credentials: "same-origin",
@@ -565,6 +597,9 @@ async function fetchRemoteSnapshot() {
   }
 
   const payload = await response.json();
+  if (typeof payload?.version === "number") {
+    remoteVersion = payload.version;
+  }
   if (!payload?.state) {
     return null;
   }
@@ -587,6 +622,17 @@ async function pushStateToRemote(snapshot, fetchOptions = {}) {
 
   if (!response.ok) {
     throw new Error(`Remote save failed (${response.status})`);
+  }
+
+  // Reținem versiunea rezultată, ca poll-ul să nu creadă că e o schimbare străină
+  // și să descarce inutil starea completă înapoi.
+  try {
+    const payload = await response.json();
+    if (typeof payload?.version === "number") {
+      remoteVersion = payload.version;
+    }
+  } catch {
+    /* raspuns fara JSON (ex. keepalive) — ignoram */
   }
 }
 

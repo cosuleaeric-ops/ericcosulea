@@ -24,12 +24,28 @@ function countTasks(state: unknown): number {
   return n;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // `?only=version` întoarce doar marcajul de timp (zeci de octeți), ca poll-ul
+  // clientului să nu mai descarce tot blob-ul de stare (~24 kB) la fiecare 3s —
+  // asta consuma singură ~6 GB de egress pe lună.
+  if (new URL(req.url).searchParams.get("only") === "version") {
+    const rows = await db
+      .select({ updatedAt: eliteDeuxState.updatedAt })
+      .from(eliteDeuxState)
+      .where(eq(eliteDeuxState.id, ROW_ID))
+      .limit(1);
+    return NextResponse.json({ version: rows[0]?.updatedAt?.getTime() ?? 0 });
+  }
+
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
-  return NextResponse.json({ state: rows[0]?.state ?? null });
+  return NextResponse.json({
+    state: rows[0]?.state ?? null,
+    version: rows[0]?.updatedAt?.getTime() ?? 0,
+  });
 }
 
 export async function POST(req: Request) {
@@ -48,15 +64,17 @@ export async function POST(req: Request) {
   }
 
   const existing = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
+  const updatedAt = new Date();
   if (existing[0]) {
     const existingTasks = countTasks(existing[0].state);
     const newTasks = countTasks(state);
     if (existingTasks > 0 && newTasks === 0) {
       return NextResponse.json({ error: "Refusing to overwrite non-empty state with empty state" }, { status: 400 });
     }
-    await db.update(eliteDeuxState).set({ state, updatedAt: new Date() }).where(eq(eliteDeuxState.id, ROW_ID));
+    await db.update(eliteDeuxState).set({ state, updatedAt }).where(eq(eliteDeuxState.id, ROW_ID));
   } else {
-    await db.insert(eliteDeuxState).values({ id: ROW_ID, state, updatedAt: new Date() });
+    await db.insert(eliteDeuxState).values({ id: ROW_ID, state, updatedAt });
   }
-  return NextResponse.json({ ok: true });
+  // Versiunea rezultată — clientul o reține ca să nu redescarce ce tocmai a scris.
+  return NextResponse.json({ ok: true, version: updatedAt.getTime() });
 }
