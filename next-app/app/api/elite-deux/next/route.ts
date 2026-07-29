@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, sqlQuery } from "@/lib/db";
 import { eliteDeuxState } from "@/lib/db/schema";
 import { isAuthenticated } from "@/lib/session";
 
@@ -90,17 +90,38 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const state = await loadState();
-  if (state && rolloverToToday(state)) {
-    await persist(state);
+  const today = todayKey();
+
+  // Topbar-ul întreabă la 2 secunde. Nu încărcăm tot blob-ul de stare (~24 kB,
+  // tot istoricul) ca să scoatem din el o singură zi — lăsăm Postgres să extragă
+  // doar ziua curentă (~sute de octeți). Altfel: ~1 GB/zi de egress degeaba.
+  const rows = await sqlQuery<{ today: Task[] | null; last_seen: string | null }>(
+    `SELECT state->'tasksByDate'->$2 AS today, state->>'lastSeenDate' AS last_seen
+       FROM elite_deux_state WHERE id = $1`,
+    [ROW_ID, today],
+  );
+
+  let tasks: Task[];
+  if (rows.length === 0) {
+    tasks = [];
+  } else if (rows[0].last_seen === today) {
+    // Cazul normal: ziua e deja curentă, nu e nevoie de rollover.
+    tasks = Array.isArray(rows[0].today) ? rows[0].today : [];
+  } else {
+    // Zi nouă (prima interogare după miezul nopții): abia acum citim tot,
+    // mutăm restanțele și salvăm. O dată pe zi, nu la fiecare 2 secunde.
+    const state = await loadState();
+    if (state && rolloverToToday(state)) {
+      await persist(state);
+    }
+    tasks = state?.tasksByDate?.[today] ?? [];
   }
 
-  const tasks = state?.tasksByDate?.[todayKey()] ?? [];
   // Primul task nebifat; când tot e bifat, topbar-ul arată un mesaj, nu ultimul task făcut.
   const next = tasks.find((t) => !t.completed);
 
   return NextResponse.json({
-    date: todayKey(),
+    date: today,
     text: next?.text ?? null,
     id: next?.id ?? null,
     remaining: tasks.filter((t) => !t.completed).length,
