@@ -525,6 +525,101 @@ body[data-bullets="none"] .check-btn {
   justify-content: center;
 }
 
+/* Task-uri recurente */
+.recurring-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.recurring-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #1c1f26;
+  border: 1px solid #2b2d33;
+  border-radius: 8px;
+  padding: 6px 6px 6px 10px;
+}
+
+.recurring-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recurring-name {
+  font-size: 14px;
+  color: #ebedf2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recurring-every {
+  font-size: 12px;
+  color: #8f95a6;
+}
+
+.recurring-item .tiny-btn {
+  flex: none;
+  color: #8f95a6;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.recurring-item .tiny-btn:hover {
+  background: #2b2d33;
+  color: #f4f4f6;
+}
+
+.recurring-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recurring-form input,
+.recurring-form select {
+  background: #262932;
+  border: 1px solid #2b2d33;
+  border-radius: 8px;
+  color: #f4f4f6;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.recurring-form input:focus,
+.recurring-form select:focus {
+  outline: none;
+  border-color: var(--theme);
+}
+
+.recurring-interval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #b6bac6;
+}
+
+.recurring-interval span {
+  flex: none;
+}
+
+.recurring-interval input {
+  width: 52px;
+  flex: none;
+}
+
+.recurring-interval select {
+  flex: 1;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

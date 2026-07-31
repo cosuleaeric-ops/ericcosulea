@@ -10,9 +10,24 @@ export const dynamic = "force-dynamic";
 const ROW_ID = 1;
 const TZ = "Europe/Bucharest";
 
-type Task = { id?: string; text?: string; completed?: boolean };
+type Task = {
+  id?: string;
+  text?: string;
+  completed?: boolean;
+  createdAt?: number;
+  seriesId?: string;
+};
+type Recurrence = {
+  id: string;
+  text: string;
+  everyN: number;
+  unit: "day" | "week" | "month";
+  startDate: string;
+  materialized?: string[];
+};
 type State = {
   tasksByDate?: Record<string, Task[]>;
+  recurring?: Recurrence[];
   lastSeenDate?: string;
   savedAt?: number;
 };
@@ -66,6 +81,91 @@ function rolloverToToday(state: State): boolean {
   return changed;
 }
 
+// Oglinda logicii din public/elite-deux/app.js — cele două trebuie ținute sincron.
+// Datele sunt parsate în UTC ca diferența de zile să fie exactă (fără ora de vară).
+function parseKey(key: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function isRecurrenceDue(rule: Recurrence, dateKey: string): boolean {
+  const start = parseKey(rule.startDate);
+  const date = parseKey(dateKey);
+  if (!start || !date || date < start) return false;
+
+  const everyN = Math.max(1, Math.round(Number(rule.everyN) || 1));
+
+  if (rule.unit === "month") {
+    const months =
+      (date.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+      (date.getUTCMonth() - start.getUTCMonth());
+    if (months < 0 || months % everyN !== 0) return false;
+
+    // Aceeași zi din lună, retezată la lunile mai scurte: 31 ian → 28 feb.
+    const lastDay = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    return date.getUTCDate() === Math.min(start.getUTCDate(), lastDay);
+  }
+
+  const step = rule.unit === "week" ? everyN * 7 : everyN;
+  const days = Math.round((date.getTime() - start.getTime()) / 86400000);
+  return days >= 0 && days % step === 0;
+}
+
+// Are vreo regulă o instanță de generat azi? Rulează la fiecare cerere, deci e
+// doar JS pe câteva reguli — evită să încărcăm tot blob-ul degeaba.
+function needsRecurring(rules: Recurrence[] | null, dateKey: string): boolean {
+  if (!Array.isArray(rules)) return false;
+  return rules.some(
+    (rule) =>
+      !(Array.isArray(rule.materialized) ? rule.materialized : []).includes(dateKey) &&
+      isRecurrenceDue(rule, dateKey),
+  );
+}
+
+function materializeRecurring(state: State, dateKey: string): boolean {
+  const rules = state.recurring;
+  if (!Array.isArray(rules) || rules.length === 0) return false;
+
+  let changed = false;
+
+  for (const rule of rules) {
+    // Zilele trecute nu se mai generează, deci nu mai trebuie ținute minte.
+    // Curățarea singură nu declanșează scriere — se salvează cu următoarea schimbare.
+    const seen = (Array.isArray(rule.materialized) ? rule.materialized : []).filter(
+      (key) => key >= dateKey,
+    );
+    rule.materialized = seen;
+
+    if (seen.includes(dateKey) || !isRecurrenceDue(rule, dateKey)) continue;
+
+    // Marcăm ziua înainte de orice ieșire: dacă ștergi instanța, nu reapare.
+    seen.push(dateKey);
+    changed = true;
+
+    if (!state.tasksByDate) state.tasksByDate = {};
+    const tasks = state.tasksByDate[dateKey] ?? [];
+    if (tasks.some((t) => t.seriesId === rule.id)) continue;
+
+    const entry: Task = {
+      id: uid(),
+      text: rule.text,
+      completed: false,
+      createdAt: Date.now(),
+      seriesId: rule.id,
+    };
+    const firstCompleted = tasks.findIndex((t) => t.completed);
+    state.tasksByDate[dateKey] =
+      firstCompleted === -1
+        ? [...tasks, entry]
+        : [...tasks.slice(0, firstCompleted), entry, ...tasks.slice(firstCompleted)];
+  }
+
+  return changed;
+}
+
 async function authorize(req: Request): Promise<boolean> {
   const secret = process.env.ELITE_DEUX_SECRET;
   if (secret && req.headers.get("x-elite-secret") === secret) return true;
@@ -95,8 +195,14 @@ export async function GET(req: Request) {
   // Topbar-ul întreabă la 2 secunde. Nu încărcăm tot blob-ul de stare (~24 kB,
   // tot istoricul) ca să scoatem din el o singură zi — lăsăm Postgres să extragă
   // doar ziua curentă (~sute de octeți). Altfel: ~1 GB/zi de egress degeaba.
-  const rows = await sqlQuery<{ today: Task[] | null; last_seen: string | null }>(
-    `SELECT state->'tasksByDate'->$2 AS today, state->>'lastSeenDate' AS last_seen
+  const rows = await sqlQuery<{
+    today: Task[] | null;
+    last_seen: string | null;
+    recurring: Recurrence[] | null;
+  }>(
+    `SELECT state->'tasksByDate'->$2 AS today,
+            state->>'lastSeenDate'   AS last_seen,
+            state->'recurring'       AS recurring
        FROM elite_deux_state WHERE id = $1`,
     [ROW_ID, today],
   );
@@ -104,15 +210,20 @@ export async function GET(req: Request) {
   let tasks: Task[];
   if (rows.length === 0) {
     tasks = [];
-  } else if (rows[0].last_seen === today) {
-    // Cazul normal: ziua e deja curentă, nu e nevoie de rollover.
+  } else if (rows[0].last_seen === today && !needsRecurring(rows[0].recurring, today)) {
+    // Cazul normal: ziua e deja curentă și recurențele de azi sunt deja generate.
     tasks = Array.isArray(rows[0].today) ? rows[0].today : [];
   } else {
-    // Zi nouă (prima interogare după miezul nopții): abia acum citim tot,
-    // mutăm restanțele și salvăm. O dată pe zi, nu la fiecare 2 secunde.
+    // Zi nouă (prima interogare după miezul nopții) sau o regulă recurentă care
+    // pică azi: abia acum citim tot, mutăm restanțele, generăm instanțele și
+    // salvăm. O dată pe zi, nu la fiecare 2 secunde.
     const state = await loadState();
-    if (state && rolloverToToday(state)) {
-      await persist(state);
+    if (state) {
+      const rolled = rolloverToToday(state);
+      const generated = materializeRecurring(state, today);
+      if (rolled || generated) {
+        await persist(state);
+      }
     }
     tasks = state?.tasksByDate?.[today] ?? [];
   }
@@ -142,6 +253,8 @@ export async function POST(req: Request) {
   rolloverToToday(state);
 
   const key = todayKey();
+  materializeRecurring(state, key);
+
   const tasks = state.tasksByDate[key] ?? [];
   const idx = tasks.findIndex((t) => !t.completed);
   if (idx === -1) {

@@ -42,10 +42,15 @@ const SPACING_MAP = {
   l: { gap: "10px", paddingY: "11px" },
 };
 
+const RECURRENCE_UNITS = ["day", "week", "month"];
+
 const state = {
   dayOffset: 0,
   tasksByDate: {},
   lists: [], // liste permanente (nu se rulează zilnic): [{id, name, items:[{id,text,done}]}]
+  // Reguli de repetare: [{id, text, everyN, unit, startDate, materialized:[dateKey]}].
+  // Nu sunt task-uri, ci șabloane — instanțele se generează în tasksByDate.
+  recurring: [],
   settings: { ...SETTINGS_DEFAULTS },
   ui: {
     prefsOpen: false,
@@ -80,7 +85,15 @@ const listsToggle = document.getElementById("listsToggle");
 const listsTabs = document.getElementById("listsTabs");
 const addListBtn = document.getElementById("addListBtn");
 const listsResize = document.getElementById("listsResize");
+const recurringList = document.getElementById("recurringList");
+const recurringTextInput = document.getElementById("recurringText");
+const recurringEveryInput = document.getElementById("recurringEvery");
+const recurringUnitSelect = document.getElementById("recurringUnit");
+const recurringAddBtn = document.getElementById("recurringAdd");
 let remoteSaveTimer = null;
+// Instanțe recurente generate dar nesalvate încă pe server (ex: în timpul
+// init-ului, înainte de reconcile — atunci n-avem voie să pushăm).
+let recurringDirty = false;
 let remoteInitSucceeded = false;
 // Ultima versiune (updated_at) cunoscută de pe server — poll-ul o compară ca să
 // evite descărcarea stării complete când nu s-a schimbat nimic.
@@ -93,6 +106,26 @@ listsToggle?.addEventListener("click", () => {
 });
 
 addListBtn?.addEventListener("click", () => addList());
+
+recurringAddBtn?.addEventListener("click", () => {
+  addRecurrence(
+    recurringTextInput?.value || "",
+    Number(recurringEveryInput?.value),
+    recurringUnitSelect?.value,
+  );
+
+  if (recurringTextInput) {
+    recurringTextInput.value = "";
+    recurringTextInput.focus();
+  }
+});
+
+recurringTextInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    recurringAddBtn?.click();
+  }
+});
 
 // Mâner de redimensionare: tragi în jos → secțiune mai înaltă, în sus → mai scundă.
 // Reglează --lists-h (înălțimea minimă a coloanelor de listă); se salvează.
@@ -273,6 +306,7 @@ async function init() {
   applyVisualSettings();
   renderWeek();
   renderLists();
+  renderRecurringList();
 
   document.addEventListener("dragover", onGlobalDragOver);
   document.addEventListener("drop", onGlobalDrop);
@@ -288,6 +322,8 @@ async function init() {
   });
 
   await reconcileWithServer();
+  // Abia acum știm starea finală, deci putem salva instanțele generate la paint.
+  flushRecurringSave();
   startRemotePolling();
 }
 
@@ -413,6 +449,7 @@ function applyRemoteAndRender(snapshot) {
   applyVisualSettings();
   renderWeek();
   renderLists();
+  renderRecurringList();
 }
 
 function readLocalSnapshot() {
@@ -432,6 +469,7 @@ function applyStateSnapshot(snapshot) {
   state.dayOffset = 0;
   state.tasksByDate = snapshot.tasksByDate;
   state.lists = snapshot.lists;
+  state.recurring = snapshot.recurring || [];
   state.settings = snapshot.settings;
   state.lastSeenDate = snapshot.lastSeenDate;
 }
@@ -456,6 +494,28 @@ function sanitizeLists(source) {
   return Array.isArray(source) ? source.map(sanitizeList) : [];
 }
 
+function sanitizeRecurrence(rule) {
+  const everyN = Math.round(Number(rule?.everyN));
+  const startDate = parseDateKey(rule?.startDate) ? rule.startDate : formatDateKey(new Date());
+
+  return {
+    id: rule?.id || uid(),
+    text: String(rule?.text || ""),
+    everyN: Number.isFinite(everyN) && everyN >= 1 ? Math.min(everyN, 365) : 1,
+    unit: RECURRENCE_UNITS.includes(rule?.unit) ? rule.unit : "day",
+    startDate,
+    // Zilele pentru care s-a generat deja o instanță. Ține minte și ștergerile:
+    // dacă ștergi instanța de azi, ziua rămâne marcată și nu reapare.
+    materialized: (Array.isArray(rule?.materialized) ? rule.materialized : []).filter((key) =>
+      parseDateKey(key),
+    ),
+  };
+}
+
+function sanitizeRecurrences(source) {
+  return Array.isArray(source) ? source.map(sanitizeRecurrence).filter((rule) => rule.text) : [];
+}
+
 function sanitizeStateSnapshot(source = {}) {
   const nextByDate = {};
   Object.entries(source.tasksByDate || {}).forEach(([dateKey, tasks]) => {
@@ -470,6 +530,7 @@ function sanitizeStateSnapshot(source = {}) {
   return {
     tasksByDate: nextByDate,
     lists: sanitizeLists(source.lists),
+    recurring: sanitizeRecurrences(source.recurring),
     settings: sanitizeSettings(source.settings || {}),
     lastSeenDate: parseDateKey(source.lastSeenDate) ? source.lastSeenDate : formatDateKey(new Date()),
     savedAt: typeof source.savedAt === "number" ? source.savedAt : 0,
@@ -480,6 +541,7 @@ function buildStateSnapshot() {
   return {
     tasksByDate: state.tasksByDate,
     lists: state.lists,
+    recurring: state.recurring,
     settings: state.settings,
     lastSeenDate: state.lastSeenDate,
     savedAt: Date.now(),
@@ -705,6 +767,195 @@ function runDailyRollover(options = {}) {
   }
 }
 
+// Cade regula pe ziua asta? Se numără de la startDate (ziua în care ai creat-o).
+function isRecurrenceDue(rule, dateKey) {
+  const start = parseDateKey(rule.startDate);
+  const date = parseDateKey(dateKey);
+  if (!start || !date || date < start) {
+    return false;
+  }
+
+  if (rule.unit === "month") {
+    const months =
+      (date.getFullYear() - start.getFullYear()) * 12 + (date.getMonth() - start.getMonth());
+    if (months < 0 || months % rule.everyN !== 0) {
+      return false;
+    }
+
+    // Aceeași zi din lună, retezată la lunile mai scurte: 31 ian → 28 feb.
+    const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    return date.getDate() === Math.min(start.getDate(), lastDayOfMonth);
+  }
+
+  const step = rule.unit === "week" ? rule.everyN * 7 : rule.everyN;
+  // Math.round, nu Math.floor: la schimbarea orei diferența e 23h sau 25h.
+  const days = Math.round((startOfDay(date) - startOfDay(start)) / 86400000);
+  return days >= 0 && days % step === 0;
+}
+
+// Creează instanțele regulilor pentru zilele cerute. Nu generează în trecut —
+// zilele trecute sunt treaba rollover-ului.
+function materializeRecurring(dateKeys) {
+  if (!state.recurring.length) {
+    return false;
+  }
+
+  const today = formatDateKey(new Date());
+  let changed = false;
+
+  state.recurring.forEach((rule) => {
+    // Zilele trecute nu mai pot fi generate, deci nu mai trebuie ținute minte.
+    rule.materialized = rule.materialized.filter((key) => key >= today);
+
+    dateKeys.forEach((dateKey) => {
+      if (dateKey < today || rule.materialized.includes(dateKey)) {
+        return;
+      }
+
+      if (!isRecurrenceDue(rule, dateKey)) {
+        return;
+      }
+
+      // Marcăm ziua înainte de orice ieșire: dacă ștergi instanța, nu reapare.
+      rule.materialized.push(dateKey);
+      changed = true;
+
+      const tasks = state.tasksByDate[dateKey] || [];
+      if (tasks.some((task) => task.seriesId === rule.id)) {
+        return; // rollover-ul a adus deja instanța din ziua precedentă
+      }
+
+      const entry = sanitizeTask({
+        id: uid(),
+        text: rule.text,
+        completed: false,
+        createdAt: Date.now(),
+        seriesId: rule.id,
+      });
+
+      const firstCompletedIndex = tasks.findIndex((task) => task.completed);
+      state.tasksByDate[dateKey] =
+        firstCompletedIndex === -1
+          ? [...tasks, entry]
+          : [
+              ...tasks.slice(0, firstCompletedIndex),
+              entry,
+              ...tasks.slice(firstCompletedIndex),
+            ];
+    });
+  });
+
+  return changed;
+}
+
+function visibleDateKeys() {
+  const baseDate = startOfDay(new Date());
+  const shiftedBase = state.settings.startOn === "yesterday" ? addDays(baseDate, -1) : baseDate;
+  const start = startOfDay(addDays(shiftedBase, state.dayOffset));
+
+  const keys = [];
+  for (let index = 0; index < state.settings.columns; index += 1) {
+    keys.push(formatDateKey(addDays(start, index)));
+  }
+
+  return keys;
+}
+
+// În timpul init-ului nu avem voie să pushăm (reconcile n-a decis încă cine e mai
+// nou), așa că salvarea se amână până când sincronizarea cu serverul e gata.
+function flushRecurringSave() {
+  if (!recurringDirty) {
+    return;
+  }
+
+  recurringDirty = false;
+  saveState();
+}
+
+function addRecurrence(text, everyN, unit) {
+  const clean = text.trim();
+  if (!clean) {
+    return;
+  }
+
+  state.recurring.push(
+    sanitizeRecurrence({
+      id: uid(),
+      text: clean,
+      everyN,
+      unit,
+      startDate: formatDateKey(new Date()),
+      materialized: [],
+    }),
+  );
+
+  saveState();
+  renderRecurringList();
+  renderWeek();
+}
+
+// Șterge doar regula; instanțele deja create rămân în zilele lor.
+function removeRecurrence(ruleId) {
+  state.recurring = state.recurring.filter((rule) => rule.id !== ruleId);
+  saveState();
+  renderRecurringList();
+}
+
+function describeRecurrence(rule) {
+  const unitLabels = {
+    day: ["zi", "zile"],
+    week: ["săptămână", "săptămâni"],
+    month: ["lună", "luni"],
+  };
+
+  const [singular, plural] = unitLabels[rule.unit];
+  return rule.everyN === 1 ? `la fiecare ${singular}` : `la fiecare ${rule.everyN} ${plural}`;
+}
+
+function renderRecurringList() {
+  if (!recurringList) {
+    return;
+  }
+
+  recurringList.innerHTML = "";
+
+  if (!state.recurring.length) {
+    const empty = document.createElement("p");
+    empty.className = "prefs-note";
+    empty.textContent = "Niciun task recurent.";
+    recurringList.appendChild(empty);
+    return;
+  }
+
+  state.recurring.forEach((rule) => {
+    const row = document.createElement("div");
+    row.className = "recurring-item";
+
+    const info = document.createElement("div");
+    info.className = "recurring-info";
+
+    const name = document.createElement("span");
+    name.className = "recurring-name";
+    name.textContent = rule.text;
+
+    const every = document.createElement("span");
+    every.className = "recurring-every";
+    every.textContent = describeRecurrence(rule);
+
+    info.append(name, every);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "tiny-btn";
+    remove.title = "Șterge regula";
+    remove.textContent = "×";
+    remove.addEventListener("click", () => removeRecurrence(rule.id));
+
+    row.append(info, remove);
+    recurringList.appendChild(row);
+  });
+}
+
 function normalizeAllLists(options = {}) {
   let changed = false;
   const nextByDate = {};
@@ -728,16 +979,20 @@ function normalizeAllLists(options = {}) {
 function renderWeek() {
   weekGrid.innerHTML = "";
 
-  const baseDate = startOfDay(new Date());
-  const shiftedBase = state.settings.startOn === "yesterday" ? addDays(baseDate, -1) : baseDate;
-  const start = startOfDay(addDays(shiftedBase, state.dayOffset));
+  const keys = visibleDateKeys();
 
-  for (let index = 0; index < state.settings.columns; index += 1) {
-    const date = addDays(start, index);
-    const key = formatDateKey(date);
-    const column = renderDayColumn(date, key);
-    weekGrid.appendChild(column);
+  // Instanțele recurente se creează pentru zilele afișate, ca să le vezi dinainte.
+  if (materializeRecurring(keys)) {
+    recurringDirty = true;
   }
+
+  if (remoteInitSucceeded || !HAS_REMOTE_STORAGE) {
+    flushRecurringSave();
+  }
+
+  keys.forEach((key) => {
+    weekGrid.appendChild(renderDayColumn(parseDateKey(key), key));
+  });
 
   if (todayBtn) {
     todayBtn.disabled = state.dayOffset === 0;
@@ -1115,12 +1370,20 @@ function reorderCompletedToBottom(tasks) {
 }
 
 function sanitizeTask(task) {
-  return {
+  const entry = {
     id: task?.id || uid(),
     text: String(task?.text || ""),
     completed: Boolean(task?.completed),
     createdAt: Number(task?.createdAt) || Date.now(),
   };
+
+  // Instanță a unei reguli recurente — ne trebuie ca să nu o generăm de două ori
+  // în aceeași zi (rollover-ul o poate aduce deja din ziua precedentă).
+  if (task?.seriesId) {
+    entry.seriesId = String(task.seriesId);
+  }
+
+  return entry;
 }
 
 function removeTask(dateKey, taskId) {

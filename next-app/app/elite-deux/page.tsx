@@ -153,6 +153,24 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
         </section>
 
         <section className="prefs-section">
+          <p className="prefs-label">Task-uri recurente</p>
+          <div id="recurringList" className="recurring-list"></div>
+          <div className="recurring-form">
+            <input id="recurringText" type="text" placeholder="Ex: Curățenie" autoComplete="off" />
+            <div className="recurring-interval">
+              <span>La fiecare</span>
+              <input id="recurringEvery" type="number" min="1" max="365" defaultValue="1" />
+              <select id="recurringUnit" defaultValue="day">
+                <option value="day">zile</option>
+                <option value="week">săptămâni</option>
+                <option value="month">luni</option>
+              </select>
+            </div>
+            <button id="recurringAdd" className="ghost-btn" type="button">Adaugă</button>
+          </div>
+        </section>
+
+        <section className="prefs-section">
           <p className="prefs-label">Data</p>
           <p id="storageStatus" className="prefs-note">Connecting to server...</p>
           <div className="prefs-actions">
@@ -178,7 +196,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", csrfToken: "" };
         <span className="trash-label">Trage aici pentru a șterge</span>
       </div>
 
-      <Script src="/elite-deux/app.js?v=21" strategy="afterInteractive" />
+      <Script src="/elite-deux/app.js?v=22" strategy="afterInteractive" />
     </>
   );
 }
