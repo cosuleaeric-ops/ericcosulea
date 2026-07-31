@@ -440,8 +440,9 @@ body[data-bullets="none"] .check-btn {
 
 .prefs-fab {
   position: fixed;
-  left: 14px;
-  bottom: 14px;
+  /* Sus-dreapta, centrat pe bara de sus (46px) și aliniat la padding-ul ei. */
+  right: 22px;
+  top: 4px;
   width: 38px;
   height: 38px;
   border: 1px solid var(--line);

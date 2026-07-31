@@ -901,20 +901,34 @@ function removeRecurrence(ruleId) {
   renderRecurringList();
 }
 
+// Descrierea spune exact CÂND pică regula, nu doar cât de des: „la fiecare lună"
+// nu-ți zice nimic dacă ai două reguli lunare pe zile diferite.
 function describeRecurrence(rule) {
-  const unitLabels = {
-    day: ["zi", "zile"],
-    week: ["săptămână", "săptămâni"],
-    month: ["lună", "luni"],
-  };
+  const start = parseDateKey(rule.startDate);
 
-  const [singular, plural] = unitLabels[rule.unit];
-  const every =
-    rule.everyN === 1 ? `la fiecare ${singular}` : `la fiecare ${rule.everyN} ${plural}`;
+  if (rule.unit === "month") {
+    if (!start) {
+      return rule.everyN === 1 ? "în fiecare lună" : `la fiecare ${rule.everyN} luni`;
+    }
 
-  // La regulile lunare ziua din lună e singurul lucru care le deosebește.
-  const start = rule.unit === "month" ? parseDateKey(rule.startDate) : null;
-  return start ? `${every}, pe ${start.getDate()}` : every;
+    const day = start.getDate();
+    return rule.everyN === 1
+      ? `pe ${day} ale lunii`
+      : `pe ${day} ale lunii, o dată la ${rule.everyN} luni`;
+  }
+
+  if (rule.unit === "week") {
+    if (!start) {
+      return rule.everyN === 1 ? "în fiecare săptămână" : `la fiecare ${rule.everyN} săptămâni`;
+    }
+
+    const weekday = new Intl.DateTimeFormat(LOCALE, { weekday: "long" }).format(start);
+    return rule.everyN === 1
+      ? `în fiecare ${weekday}`
+      : `${weekday}, o dată la ${rule.everyN} săptămâni`;
+  }
+
+  return rule.everyN === 1 ? "în fiecare zi" : `la fiecare ${rule.everyN} zile`;
 }
 
 function renderRecurringList() {
