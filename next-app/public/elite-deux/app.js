@@ -1240,7 +1240,7 @@ function renderTask(dateKey, task) {
   if (projectClass) {
     node.classList.add(projectClass);
   }
-  content.textContent = task.text;
+  content.textContent = displayTaskText(task.text);
 
   checkBtn.addEventListener("click", () => {
     const becameCompleted = toggleTaskCompleted(dateKey, task.id);
@@ -1346,6 +1346,18 @@ function expandHashtagAliases(text) {
     const full = HASHTAG_ALIASES[tag.toLowerCase()];
     return full ? `#${full}` : match;
   });
+}
+
+// Textul afișat pe task, fără hashtag-uri — proiectul se vede oricum din culoare.
+// Textul salvat rămâne întreg: la editare vezi tag-ul, iar pe WIP pleacă cu el.
+function displayTaskText(text) {
+  const stripped = String(text || "")
+    .replace(/#[a-z][\w-]*/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // Un task care e doar tag ar rămâne un rând gol — atunci arătăm textul brut.
+  return stripped || String(text || "");
 }
 
 // Clasa de proiect a unui task, după primul hashtag: #life → "project-life".
