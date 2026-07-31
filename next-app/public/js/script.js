@@ -27,7 +27,9 @@
   var host = location.hostname;
   var isLocal =
     host === "localhost" ||
+    /\.localhost$/.test(host) || // subdomenii de dev (ex. app.localhost:3000)
     host === "127.0.0.1" ||
+    host === "[::1]" ||
     host === "" ||
     /^192\.168\./.test(host) ||
     /\.local$/.test(host);
