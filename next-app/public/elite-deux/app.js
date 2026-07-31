@@ -909,7 +909,12 @@ function describeRecurrence(rule) {
   };
 
   const [singular, plural] = unitLabels[rule.unit];
-  return rule.everyN === 1 ? `la fiecare ${singular}` : `la fiecare ${rule.everyN} ${plural}`;
+  const every =
+    rule.everyN === 1 ? `la fiecare ${singular}` : `la fiecare ${rule.everyN} ${plural}`;
+
+  // La regulile lunare ziua din lună e singurul lucru care le deosebește.
+  const start = rule.unit === "month" ? parseDateKey(rule.startDate) : null;
+  return start ? `${every}, pe ${start.getDate()}` : every;
 }
 
 function renderRecurringList() {
