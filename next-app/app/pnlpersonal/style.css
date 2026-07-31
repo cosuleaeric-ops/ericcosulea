@@ -118,14 +118,19 @@ body {
 .app-header {
   background: var(--card);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 0 24px;
   height: 60px;
   display: flex;
   align-items: center;
   gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
 .app-header h1 {
@@ -873,6 +878,7 @@ td.suma-red    { color: var(--red);    font-weight: 600; font-variant-numeric: t
 
 @media (max-width: 600px) {
   .container { padding: 16px; }
+  .header-inner { padding: 0 16px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-card .value { font-size: 18px; }
   .portofel-grid { grid-template-columns: 1fr 1fr; gap: 10px; }

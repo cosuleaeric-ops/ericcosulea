@@ -146,6 +146,7 @@ export default function PnlApp(props: Props) {
   return (
     <>
       <header className="app-header">
+        <div className="header-inner">
         <h1>P&amp;L — Personal</h1>
         <div className="header-controls">
           <button
@@ -184,6 +185,7 @@ export default function PnlApp(props: Props) {
               window.location.href = "/admin/login";
             }}
           >Ieși</button>
+        </div>
         </div>
       </header>
 
