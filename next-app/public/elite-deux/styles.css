@@ -250,6 +250,37 @@ main {
   background: color-mix(in srgb, var(--paper) 80%, white);
 }
 
+/* Fundal pe tot rândul, după proiectul din hashtag. Ca să adaugi un proiect nou,
+   pune-i tenta aici — clasa project-<nume> se adaugă automat din JS. */
+.task-item.project-life {
+  --project-tint: #3ba3f0;
+}
+
+.task-item.project-cursurilapahar {
+  --project-tint: #8a1c3d;
+}
+
+.task-item.project-outglow {
+  --project-tint: #e35aa0;
+}
+
+.task-item.project-life,
+.task-item.project-cursurilapahar,
+.task-item.project-outglow {
+  background: color-mix(in srgb, var(--project-tint) 15%, var(--paper));
+  border-color: color-mix(in srgb, var(--project-tint) 30%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--project-tint) 30%, transparent);
+}
+
+/* Pe fundal închis tenta trebuie împinsă, altfel nu se vede. */
+body.dark .task-item.project-life,
+body.dark .task-item.project-cursurilapahar,
+body.dark .task-item.project-outglow {
+  background: color-mix(in srgb, var(--project-tint) 26%, var(--paper));
+  border-color: color-mix(in srgb, var(--project-tint) 42%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--project-tint) 42%, transparent);
+}
+
 .task-item.dragging {
   opacity: 0.55;
 }

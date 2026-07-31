@@ -11,6 +11,15 @@ const WIP_URL = typeof APP_CONFIG.wipUrl === "string" ? APP_CONFIG.wipUrl : "";
 // ajunge pe feed-ul public.
 const WIP_PROJECT_TAG = /#[a-z][\w-]*/i;
 
+// Prescurtări de proiect: scrii #l și se salvează #life. Se expandează la
+// comiterea textului (Enter), nu în timp ce tastezi — altfel #life ar deveni
+// #lifeife pe măsură ce scrii. Adaugă aici proiecte noi.
+const HASHTAG_ALIASES = {
+  l: "life",
+  c: "cursurilapahar",
+  o: "outglow",
+};
+
 const THEME_PALETTE = {
   pink: { theme: "#d91f7f", soft: "rgba(217, 31, 127, 0.14)" },
   red: { theme: "#d32525", soft: "rgba(211, 37, 37, 0.14)" },
@@ -1226,6 +1235,11 @@ function renderTask(dateKey, task) {
   if (task.completed) {
     node.classList.add("completed");
   }
+
+  const projectClass = projectClassFor(task.text);
+  if (projectClass) {
+    node.classList.add(projectClass);
+  }
   content.textContent = task.text;
 
   checkBtn.addEventListener("click", () => {
@@ -1305,7 +1319,7 @@ function beginTaskEdit(contentNode, dateKey, task) {
 
     updateTask(dateKey, task.id, (current) => ({
       ...current,
-      text,
+      text: expandHashtagAliases(text),
     }));
   };
 
@@ -1325,10 +1339,26 @@ function beginTaskEdit(contentNode, dateKey, task) {
   input.setSelectionRange(input.value.length, input.value.length);
 }
 
+// Înlocuiește doar hashtag-urile care SUNT exact o prescurtare: #l → #life, dar
+// #lansare rămâne #lansare și #life rămâne #life.
+function expandHashtagAliases(text) {
+  return text.replace(/#([a-z][\w-]*)/gi, (match, tag) => {
+    const full = HASHTAG_ALIASES[tag.toLowerCase()];
+    return full ? `#${full}` : match;
+  });
+}
+
+// Clasa de proiect a unui task, după primul hashtag: #life → "project-life".
+// Se pune pe orice hashtag; culoarea o dă CSS-ul, doar pentru cele definite acolo.
+function projectClassFor(text) {
+  const match = String(text || "").match(/#([a-z][\w-]*)/i);
+  return match ? `project-${match[1].toLowerCase()}` : null;
+}
+
 function addTask(dateKey, text) {
   const entry = sanitizeTask({
     id: uid(),
-    text,
+    text: expandHashtagAliases(text),
     completed: false,
     createdAt: Date.now(),
   });
