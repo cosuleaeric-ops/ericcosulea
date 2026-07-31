@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, sqlQuery } from "@/lib/db";
 import { eliteDeuxState } from "@/lib/db/schema";
 import { isAuthenticated } from "@/lib/session";
+import { createWipTodo, hasProjectTag, wipEnabled } from "@/lib/wip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ type Task = {
   completed?: boolean;
   createdAt?: number;
   seriesId?: string;
+  // Id-ul todo-ului de pe WIP, dacă a fost publicat. Prezența lui împiedică
+  // republicarea când debifezi și bifezi din nou.
+  wipId?: string;
 };
 type Recurrence = {
   id: string;
@@ -263,7 +267,19 @@ export async function POST(req: Request) {
 
   const target = tasks[idx];
   const rest = tasks.filter((_, i) => i !== idx);
-  const done = { ...target, completed: true };
+
+  // Bifat din menubar: dacă are #proiect și n-a fost deja publicat, ajunge pe WIP.
+  // O eroare de la WIP nu are voie să blocheze bifarea.
+  let wipId = target.wipId;
+  if (!wipId && wipEnabled() && hasProjectTag(target.text ?? "")) {
+    try {
+      wipId = (await createWipTodo(target.text!)).id;
+    } catch (error) {
+      console.warn("WIP post failed", error);
+    }
+  }
+
+  const done: Task = { ...target, completed: true, ...(wipId ? { wipId } : {}) };
   state.tasksByDate[key] = [
     ...rest.filter((t) => !t.completed),
     ...rest.filter((t) => t.completed),

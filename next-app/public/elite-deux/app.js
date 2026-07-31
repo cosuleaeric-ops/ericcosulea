@@ -5,6 +5,11 @@ const APP_CONFIG = window.ELITE_DEUX_CONFIG || {};
 const SERVER_STATE_URL = typeof APP_CONFIG.stateUrl === "string" ? APP_CONFIG.stateUrl : "";
 const CSRF_TOKEN = typeof APP_CONFIG.csrfToken === "string" ? APP_CONFIG.csrfToken : "";
 const HAS_REMOTE_STORAGE = Boolean(SERVER_STATE_URL);
+const WIP_URL = typeof APP_CONFIG.wipUrl === "string" ? APP_CONFIG.wipUrl : "";
+// Un task bifat ajunge pe WIP doar dacă are un #proiect. Hashtag-ul trebuie să
+// înceapă cu literă — la fel ca pe server (lib/wip.ts), altfel „issue #42" ar
+// ajunge pe feed-ul public.
+const WIP_PROJECT_TAG = /#[a-z][\w-]*/i;
 
 const THEME_PALETTE = {
   pink: { theme: "#d91f7f", soft: "rgba(217, 31, 127, 0.14)" },
@@ -1225,9 +1230,15 @@ function renderTask(dateKey, task) {
 
   checkBtn.addEventListener("click", () => {
     const becameCompleted = toggleTaskCompleted(dateKey, task.id);
-    if (becameCompleted && state.settings.celebrations) {
+    if (!becameCompleted) {
+      return;
+    }
+
+    if (state.settings.celebrations) {
       spawnConfettiBurst();
     }
+
+    sendTaskToWip(dateKey, task.id);
   });
 
   editBtn.addEventListener("click", () => {
@@ -1402,7 +1413,54 @@ function sanitizeTask(task) {
     entry.seriesId = String(task.seriesId);
   }
 
+  // Publicat deja pe WIP — nu se retrimite dacă debifezi și bifezi din nou.
+  if (task?.wipId) {
+    entry.wipId = String(task.wipId);
+  }
+
   return entry;
+}
+
+// Publică pe WIP un task tocmai bifat, dacă are #proiect. Serverul face cererea
+// (cheia stă acolo) și ne dă id-ul înapoi; noi îl salvăm pe task, ca să nu se
+// republice la o debifare urmată de bifare.
+async function sendTaskToWip(dateKey, taskId) {
+  if (!WIP_URL) {
+    return;
+  }
+
+  const task = (state.tasksByDate[dateKey] || []).find((item) => item.id === taskId);
+  if (!task || task.wipId || !WIP_PROJECT_TAG.test(task.text)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(WIP_URL, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF_TOKEN },
+      body: JSON.stringify({ text: task.text }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`WIP failed (${response.status})`);
+    }
+
+    const payload = await response.json();
+
+    // Între timp task-ul poate fi șters sau mutat — îl recăutăm după id.
+    const fresh = (state.tasksByDate[dateKey] || []).find((item) => item.id === taskId);
+    if (!fresh) {
+      return;
+    }
+
+    fresh.wipId = payload.id;
+    saveState();
+    setStorageStatus("Trimis pe WIP");
+  } catch (error) {
+    console.warn("EliteDeux WIP post failed", error);
+    setStorageStatus("WIP: trimiterea a eșuat");
+  }
 }
 
 function removeTask(dateKey, taskId) {
