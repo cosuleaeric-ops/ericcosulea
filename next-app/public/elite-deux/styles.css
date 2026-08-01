@@ -281,6 +281,24 @@ body.dark .task-item.project-outglow {
   border-bottom-color: color-mix(in srgb, var(--project-tint) 42%, transparent);
 }
 
+/* Bifate: fundal gri neutru, peste orice tentă de proiect, ca să nu se
+   confunde cu task-urile rămase de făcut. */
+.task-item.completed,
+.task-item.completed.project-life,
+.task-item.completed.project-cursurilapahar,
+.task-item.completed.project-outglow {
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper));
+  border-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--line) calc(var(--row-line-opacity) * 100%), transparent);
+}
+
+body.dark .task-item.completed,
+body.dark .task-item.completed.project-life,
+body.dark .task-item.completed.project-cursurilapahar,
+body.dark .task-item.completed.project-outglow {
+  background: color-mix(in srgb, var(--ink) 14%, var(--paper));
+}
+
 .task-item.dragging {
   opacity: 0.55;
 }
