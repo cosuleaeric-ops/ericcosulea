@@ -6,15 +6,17 @@
 // server prin proxy e al destinatarului, nu al tău. Destinatarul nu e afectat — proxy-ul
 // lui folosește alt URL (token googleusercontent per cont).
 //
-// Reguli de SESIUNE (se șterg la restart browser) — DOM-ul le re-trimite oricum la
-// următoarea deschidere a threadului, deci nu acumulăm nimic persistent.
+// Reguli DINAMICE (persistă peste restart de browser). Cu reguli de sesiune, fiecare
+// repornire de Chrome golea lista, iar prima redeschidere a fiecărui thread pierdea cursa
+// pixel-vs-ping → propriile deschideri ajungeau la server. Acum cursa există cel mult
+// O DATĂ per email, la prima randare.
 
 const blocked = new Map(); // urlFilter -> ruleId
 let nextId = 1;
 
 // SW-ul MV3 se oprește/repornește des: re-citim regulile existente ca să nu refolosim id-uri.
 let ready = chrome.declarativeNetRequest
-  .getSessionRules()
+  .getDynamicRules()
   .then((rules) => {
     for (const r of rules) {
       blocked.set(r.condition.urlFilter, r.id);
@@ -35,7 +37,14 @@ chrome.runtime.onMessage.addListener((msg) => {
         !/[*^|]/.test(u) &&
         !blocked.has("|" + u),
     );
-    if (!fresh.length || blocked.size > 4000) return; // limita session rules e 5000
+    if (!fresh.length) return;
+    // Limita de reguli dinamice e 5000: la depășire scoatem cele mai vechi 1000 id-uri.
+    let removeRuleIds = [];
+    if (blocked.size + fresh.length > 4500) {
+      const oldest = [...blocked.entries()].sort((a, b) => a[1] - b[1]).slice(0, 1000);
+      removeRuleIds = oldest.map(([, id]) => id);
+      oldest.forEach(([f]) => blocked.delete(f));
+    }
     const rules = fresh.map((u) => {
       const id = nextId++;
       blocked.set("|" + u, id);
@@ -47,6 +56,8 @@ chrome.runtime.onMessage.addListener((msg) => {
         condition: { urlFilter: "|" + u, resourceTypes: ["image"] },
       };
     });
-    return chrome.declarativeNetRequest.updateSessionRules({ addRules: rules }).catch(() => {});
+    return chrome.declarativeNetRequest
+      .updateDynamicRules({ addRules: rules, removeRuleIds })
+      .catch(() => {});
   });
 });

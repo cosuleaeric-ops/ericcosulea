@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, max } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
-import { PIXEL, PIXEL_HEADERS, looksLikeBot, isGoogleProxy, clientIp } from "@/lib/tracking/util";
+import {
+  PIXEL,
+  PIXEL_HEADERS,
+  looksLikeBot,
+  isGoogleProxy,
+  recipientCannotUseGoogleProxy,
+  clientIp,
+} from "@/lib/tracking/util";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +22,7 @@ const GRACE_MS = 60_000;
 // Extensia pinguie owner-seen O DATĂ la deschiderea threadului (nu rolling) și blochează
 // prin DNR fetch-urile proprii ulterioare. Fereastra mai acoperă doar cursa primului
 // render (pixelul pornit înainte de armarea regulii DNR / de sosirea pingului).
-const OWNER_SEEN_MS = 20_000;
+const OWNER_SEEN_MS = 60_000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const HIGH_COUNT = 5; // prag „deschis de un nr anormal de ori"
 
@@ -43,6 +50,7 @@ export async function GET(
     const rows = await db
       .select({
         senderIp: trackedEmails.senderIp,
+        recipient: trackedEmails.recipient,
         createdAt: trackedEmails.createdAt,
         ownerSeenAt: trackedEmails.ownerSeenAt,
       })
@@ -56,6 +64,9 @@ export async function GET(
       const ownIp = !!(row.senderIp && ip && row.senderIp === ip);
       const ambiguous = ownIp || isGoogleProxy(ua);
       if (ownIp) excluded = true;
+      // Destinatar pe Yahoo/Outlook/iCloud… + hit prin proxy-ul Google = tu, în Gmail-ul tău.
+      // Nu depinde de nicio fereastră de timp, deci nu poate fi ratat de o cursă.
+      if (isGoogleProxy(ua) && recipientCannotUseGoogleProxy(row.recipient)) excluded = true;
       if (ambiguous && Date.now() - new Date(row.createdAt).getTime() < GRACE_MS) excluded = true;
       // Proprietarul se uita chiar acum la email (extensia a raportat) → propria vizualizare.
       if (ambiguous && row.ownerSeenAt && Date.now() - new Date(row.ownerSeenAt).getTime() < OWNER_SEEN_MS) {

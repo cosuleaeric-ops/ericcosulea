@@ -1,4 +1,4 @@
-import { sql, eq, desc, asc, and, gt, isNotNull } from "drizzle-orm";
+import { sql, eq, desc, asc, and, gt, lt, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
 
@@ -102,8 +102,14 @@ export type Alert = {
 
 // Alertele recente (deschideri notificabile) pentru extensie. Fereastră de 14 zile
 // ca extensia să le poată arăta chiar dacă Gmail-ul a fost închis câteva zile.
+// Carantină de 5 min: /api/track/seen poate anula retroactiv o alertă declanșată de
+// propria ta vizualizare (pingul extensiei vine cu întârziere față de pixel). Nu livrăm
+// nimic mai nou de-atât, ca să nu te notificăm pentru propriile deschideri.
+const QUARANTINE_MS = 5 * 60 * 1000;
+
 export async function getRecentAlerts(days = 14): Promise<Alert[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const until = new Date(Date.now() - QUARANTINE_MS);
   const rows = await db
     .select({
       id: emailEvents.id,
@@ -114,7 +120,13 @@ export async function getRecentAlerts(days = 14): Promise<Alert[]> {
     })
     .from(emailEvents)
     .leftJoin(trackedEmails, eq(emailEvents.emailId, trackedEmails.id))
-    .where(and(isNotNull(emailEvents.alert), gt(emailEvents.createdAt, since)))
+    .where(
+      and(
+        isNotNull(emailEvents.alert),
+        gt(emailEvents.createdAt, since),
+        lt(emailEvents.createdAt, until),
+      ),
+    )
     .orderBy(desc(emailEvents.createdAt))
     .limit(100);
 

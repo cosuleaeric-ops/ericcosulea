@@ -130,9 +130,10 @@
   }
 
   // Raportează backendului că PROPRIETARUL vede acum emailul — O DATĂ per thread deschis,
-  // NU rolling: serverul suprimă hit-urile ambigue (proxy Google) doar ±20s în jurul
-  // pingului, cât să acopere cursa primului render (pixelul poate porni înainte ca regula
-  // DNR din blockOwnPixels să fie armată). Fetch-urile proprii ulterioare sunt blocate la
+  // NU rolling: serverul suprimă hit-urile ambigue (proxy Google) în fereastra din jurul
+  // pingului (5 min înapoi, 1 min înainte), cât să acopere cursa primului render — Gmail
+  // pre-încarcă threadul la hover/click în listă, deci pixelul poate pleca cu minute
+  // înaintea pingului. Fetch-urile proprii ulterioare sunt blocate la
   // nivel de rețea, deci ping continuu nu mai trebuie — și ar ține fereastra de suprimare
   // deschisă la nesfârșit cât stai pe thread, înghițind deschiderile reale ale
   // destinatarilor care folosesc Gmail (bug-ul iaBilet).

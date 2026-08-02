@@ -34,6 +34,18 @@ export function isGoogleProxy(ua: string | null): boolean {
   return !!ua && GOOGLE_PROXY_RX.test(ua);
 }
 
+// Provideri care NU folosesc proxy-ul de imagini Google. Dacă TOȚI destinatarii unui email
+// sunt pe astfel de adrese, un hit cu UA GoogleImageProxy nu poate fi al lor — e Gmail-ul TĂU
+// care randează propriul mail (thread deschis / Sent). Fără ferestre de timp, fără curse.
+const NON_GOOGLE_MX =
+  /^(yahoo\.[a-z.]+|ymail\.com|rocketmail\.com|hotmail\.[a-z.]+|outlook\.[a-z.]+|live\.[a-z.]+|msn\.com|icloud\.com|me\.com|mac\.com|aol\.com|proton\.me|protonmail\.com|pm\.me|gmx\.[a-z.]+|web\.de|mail\.ru|yandex\.[a-z.]+|zoho\.com|fastmail\.com|tutanota\.com)$/i;
+
+export function recipientCannotUseGoogleProxy(recipient: string | null): boolean {
+  const addrs = (recipient || "").match(/[^\s<>,;"]+@[^\s<>,;"]+/g);
+  if (!addrs?.length) return false; // necunoscut → rămâne ambiguu
+  return addrs.every((a) => NON_GOOGLE_MX.test(a.split("@")[1] || ""));
+}
+
 export function clientIp(h: Headers): string | null {
   const fwd = h.get("x-vercel-forwarded-for") || h.get("x-forwarded-for");
   return fwd ? fwd.split(",")[0].trim() : h.get("x-real-ip");
