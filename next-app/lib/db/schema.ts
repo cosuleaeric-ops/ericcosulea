@@ -198,6 +198,20 @@ export const events = pgTable("events", {
   index("events_website_name_idx").on(t.websiteId, t.name),
 ]);
 
+// IP-urile mele. Traficul de pe ele nu se contorizează pe NICIUN site urmărit.
+// Cookie-ul de admin nu poate face asta: pe outglow/cesaicumpar/etc. e
+// third-party față de ericcosulea.ro, iar browserele nu-l trimit. IP-ul e
+// singurul semnal care merge cross-domeniu, pe orice browser și device.
+// Se auto-înregistrează la fiecare deschidere a dashboard-ului /elitedata
+// (deci se reînnoiește singur când providerul rotește IP-ul) și se ignoră
+// după 30 de zile fără reînnoire — ca un IP de hotel/cafenea prins o dată
+// să nu blocheze la nesfârșit vizitatori reali de pe același NAT.
+export const analyticsExcludedIps = pgTable("analytics_excluded_ips", {
+  ip: text("ip").primaryKey(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Crawlere AI / boți — colectate server-side (nu rulează JS, deci nu trec prin /api/event).
 export const crawlerEvents = pgTable("crawler_events", {
   id: serial("id").primaryKey(),

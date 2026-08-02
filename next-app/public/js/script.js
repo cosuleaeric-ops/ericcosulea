@@ -35,26 +35,49 @@
     /\.local$/.test(host);
   if (isLocal && !includeLocalhost) return;
 
-  // ── Opt-out prin URL: ?elitedata_ignore=1 setează un flag persistent în ACEST
-  //    browser (=0 îl scoate). Un click/link o dată pe fiecare site & dispozitiv,
-  //    apoi vizitele proprii nu mai sunt contorizate. Merge pe orice domeniu —
-  //    e singura cale de self-exclude cross-domeniu (cookie-ul de admin e doar pe
-  //    ericcosulea.ro). ──
+  // ── Opt-out prin URL: ?elitedata_ignore=1 marchează ACEST browser ca fiind al
+  //    meu (=0 anulează). Un click o dată pe fiecare domeniu — e singura cale de
+  //    self-exclude client-side cross-domeniu (cookie-ul de admin e first-party
+  //    doar pe ericcosulea.ro, browserele nu-l trimit de pe alte domenii).
+  //    Flagul se scrie în DOUĂ locuri, localStorage și un cookie pe 400 de zile
+  //    (maximul acceptat de Chrome): dacă una dintre stocări e ștearsă, cealaltă
+  //    o rescrie la următoarea vizită, deci un „clear site data" parțial nu
+  //    repornește urmărirea. Backup-ul independent de browser e excluderea pe
+  //    IP, ținută server-side. ──
+  var IGNORE_KEY = "elitedata_ignore";
+
+  function readIgnore() {
+    var stored = null;
+    try {
+      stored = localStorage.getItem(IGNORE_KEY);
+    } catch (e) {}
+    if (stored === "true") return true;
+    return document.cookie.split(";").some(function (c) {
+      return c.trim() === IGNORE_KEY + "=true";
+    });
+  }
+
+  function writeIgnore(on) {
+    try {
+      if (on) localStorage.setItem(IGNORE_KEY, "true");
+      else localStorage.removeItem(IGNORE_KEY);
+    } catch (e) {}
+    document.cookie = on
+      ? IGNORE_KEY + "=true;max-age=34560000;path=/;SameSite=Lax"
+      : IGNORE_KEY + "=;max-age=0;path=/;SameSite=Lax";
+  }
+
   try {
-    var ignoreParam = new URLSearchParams(location.search).get("elitedata_ignore");
+    var ignoreParam = new URLSearchParams(location.search).get(IGNORE_KEY);
     if (ignoreParam !== null) {
-      if (ignoreParam === "0" || ignoreParam === "false") {
-        localStorage.removeItem("elitedata_ignore");
-      } else {
-        localStorage.setItem("elitedata_ignore", "true");
-      }
+      writeIgnore(ignoreParam !== "0" && ignoreParam !== "false");
     }
   } catch (e) {}
 
-  // ── Opt-out propriu: localStorage.elitedata_ignore=true ──
-  try {
-    if (localStorage.getItem("elitedata_ignore") === "true") return;
-  } catch (e) {}
+  if (readIgnore()) {
+    writeIgnore(true); // rescrie stocarea care lipsește
+    return;
+  }
 
   // ── Exclude admin-ul: dacă e logat, cookie-ul hint e prezent ──
   if (document.cookie.split(";").some(function (c) {

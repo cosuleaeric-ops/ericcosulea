@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getWebsiteByPublicId } from "@/lib/analytics/queries";
+import { listExcludedIps } from "@/lib/analytics/exclusions";
 import { SnippetBlock } from "./SnippetBlock";
 import { GscIntegration } from "./GscIntegration";
 
@@ -15,6 +16,9 @@ export default async function SettingsPage({
   const { publicId } = await params;
   const website = await getWebsiteByPublicId(publicId);
   if (!website) notFound();
+
+  const ownIps = await listExcludedIps();
+  const optOutUrl = `https://${website.domain}/?elitedata_ignore=1`;
 
   const appUrl = process.env.APP_URL || "https://www.ericcosulea.ro";
   const snippet = `<script
@@ -81,6 +85,41 @@ export const config = {
           Vizitele lor apar în secțiunea <strong>Crawlere AI</strong> din dashboard.
         </p>
         <SnippetBlock code={crawlerSnippet} />
+      </section>
+
+      <section className="dfa-card dfa-settings-card">
+        <h2>Exclude vizitele mele</h2>
+        <p className="dfa-muted">
+          <strong>Pe IP</strong> — de fiecare dată când deschizi acest dashboard, IP-ul de pe
+          care vii e memorat și traficul de pe el nu se mai contorizează pe niciun site
+          urmărit, în orice browser și de pe orice device din rețeaua aia. Se reînnoiește
+          singur când providerul îți schimbă IP-ul; unul nefolosit 30 de zile e ignorat.
+        </p>
+        {ownIps.length > 0 && (
+          <ul className="dfa-muted" style={{ margin: "0 0 1rem", paddingLeft: "1.1rem" }}>
+            {ownIps.map((r) => (
+              <li key={r.ip}>
+                <code>{r.ip}</code> — {r.active ? "activ" : "expirat"}, ultima dată{" "}
+                {r.lastSeenAt.toLocaleDateString("ro-RO", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="dfa-muted">
+          <strong>Pe browser</strong> — pentru când ești pe altă rețea (mobil, cafenea),
+          deschide o dată link-ul de mai jos pe fiecare browser. Marchează browserul
+          permanent, în localStorage <em>și</em> într-un cookie: dacă una dintre ele se
+          șterge, cealaltă o rescrie. <code>?elitedata_ignore=0</code> anulează.
+        </p>
+        <p>
+          <a href={optOutUrl} target="_blank" rel="noopener noreferrer">
+            {optOutUrl}
+          </a>
+        </p>
       </section>
 
       <Suspense fallback={<div className="dfa-card dfa-settings-card"><div className="dfa-skeleton" style={{ height: 60 }} /></div>}>

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { events, websites } from "@/lib/db/schema";
 import { parseUserAgent, referrerSource, parseUtm } from "@/lib/analytics/parse";
 import { isDatacenterIp } from "@/lib/analytics/datacenter";
+import { clientIp, excludedIps } from "@/lib/analytics/exclusions";
 
 export const runtime = "nodejs";
 
@@ -32,17 +33,13 @@ function isSpoofedChromium(h: Headers): boolean {
 }
 
 // IP-uri excluse (ca DataFast Settings → Exclusions). CSV în env: "1.2.3.4, 5.6.7.8".
-const EXCLUDED_IPS = new Set(
+// Peste ele se adaugă IP-urile mele, ținute în DB (vezi lib/analytics/exclusions.ts).
+const ENV_EXCLUDED_IPS = new Set(
   (process.env.ANALYTICS_EXCLUDE_IPS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
 );
-
-function clientIp(h: Headers): string | null {
-  const fwd = h.get("x-vercel-forwarded-for") || h.get("x-forwarded-for");
-  return fwd ? fwd.split(",")[0].trim() : h.get("x-real-ip");
-}
 
 // Path-uri excluse (ca DataFast Settings → Exclusions). Default /admin; override CSV în env.
 // Fiecare intrare exclude atât path-ul exact, cât și subpaginile lui (ex. /admin/users).
@@ -99,7 +96,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
   const ip = clientIp(req.headers);
-  if (EXCLUDED_IPS.size > 0 && ip && EXCLUDED_IPS.has(ip)) {
+  if (ip && (ENV_EXCLUDED_IPS.has(ip) || (await excludedIps()).has(ip))) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
