@@ -9,6 +9,23 @@ export const dynamic = "force-dynamic";
 
 const ROW_ID = 1;
 
+// `no-cache` (nu `no-store`): browserul păstrează corpul și revalidează cu
+// If-None-Match, deci un răspuns neschimbat costă 304, nu 30 kB.
+const CACHE_HEADERS = (etag: string) => ({
+  ETag: etag,
+  "Cache-Control": "private, no-cache, must-revalidate",
+});
+
+// Doar marcajul de timp — nu atinge blob-ul de stare.
+async function currentVersion(): Promise<number> {
+  const rows = await db
+    .select({ updatedAt: eliteDeuxState.updatedAt })
+    .from(eliteDeuxState)
+    .where(eq(eliteDeuxState.id, ROW_ID))
+    .limit(1);
+  return rows[0]?.updatedAt?.getTime() ?? 0;
+}
+
 function countTasks(state: unknown): number {
   if (!state || typeof state !== "object") return 0;
   const s = state as { tasksByDate?: Record<string, unknown[]>; columns?: Array<{ days?: Array<{ tasks?: unknown[] }> }> };
@@ -30,22 +47,34 @@ export async function GET(req: Request) {
   }
 
   // `?only=version` întoarce doar marcajul de timp (zeci de octeți), ca poll-ul
-  // clientului să nu mai descarce tot blob-ul de stare (~24 kB) la fiecare 3s —
+  // clientului să nu mai descarce tot blob-ul de stare (~30 kB) la fiecare 3s —
   // asta consuma singură ~6 GB de egress pe lună.
+  // `build` e amprenta deploy-ului: clientul o compară cu a lui și se reîncarcă
+  // singur când diferă, ca un tab vechi să nu ruleze la nesfârșit cod de dinainte
+  // de un fix.
   if (new URL(req.url).searchParams.get("only") === "version") {
-    const rows = await db
-      .select({ updatedAt: eliteDeuxState.updatedAt })
-      .from(eliteDeuxState)
-      .where(eq(eliteDeuxState.id, ROW_ID))
-      .limit(1);
-    return NextResponse.json({ version: rows[0]?.updatedAt?.getTime() ?? 0 });
+    return NextResponse.json({
+      version: await currentVersion(),
+      build: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+    });
+  }
+
+  // Plasă de siguranță peste verificarea de versiune a clientului: chiar dacă
+  // aceea se strică din nou, un poll repetat costă un 304 gol în loc de 30 kB.
+  // Citim întâi doar `updated_at`, deci nici DB-ul nu atinge blob-ul degeaba.
+  const etag = `W/"${await currentVersion()}"`;
+  if (req.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers: CACHE_HEADERS(etag) });
   }
 
   const rows = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
-  return NextResponse.json({
-    state: rows[0]?.state ?? null,
-    version: rows[0]?.updatedAt?.getTime() ?? 0,
-  });
+  return NextResponse.json(
+    {
+      state: rows[0]?.state ?? null,
+      version: rows[0]?.updatedAt?.getTime() ?? 0,
+    },
+    { headers: CACHE_HEADERS(etag) },
+  );
 }
 
 export async function POST(req: Request) {

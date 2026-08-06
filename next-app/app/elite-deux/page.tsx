@@ -1,10 +1,16 @@
 import Script from "next/script";
 
+// Amprenta deploy-ului care a servit HTML-ul acestui tab. Clientul o compară cu
+// cea întoarsă de API la fiecare poll: dacă diferă, tabul rulează cod vechi și se
+// reîncarcă singur. Fără asta, un tab lăsat deschis luni de zile nu află niciodată
+// de un fix (vezi egress-ul ars de două ori pe Supabase, iul + aug 2026).
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? "dev";
+
 export default function EliteDeuxPage() {
   return (
     <>
       <Script id="elite-deux-config" strategy="beforeInteractive">{`
-window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", wipUrl: "/api/elite-deux/wip", csrfToken: "" };
+window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", wipUrl: "/api/elite-deux/wip", csrfToken: "", buildId: ${JSON.stringify(BUILD_ID)} };
       `}</Script>
 
       <div className="app-shell">
@@ -196,7 +202,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", wipUrl: "/api/el
         <span className="trash-label">Trage aici pentru a șterge</span>
       </div>
 
-      <Script src="/elite-deux/app.js?v=27" strategy="afterInteractive" />
+      <Script src="/elite-deux/app.js?v=28" strategy="afterInteractive" />
     </>
   );
 }

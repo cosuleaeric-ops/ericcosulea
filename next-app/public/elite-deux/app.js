@@ -6,6 +6,9 @@ const SERVER_STATE_URL = typeof APP_CONFIG.stateUrl === "string" ? APP_CONFIG.st
 const CSRF_TOKEN = typeof APP_CONFIG.csrfToken === "string" ? APP_CONFIG.csrfToken : "";
 const HAS_REMOTE_STORAGE = Boolean(SERVER_STATE_URL);
 const WIP_URL = typeof APP_CONFIG.wipUrl === "string" ? APP_CONFIG.wipUrl : "";
+// Amprenta deploy-ului care a servit pagina. Vezi maybeReloadForNewBuild().
+const BUILD_ID = typeof APP_CONFIG.buildId === "string" ? APP_CONFIG.buildId : "";
+const RELOADED_FOR_KEY = "eliteDeux.reloadedForBuild";
 // Un task bifat ajunge pe WIP doar dacă are un #proiect. Hashtag-ul trebuie să
 // înceapă cu literă — la fel ca pe server (lib/wip.ts), altfel „issue #42" ar
 // ajunge pe feed-ul public.
@@ -366,7 +369,10 @@ function startRemotePolling() {
 
     // Verificare ieftină: dacă versiunea de pe server e aceeași, nu descărcăm nimic.
     try {
-      const version = await fetchRemoteVersion();
+      const { version, build } = await fetchRemoteVersion();
+      if (maybeReloadForNewBuild(build)) {
+        return;
+      }
       if (remoteVersion !== null && version === remoteVersion) {
         return;
       }
@@ -643,7 +649,7 @@ function scheduleRemoteSave() {
   }, 250);
 }
 
-// Doar marcajul de timp al stării de pe server (zeci de octeți).
+// Doar marcajul de timp al stării de pe server + amprenta deploy-ului (zeci de octeți).
 async function fetchRemoteVersion() {
   const response = await fetch(`${SERVER_STATE_URL}?only=version`, {
     credentials: "same-origin",
@@ -656,13 +662,42 @@ async function fetchRemoteVersion() {
   }
 
   const payload = await response.json();
-  return typeof payload?.version === "number" ? payload.version : 0;
+  return {
+    version: typeof payload?.version === "number" ? payload.version : 0,
+    build: typeof payload?.build === "string" ? payload.build : "",
+  };
+}
+
+// Un tab lăsat deschis nu cere niciodată pagina din nou, deci nu află de niciun
+// deploy: pe 25 iul 2026 un tab a rămas pe codul de dinaintea unui fix de egress
+// și a descărcat 30 kB la fiecare 3s timp de două săptămâni (8 GB). Dacă serverul
+// raportează alt build decât cel care a servit tabul, ne reîncărcăm singuri.
+// O singură încercare per build, ca un HTML servit din cache să nu ne bage în buclă.
+function maybeReloadForNewBuild(serverBuild) {
+  if (!serverBuild || !BUILD_ID || serverBuild === BUILD_ID) {
+    return false;
+  }
+
+  try {
+    if (sessionStorage.getItem(RELOADED_FOR_KEY) === serverBuild) {
+      return false;
+    }
+    sessionStorage.setItem(RELOADED_FOR_KEY, serverBuild);
+  } catch {
+    /* sessionStorage blocat — mai bine o reîncărcare decât cod vechi la nesfârșit */
+  }
+
+  window.location.reload();
+  return true;
 }
 
 async function fetchRemoteSnapshot() {
+  // `no-cache`, nu `no-store`: browserul revalidează cu If-None-Match, deci dacă
+  // starea n-a fost atinsă primim 304 gol în loc de 30 kB. Plasă de siguranță
+  // pentru cazul în care verificarea de versiune de mai sus se strică din nou.
   const response = await fetch(SERVER_STATE_URL, {
     credentials: "same-origin",
-    cache: "no-store",
+    cache: "no-cache",
     headers: {
       Accept: "application/json",
     },
