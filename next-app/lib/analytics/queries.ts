@@ -823,6 +823,19 @@ export async function getOverview(
     ),
   ]);
 
+  // taie bucketul final incomplet (ex. ora în curs pe "last 24 hours") — altfel sparkline-ul pare mereu în cădere
+  const lastStart = starts[starts.length - 1];
+  const bucketMs =
+    granularity === "minute"
+      ? 60_000
+      : granularity === "hourly"
+        ? 3_600_000
+        : granularity === "daily"
+          ? 86_400_000
+          : new Date(lastStart.getFullYear(), lastStart.getMonth() + 1, 1).getTime() - lastStart.getTime();
+  const sparkStarts =
+    starts.length > 1 && range.to.getTime() < lastStart.getTime() + bucketMs ? starts.slice(0, -1) : starts;
+
   const visBySite = new Map(visRows.map((r) => [Number(r.website_id), Number(r.visitors)]));
   const sparkBySite = new Map<number, Map<number, number>>();
   for (const r of sparkRows) {
@@ -839,7 +852,7 @@ export async function getOverview(
       domain: s.domain,
       faviconUrl: s.faviconUrl,
       visitors: visBySite.get(s.id) ?? 0,
-      spark: starts.map((_, i) => m.get(i) ?? 0),
+      spark: sparkStarts.map((_, i) => m.get(i) ?? 0),
     };
   });
 
