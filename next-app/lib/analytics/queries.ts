@@ -272,11 +272,13 @@ ev_agg AS (
   FROM ev e GROUP BY b
 ),
 sess AS (
-  SELECT b, session_id, EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) AS dur
+  SELECT b, session_id, EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) AS dur,
+         count(*) FILTER (WHERE type<>'leave')::int AS engaged
   FROM ev WHERE session_id IS NOT NULL GROUP BY b, session_id
 ),
 sess_agg AS (
-  SELECT b, count(*) FILTER (WHERE dur=0)::int AS bounced, coalesce(sum(dur),0)::float8 AS dur_sum
+  -- bounce = un singur eveniment real (leave-ul dă doar durata, nu e engagement)
+  SELECT b, count(*) FILTER (WHERE engaged<=1)::int AS bounced, coalesce(sum(dur),0)::float8 AS dur_sum
   FROM sess GROUP BY b
 )
 SELECT e.b, e.visitors, e.sessions, e.pageviews, e.conv_visitors, e.kpi1_value,

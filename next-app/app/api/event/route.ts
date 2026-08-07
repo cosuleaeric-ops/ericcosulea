@@ -64,7 +64,7 @@ export function OPTIONS() {
 
 type Payload = {
   id?: string; // website public id (dfid_xxxx)
-  type?: "pageview" | "custom";
+  type?: "pageview" | "custom" | "leave";
   name?: string;
   url?: string;
   referrer?: string;
@@ -166,16 +166,24 @@ export async function POST(req: NextRequest) {
     .orderBy(desc(events.createdAt))
     .limit(1);
 
+  const isLeave = body.type === "leave";
+
   let sessionId: string;
   let isBounce: boolean;
   if (recent[0]?.sessionId) {
-    // Continuare de sesiune → nu mai e bounce.
     sessionId = recent[0].sessionId;
     isBounce = false;
-    await db
-      .update(events)
-      .set({ isBounce: false })
-      .where(and(eq(events.websiteId, site.id), eq(events.sessionId, sessionId)));
+    if (!isLeave) {
+      // Continuare de sesiune → nu mai e bounce. Leave nu e engagement, nu flip-uim.
+      await db
+        .update(events)
+        .set({ isBounce: false })
+        .where(and(eq(events.websiteId, site.id), eq(events.sessionId, sessionId)));
+    }
+  } else if (isLeave) {
+    // Leave fără sesiune activă (ex. tab redeschis după 30 min) — nu porni o
+    // sesiune nouă doar dintr-un leave, ar umfla numărul de sesiuni.
+    return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   } else {
     sessionId = randomUUID();
     isBounce = true;
@@ -183,7 +191,7 @@ export async function POST(req: NextRequest) {
 
   await db.insert(events).values({
     websiteId: site.id,
-    type: body.type === "custom" ? "custom" : "pageview",
+    type: body.type === "custom" ? "custom" : isLeave ? "leave" : "pageview",
     name: body.type === "custom" ? body.name ?? null : null,
     path,
     hostname,

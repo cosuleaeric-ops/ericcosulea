@@ -168,6 +168,20 @@
     if (name) send("custom", name);
   });
 
+  // ── Durata vizitei: beacon "leave" când pagina devine ascunsă/închisă.
+  // Fără el, o vizită de o pagină are un singur eveniment și durată 0.
+  var leaveSent = false;
+  function leave() {
+    if (leaveSent) return;
+    leaveSent = true;
+    send("leave");
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") leave();
+    else leaveSent = false; // revenit în tab → următoarea plecare contează iar
+  });
+  window.addEventListener("pagehide", leave);
+
   // Pageview inițial
   pageview();
 })();
