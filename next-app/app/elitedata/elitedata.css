@@ -1389,7 +1389,7 @@
 .dfa-utable-head,
 .dfa-utable-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 90px 70px 100px;
+  grid-template-columns: 1.4fr 1fr 90px 70px 80px 100px;
 }
 .dfa-utable {
   display: flex;
@@ -1721,7 +1721,7 @@
   .dfa-utable,
   .dfa-utable-head,
   .dfa-utable-row {
-    min-width: 480px;
+    min-width: 560px;
   }
   .dfa-modal-table {
     overflow-x: auto;

@@ -8,7 +8,7 @@ import type {
   UserRow,
   JourneyRow,
 } from "@/lib/analytics/queries";
-import { formatNumber, formatRelative } from "@/lib/analytics/format";
+import { formatDuration, formatNumber, formatRelative } from "@/lib/analytics/format";
 import { countryFlag } from "@/lib/analytics/labels";
 import { TAB_COOKIES, writeCookie } from "../period-persistence";
 
@@ -226,6 +226,7 @@ function UserTab({ users }: { users: UserRow[] }) {
         <span>Source</span>
         <span className="dfa-th-num">Sessions</span>
         <span className="dfa-th-num">Views</span>
+        <span className="dfa-th-num">Time</span>
         <span className="dfa-th-num">Last seen</span>
       </div>
       {users.map((u) => (
@@ -238,6 +239,7 @@ function UserTab({ users }: { users: UserRow[] }) {
           <span className="dfa-muted">{u.referrerSource ?? "—"}</span>
           <span className="dfa-th-num">{u.sessions}</span>
           <span className="dfa-th-num">{u.pageviews}</span>
+          <span className="dfa-th-num dfa-muted">{formatDuration(u.duration)}</span>
           <span className="dfa-th-num dfa-muted">{formatRelative(u.lastSeen)}</span>
         </div>
       ))}

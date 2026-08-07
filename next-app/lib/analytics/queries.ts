@@ -143,6 +143,7 @@ export type UserRow = {
   referrerSource: string | null;
   sessions: number;
   pageviews: number;
+  duration: number; // secunde, suma duratelor sesiunilor din perioadă
   lastSeen: string;
 };
 export type JourneyRow = {
@@ -624,9 +625,16 @@ WITH per AS (
   SELECT visitor_id,
     count(DISTINCT session_id)::int AS sessions,
     count(*) FILTER (WHERE type='pageview')::int AS pageviews,
-    max(created_at) AS last_seen
-  FROM events_human
-  WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
+    max(created_at) AS last_seen,
+    coalesce(sum(dur) FILTER (WHERE rn=1 AND session_id IS NOT NULL), 0)::int AS duration
+  FROM (
+    SELECT visitor_id, session_id, type, created_at,
+      extract(epoch FROM max(created_at) OVER (PARTITION BY session_id)
+                  - min(created_at) OVER (PARTITION BY session_id)) AS dur,
+      row_number() OVER (PARTITION BY session_id ORDER BY created_at, id) AS rn
+    FROM events_human
+    WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
+  ) s
   GROUP BY visitor_id ORDER BY last_seen DESC LIMIT 30
 ),
 latest AS (
@@ -642,7 +650,7 @@ firstref AS (
   ORDER BY e.visitor_id, e.created_at ASC, e.id ASC
 )
 SELECT p.visitor_id AS id, l.country, l.device, l.os, l.browser,
-       f.referrer_source AS "referrerSource", p.sessions, p.pageviews, p.last_seen AS "lastSeen"
+       f.referrer_source AS "referrerSource", p.sessions, p.pageviews, p.duration, p.last_seen AS "lastSeen"
 FROM per p JOIN latest l USING (visitor_id) JOIN firstref f USING (visitor_id)
 ORDER BY p.last_seen DESC`;
   type Row = Omit<UserRow, "lastSeen"> & { lastSeen: string | Date };
