@@ -338,6 +338,39 @@
     });
   }
 
+  // ID-ul de tracking al UNUI mesaj din thread: pixelul/linkurile din containerul lui,
+  // fără conținutul citat (acela poartă pixelii mesajelor anterioare). Un singur id
+  // rămas = mesajul e identificat exact; altfel (colapsat, ambiguu) → null.
+  function messageTrackedId(rep) {
+    let node = rep;
+    for (let i = 0; i < 12 && node; i++) {
+      if (node.matches && (node.matches('[role="listitem"]') || node.classList?.contains("adn"))) break;
+      node = node.parentElement;
+    }
+    if (!node) return null;
+    const ids = new Set();
+    node
+      .querySelectorAll('img[src*="t/o/" i], img[src*="t%2fo%2f" i], a[href*="t/c/" i], a[href*="t%2fc%2f" i]')
+      .forEach((el) => {
+        if (el.closest(".gmail_quote")) return;
+        let v = `${el.getAttribute("src") || ""} ${el.getAttribute("href") || ""}`;
+        for (let i = 0; i < 3 && v; i++) {
+          RX_TRACK.lastIndex = 0;
+          let m;
+          while ((m = RX_TRACK.exec(v))) ids.add(m[1].toLowerCase());
+          if (!v.includes("%")) break;
+          try {
+            const d = decodeURIComponent(v);
+            if (d === v) break;
+            v = d;
+          } catch {
+            break;
+          }
+        }
+      });
+    return ids.size === 1 ? [...ids][0] : null;
+  }
+
   // Indicator inline în emailul DESCHIS — lângă steluță/emoji/reply/more, pe mesajul nostru.
   const REPLY_WORD = /\b(reply|răspunde|raspunde|responder|répondre|antworten|rispondi)\b/i;
   const FORWARD_WORD = /\b(forward|redirect|înaint|inaint|transfé|weiterleit)/i;
@@ -400,7 +433,13 @@
       // Mesaj primit (expeditor cunoscut și diferit de contul nostru) → fără indicator.
       if (acct && senderEmail && senderEmail !== acct) return;
 
-      const g = groupAgg(st);
+      // Strict pe ACEST mesaj (reply-urile au pixelul lor): dacă îl identificăm din DOM
+      // și e în STATUS, arătăm doar deschiderile lui. Altfel, agregatul conversației.
+      const msgId = messageTrackedId(rep);
+      const mine = msgId ? STATUS.find((e) => e.id === msgId) : null;
+      const g = mine
+        ? { ids: [mine.id], opens: mine.opens || 0, clicks: mine.clicks || 0, lastOpenAt: mine.lastOpenAt }
+        : groupAgg(st);
       const opened = g.opens > 0;
       const ind = document.createElement("span");
       ind.className = "mt-msg" + (opened ? " mt-open" : "");
