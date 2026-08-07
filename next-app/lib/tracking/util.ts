@@ -22,7 +22,20 @@ const BOT_UA =
 
 export function looksLikeBot(ua: string | null): boolean {
   if (!ua) return true; // fără user-agent = aproape sigur script/scanner
+  // UA de librărie („Ruby", „Java/1.8") sau UA generic gol („Mozilla/5.0" fără nimic după) —
+  // niciun browser real nu se prezintă așa; văzute la scannerele care urmează pixelul.
+  if (/^(ruby|java|perl|php|go)\b/i.test(ua.trim())) return true;
+  if (/^mozilla\/[45]\.0$/i.test(ua.trim())) return true;
   return BOT_UA.test(ua);
+}
+
+// Infrastructura Google (66.249.0.0/16 — crawlere/scannere Gmail) cu UA de browser obișnuit:
+// niciun om nu navighează de pe IP-urile astea. Proxy-ul de imagini LEGITIM (deschiderea
+// reală a unui destinatar pe Gmail) vine tot de aici, dar cu UA GoogleImageProxy — acela
+// NU se exclude. Restul (UA „Chrome pe Windows" de pe 66.249.*) sunt scannerele care
+// re-trag pixelul la câteva secunde după fiecare fetch al proxy-ului.
+export function isGoogleInfraNonProxy(ip: string | null, ua: string | null): boolean {
+  return !!ip && ip.startsWith("66.249.") && !isGoogleProxy(ua);
 }
 
 // Proxy-ul de imagini Gmail — sursă AMBIGUĂ: prin el trec și deschiderile destinatarului

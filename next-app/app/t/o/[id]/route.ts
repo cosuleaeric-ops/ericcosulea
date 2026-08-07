@@ -7,6 +7,7 @@ import {
   PIXEL_HEADERS,
   looksLikeBot,
   isGoogleProxy,
+  isGoogleInfraNonProxy,
   recipientCannotUseGoogleProxy,
   clientIp,
 } from "@/lib/tracking/util";
@@ -46,7 +47,7 @@ export async function GET(
     // Ferestrele pe timp se aplică DOAR surselor ambigue: un fetch direct de pe IP străin cu
     // UA normal e întotdeauna destinatarul — suprimarea lui pe timp arunca deschideri reale
     // în conversațiile active (proprietarul stă în thread → fereastra nu se mai închidea).
-    let excluded = looksLikeBot(ua);
+    let excluded = looksLikeBot(ua) || isGoogleInfraNonProxy(ip, ua);
     const rows = await db
       .select({
         senderIp: trackedEmails.senderIp,

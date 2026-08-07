@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { emailEvents, trackedEmails } from "@/lib/db/schema";
-import { looksLikeBot, isGoogleProxy, clientIp } from "@/lib/tracking/util";
+import { looksLikeBot, isGoogleProxy, isGoogleInfraNonProxy, clientIp } from "@/lib/tracking/util";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(
   const ua = req.headers.get("user-agent");
   const ip = clientIp(req.headers);
   let target = FALLBACK;
-  let excluded = looksLikeBot(ua);
+  let excluded = looksLikeBot(ua) || isGoogleInfraNonProxy(ip, ua);
 
   try {
     // Caută destinația reală + datele de filtrare (register). Miss → fallback pe homepage, nu 404.
