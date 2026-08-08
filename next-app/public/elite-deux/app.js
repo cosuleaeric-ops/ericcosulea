@@ -344,7 +344,7 @@ async function init() {
   startRemotePolling();
 }
 
-// Preia modificările făcute în altă parte (ex: butonul Done din topbar-ul macOS).
+// Preia modificările făcute în alt tab sau pe alt dispozitiv.
 // Poll-ul cere ÎNTÂI doar versiunea (zeci de octeți) și descarcă starea completă
 // (~24 kB) doar dacă s-a schimbat ceva — altfel un tab lăsat deschis consuma
 // singur ~0,7 GB de egress pe zi.
@@ -400,7 +400,9 @@ function startRemotePolling() {
     state.tasksByDate = remote.tasksByDate;
     persistLocalSnapshot();
     renderWeek();
-  }, 3000);
+    // 15s, nu 3s: singurul scriitor din afară e alt tab sau alt dispozitiv, iar
+    // 3s însemnau 28.800 de interogări pe zi dintr-un tab lăsat deschis.
+  }, 15000);
 }
 
 function countTasksInSnapshot(snapshot) {

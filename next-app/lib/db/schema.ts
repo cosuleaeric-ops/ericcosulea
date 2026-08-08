@@ -112,8 +112,8 @@ export const portofel = pgTable("portofel", {
 export const eliteDeuxState = pgTable("elite_deux_state", {
   id: integer("id").primaryKey(),
   state: jsonb("state").notNull(),
-  // Task-ul pinuit manual în topbar-ul macOS ({id, text} | null). Coloană
-  // separată de `state` ca push-urile de state din app să nu-l suprascrie.
+  // MOARTĂ din 8 aug 2026: topbar-ul macOS a fost șters. Coloana e goală și rămâne
+  // doar ca `drizzle-kit push` să n-o dropeze; se poate scoate cu o migrare separată.
   topbar: jsonb("topbar"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
