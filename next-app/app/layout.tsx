@@ -51,6 +51,17 @@ export default function RootLayout({
           plausible.init();
         `}</Script>
         <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-DFK2965G12"
+          strategy="afterInteractive"
+          async
+        />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-DFK2965G12');
+        `}</Script>
+        <Script
           src="/js/script.js"
           data-website-id="dfid_eric001"
           data-domain="ericcosulea.ro"
