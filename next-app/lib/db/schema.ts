@@ -198,6 +198,23 @@ export const events = pgTable("events", {
   index("events_website_name_idx").on(t.websiteId, t.name),
 ]);
 
+// Probă temporară de headere (pusă 9 aug 2026). Fleet-urile cu proxy rezidențial
+// trec de toate filtrele din /api/event: UA curat, IP rezidențial RO, dar
+// 1 pageview la 0 secunde per „vizitator". Ca să le găsesc semnătura reală,
+// salvez headerele evenimentelor ACCEPTATE și le compar cu ale traficului bun.
+// Fără IP brut (doar un hash), fără corp de request. De șters după analiză.
+export const eventHeaderProbe = pgTable("event_header_probe", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  visitorId: text("visitor_id"),
+  path: text("path"),
+  country: text("country"),
+  city: text("city"),
+  ipHash: text("ip_hash"),
+  headers: jsonb("headers").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("event_header_probe_created_idx").on(t.createdAt)]);
+
 // IP-urile mele. Traficul de pe ele nu se contorizează pe NICIUN site urmărit.
 // Cookie-ul de admin nu poate face asta: pe outglow/cesaicumpar/etc. e
 // third-party față de ericcosulea.ro, iar browserele nu-l trimit. IP-ul e

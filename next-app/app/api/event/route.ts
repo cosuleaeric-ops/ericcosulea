@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { events, websites } from "@/lib/db/schema";
+import { eventHeaderProbe, events, websites } from "@/lib/db/schema";
+import { createHash } from "crypto";
 import { parseUserAgent, referrerSource, parseUtm } from "@/lib/analytics/parse";
 import { isDatacenterIp } from "@/lib/analytics/datacenter";
 import { clientIp, excludedIps } from "@/lib/analytics/exclusions";
@@ -51,6 +52,26 @@ const EXCLUDED_PATHS = (process.env.ANALYTICS_EXCLUDE_PATHS ?? "/admin")
 function isExcludedPath(path: string): boolean {
   return EXCLUDED_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 }
+
+// Headerele salvate de probă (vezi event_header_probe în schema). Doar cele care
+// separă un browser real de un client HTTP care copiază UA-ul.
+const PROBE_HEADERS = [
+  "user-agent",
+  "accept",
+  "accept-language",
+  "accept-encoding",
+  "sec-ch-ua",
+  "sec-ch-ua-mobile",
+  "sec-ch-ua-platform",
+  "sec-fetch-site",
+  "sec-fetch-mode",
+  "sec-fetch-dest",
+  "content-type",
+  "origin",
+  "referer",
+  "priority",
+  "connection",
+];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -101,15 +122,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Boți cu UA curat (headless cu stealth, fleet-uri cu proxy rezidențial):
-  // headere care nu bat cu UA-ul, profilul Chrome-pe-Linux (datele pe 30 zile:
-  // 100% vizitatori single-hit, ~2 vizite reale RO/lună) sau IP de datacenter.
+  // headere care nu bat cu UA-ul, profilul desktop-pe-Linux (datele pe 30 zile:
+  // 100% vizitatori single-hit, ~2 vizite reale RO/lună; regula era doar pe
+  // Chrome, iar pe 9 aug 2026 fleet-ul a mutat pe Edge/Linux, 37 vizitatori
+  // într-o oră după 14 zile cu zero) sau IP de datacenter.
   // Se aruncă ÎNAINTE de orice query: picurau non-stop și țineau Neon-ul
   // treaz 24/7, iar compute-ul pe planul free e limitat. Istoricul marcat
   // is_datacenter rămâne filtrat de view-ul events_human.
   const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
   if (
     isSpoofedChromium(req.headers) ||
-    (browser === "Chrome" && os === "Linux" && device === "desktop") ||
+    (os === "Linux" && device === "desktop") ||
     (await isDatacenterIp(ip))
   ) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
@@ -210,6 +233,30 @@ export async function POST(req: NextRequest) {
     sessionId,
     isBounce,
   });
+
+  // Probă de headere pe pageview-urile care au trecut filtrele. Nu blochează
+  // răspunsul și nu-l poate strica: orice eroare se înghite.
+  if (!isLeave) {
+    const probe: Record<string, string> = {};
+    for (const name of PROBE_HEADERS) {
+      const v = h.get(name);
+      if (v !== null) probe[name] = v;
+    }
+    // Prezența (nu doar valorile) separă clienții HTTP de browsere.
+    probe._present = [...h.keys()].sort().join(",");
+    await db
+      .insert(eventHeaderProbe)
+      .values({
+        websiteId: site.id,
+        visitorId,
+        path,
+        country,
+        city,
+        ipHash: ip ? createHash("sha256").update(ip).digest("hex").slice(0, 16) : null,
+        headers: probe,
+      })
+      .catch(() => {});
+  }
 
   return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
 }
