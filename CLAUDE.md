@@ -68,7 +68,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Second Brain (/brain) — consultă-l la decizii
 
-Eric are un „second brain" la https://www.ericcosulea.ro/brain (pagini durabile în arbore + gânduri cronologice cu taguri; tabele `brain_pages`/`brain_thoughts` în Neon).
+Eric are un „second brain" la https://www.ericcosulea.ro/brain (pagini durabile în arbore + gânduri cronologice cu taguri; tabele `brain_pages`/`brain_thoughts` în Supabase, schema `ericcosulea`).
 
 **La orice discuție de tip decizie, direcție, prioritizare sau „merită să fac X?", citește întâi brain-ul și răspunde prin prisma obiectivelor, constrângerilor și deciziilor anterioare de acolo** — nu generic:
 
@@ -78,7 +78,7 @@ curl -s https://www.ericcosulea.ro/api/brain/export \
 ```
 
 - Căutare punctuală: `GET https://www.ericcosulea.ro/api/brain/search?q=...` (același header).
-- Când Eric spune „reține asta" / ia o decizie demnă de păstrat: `POST /api/brain/thoughts` cu `{"contentMd":"...","tags":["decizie", ...]}` (același header). Confirmă-i că ai salvat-o.
+- Când Eric spune „reține asta" / ia o decizie demnă de păstrat: `POST /api/brain/thoughts` cu `{"contentMd":"...","tags":["decizie", ...]}` (același header).
 - **Salvează autonom și silențios** (cerut explicit de Eric, 14 iul 2026): decizii, praguri, auto-cunoaștere, evenimente majore → thoughts; cifre/stadii/insight-uri durabile → actualizări la paginile existente. Nu întreba înainte și nu anunța după. Conservator doar la pagini structurale noi și ștergeri. Pagina `stadiu-live` e scrisă automat de `/api/cron/brain-sync` (cron Vercel, luni 05:00 UTC).
 - După un eveniment major într-un proiect la care lucrezi cu Eric (lansare, schimbare de pricing, pivot, primul client plătitor, prag atins/ratat), propune-i să salvezi un thought cu tagul proiectului — istoricul deciziilor e valoarea brain-ului.
 - Nu e nevoie de brain la task-uri pur mecanice (fix-uri, refactor, întrebări tehnice).
