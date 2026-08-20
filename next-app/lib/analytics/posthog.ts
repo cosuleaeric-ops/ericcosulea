@@ -130,11 +130,31 @@ const DIM: Record<string, string> = {
 };
 
 /** Filtrele din bara de sus, traduse în condiții HogQL. */
+/**
+ * Momentul în care EliteData a încetat să colecteze: ultimul eveniment din
+ * `ericcosulea.events` (20 aug 2026, 17:39 ora României).
+ *
+ * Istoricul EliteData a fost mutat în PostHog cu timestampurile lui reale (vezi
+ * scripts/import-elitedata-in-posthog.mjs), iar în perioada de dinainte AMBELE
+ * sisteme au colectat pe alocuri — outglow din 5 iulie, restul câteva ore pe 20
+ * august. Fără despărțire, aceiași vizitatori ar fi numărați de două ori, cu
+ * identificatori diferiți, deci nici măcar deduplicabili.
+ *
+ * Regula: înainte de graniță contează DOAR evenimentele importate, după ea doar
+ * cele native. O singură sursă pentru orice moment din timp.
+ */
+const GRANITA_ELITEDATA = "2026-08-20T14:39:15.331Z";
+const MARCAJ_IMPORT = "elitedata-import";
+const SURSA_UNICA =
+  `((timestamp < toDateTime(${lit(GRANITA_ELITEDATA)}) AND properties.$lib = ${lit(MARCAJ_IMPORT)})` +
+  ` OR (timestamp >= toDateTime(${lit(GRANITA_ELITEDATA)}) AND properties.$lib != ${lit(MARCAJ_IMPORT)}))`;
+
 function unde(domeniu: string, range: Range, filters: Filters): string {
   const bucati = [
     `properties.$host IN ${hosturi(domeniu)}`,
     `timestamp >= toDateTime(${lit(iso(range.from))})`,
     `timestamp < toDateTime(${lit(iso(range.to))})`,
+    SURSA_UNICA,
   ];
   for (const [cheie, val] of Object.entries(filters)) {
     if (!val || !DIM[cheie]) continue;
@@ -449,6 +469,7 @@ export async function getOnlinePosthog(domeniu: string): Promise<number> {
     SELECT uniq(person_id) FROM events
     WHERE properties.$host IN ${hosturi(domeniu)}
       AND timestamp > now() - INTERVAL 5 MINUTE
+      AND ${SURSA_UNICA}
   `);
   return Number(r?.[0]) || 0;
 }
@@ -537,6 +558,7 @@ export async function getOverviewPosthog(
     WHERE properties.$host IN (${toateHosturile})
       AND timestamp >= toDateTime(${lit(iso(range.from))})
       AND timestamp < toDateTime(${lit(iso(range.to))})
+      AND ${SURSA_UNICA}
     GROUP BY domeniu, bucket
   `);
 
