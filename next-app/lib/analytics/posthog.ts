@@ -32,7 +32,36 @@ export function posthogConfigurat(): boolean {
   return Boolean(process.env.POSTHOG_PERSONAL_API_KEY);
 }
 
-async function hogql<T = unknown[]>(query: string): Promise<T[]> {
+/**
+ * Rezultatele interogărilor, ținute puțin în memoria instanței.
+ *
+ * De ce e nevoie: după ce istoricul EliteData (114.281 de evenimente) a intrat
+ * în PostHog, aceleași interogări au trecut de la ~1s la 3-4s — ClickHouse are
+ * pur și simplu mai mult de scanat. Dar datele de ieri nu se mai schimbă, iar
+ * dashboardul reinterogă tot setul la fiecare încărcare de pagină, la fiecare
+ * schimbare de perioadă și la fiecare pas înapoi în istoricul browserului.
+ *
+ * Cache-ul e per instanță, deci o instanță rece tot plătește prețul întreg.
+ * Rezolvă navigarea repetată, nu prima vizită.
+ */
+const CACHE_MS = 60_000;
+const cache = new Map<string, { la: number; date: unknown[] }>();
+
+function dinCache<T>(cheie: string): T[] | null {
+  const gasit = cache.get(cheie);
+  if (!gasit) return null;
+  if (Date.now() - gasit.la > CACHE_MS) {
+    cache.delete(cheie);
+    return null;
+  }
+  return gasit.date as T[];
+}
+
+async function hogql<T = unknown[]>(query: string, cacheabil = true): Promise<T[]> {
+  if (cacheabil) {
+    const gata = dinCache<T>(query);
+    if (gata) return gata;
+  }
   const inceput = Date.now();
   const res = await fetch(`${HOST}/api/projects/${PROJECT_ID}/query/`, {
     method: "POST",
@@ -58,7 +87,14 @@ async function hogql<T = unknown[]>(query: string): Promise<T[]> {
     .join(" ")
     .slice(0, 70);
   console.log(`[posthog] ${Date.now() - inceput}ms · ${eticheta}`);
-  return json.results ?? [];
+  const rezultate = json.results ?? [];
+  if (cacheabil) {
+    // Plafon simplu, ca o instanță de lungă durată să nu crească la nesfârșit:
+    // cheile sunt interogări întregi, iar filtrele le fac practic nelimitate.
+    if (cache.size > 200) cache.clear();
+    cache.set(query, { la: Date.now(), date: rezultate });
+  }
+  return rezultate;
 }
 
 /** Literal SQL: apostroful se dublează, ca la orice ClickHouse. */
@@ -465,12 +501,15 @@ async function parcursuri(
 
 // ─────────────────────────────── Online acum ───────────────────────────────
 export async function getOnlinePosthog(domeniu: string): Promise<number> {
-  const [r] = await hogql<[number]>(`
+  const [r] = await hogql<[number]>(
+    `
     SELECT uniq(person_id) FROM events
     WHERE properties.$host IN ${hosturi(domeniu)}
       AND timestamp > now() - INTERVAL 5 MINUTE
       AND ${SURSA_UNICA}
-  `);
+  `,
+    false, // modul live reîmprospătează la 10s; un cache de 60s ar minți
+  );
   return Number(r?.[0]) || 0;
 }
 
