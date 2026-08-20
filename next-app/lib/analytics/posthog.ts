@@ -529,9 +529,14 @@ export async function getStatsPosthog(opts: {
 
   // Rezultatul întreg, luat din cache dacă e proaspăt. „Online acum" NU intră
   // niciodată în cache: se cere separat, mai jos, la fiecare încărcare.
+  // Marginile perioadei se rotunjesc la minut ÎN CHEIE. Fără asta, `range.to`
+  // e momentul curent, deci se schimbă la fiecare milisecundă: fiecare cerere
+  // ar scrie un rând nou și n-ar nimeri niciodată vreunul. Exact așa a picat
+  // prima variantă (21 aug 2026): cache-ul se umplea și nu servea nimic.
+  const laMinut = (d: Date) => Math.floor(d.getTime() / 60_000);
   const cheie = cheieCache([
     "stats-v1", domeniu, kpiGoalName, tz, granularity, compare, filters,
-    range.from.toISOString(), range.to.toISOString(),
+    laMinut(range.from), laMinut(range.to),
   ]);
   const dinCache = await citeste<Record<string, unknown>>(cheie);
   if (dinCache) {
