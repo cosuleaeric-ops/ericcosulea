@@ -1,4 +1,5 @@
 import "server-only";
+import { cheieCache, citeste, scrie, durata } from "./cache";
 import {
   type Range,
   type Granularity,
@@ -526,6 +527,17 @@ export async function getStatsPosthog(opts: {
   const { domeniu, kpiGoalName, tz, range, granularity, compare, filters } = opts;
   const prev = previousRange(range);
 
+  // Rezultatul întreg, luat din cache dacă e proaspăt. „Online acum" NU intră
+  // niciodată în cache: se cere separat, mai jos, la fiecare încărcare.
+  const cheie = cheieCache([
+    "stats-v1", domeniu, kpiGoalName, tz, granularity, compare, filters,
+    range.from.toISOString(), range.to.toISOString(),
+  ]);
+  const dinCache = await citeste<Record<string, unknown>>(cheie);
+  if (dinCache) {
+    return { ...dinCache, online: await getOnlinePosthog(domeniu) } as never;
+  }
+
   // Un singur val de cereri: breakdown-urile sunt deja unite, iar goalurile,
   // vizitatorii și parcursurile nu mai așteaptă KPI-urile degeaba (aveau nevoie
   // doar de numărul de vizitatori, pentru rata de conversie — se aplică la
@@ -555,10 +567,9 @@ export async function getStatsPosthog(opts: {
     rate: cur.visitors ? (g.unici / cur.visitors) * 100 : 0,
   }));
 
-  return {
+  const rezultat = {
     kpis: cur,
     prev: anterior,
-    online,
     series: puncte,
     compareSeries: punctePrev,
     breakdowns,
@@ -566,6 +577,12 @@ export async function getStatsPosthog(opts: {
     users: useri,
     journeys,
   };
+
+  // Scrierea nu blochează răspunsul: dacă baza e lentă sau pică, pagina a
+  // plecat deja cu datele proaspete.
+  void scrie(cheie, rezultat, durata(range.to));
+
+  return { ...rezultat, online };
 }
 
 /** Vizitatori per site pentru pagina de ansamblu, într-o singură interogare. */
