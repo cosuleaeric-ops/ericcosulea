@@ -16,18 +16,10 @@ import { sql } from "drizzle-orm";
  */
 
 const TABEL = sql`ericcosulea.analytics_cache`;
-let pregatit = false;
 
-async function pregateste(): Promise<void> {
-  if (pregatit) return;
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS ${TABEL} (
-      cheie text PRIMARY KEY,
-      date jsonb NOT NULL,
-      expira timestamptz NOT NULL
-    )`);
-  pregatit = true;
-}
+// Tabelul se creează o singură dată, cu scripts/creeaza-cache.mjs. Nu facem
+// `CREATE TABLE IF NOT EXISTS` la fiecare pornire: pe serverless, „o dată per
+// instanță" înseamnă un DDL în calea critică a fiecărei instanțe reci.
 
 export function cheieCache(parti: unknown): string {
   return crypto.createHash("sha1").update(JSON.stringify(parti)).digest("hex");
@@ -57,7 +49,6 @@ export async function citeste<T>(
   cheie: string,
 ): Promise<{ date: T; expirat: boolean } | null> {
   try {
-    await pregateste();
     const r = await db.execute(
       sql`SELECT date, expira FROM ${TABEL}
           WHERE cheie = ${cheie}
@@ -90,7 +81,6 @@ export function reimprospateaza(cheie: string, munca: () => Promise<void>): void
 
 export async function scrie(cheie: string, date: unknown, secunde: number): Promise<void> {
   try {
-    await pregateste();
     await db.execute(sql`
       INSERT INTO ${TABEL} (cheie, date, expira)
       VALUES (${cheie}, ${JSON.stringify(date)}::jsonb, now() + make_interval(secs => ${secunde}))
