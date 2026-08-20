@@ -1,5 +1,5 @@
 import "server-only";
-import { cheieCache, citeste, scrie, durata } from "./cache";
+import { cheieCache, citeste, scrie, durata, reimprospateaza } from "./cache";
 import {
   type Range,
   type Granularity,
@@ -540,14 +540,26 @@ export async function getStatsPosthog(opts: {
   ]);
   const dinCache = await citeste<Record<string, unknown>>(cheie);
   if (dinCache) {
-    return { ...dinCache, online: await getOnlinePosthog(domeniu) } as never;
+    // Rezultatul expirat se servește oricum, iar reîmprospătarea se face în
+    // fundal: te uiți la cifre de acum câteva minute în loc să aștepți 5
+    // secunde ecranul gol, iar următoarea încărcare le are proaspete.
+    if (dinCache.expirat) {
+      reimprospateaza(cheie, async () => {
+        const proaspat = await calculeaza();
+        await scrie(cheie, proaspat, durata(range.to));
+      });
+    }
+    return { ...dinCache.date, online: await getOnlinePosthog(domeniu) } as never;
   }
 
   // Un singur val de cereri: breakdown-urile sunt deja unite, iar goalurile,
   // vizitatorii și parcursurile nu mai așteaptă KPI-urile degeaba (aveau nevoie
   // doar de numărul de vizitatori, pentru rata de conversie — se aplică la
   // final, în JS).
-  const [cur, anterior, puncte, punctePrev, entryExit, online, bd, goaleBrute, useri, journeys] =
+  async function calculeaza() {
+  // „Online acum" NU e aici: nu se cachează niciodată, deci se cere separat,
+  // în paralel cu tot blocul ăsta.
+  const [cur, anterior, puncte, punctePrev, entryExit, bd, goaleBrute, useri, journeys] =
     await Promise.all([
       kpiuri(domeniu, range, filters, kpiGoalName),
       kpiuri(domeniu, prev, filters, kpiGoalName),
@@ -556,7 +568,6 @@ export async function getStatsPosthog(opts: {
         ? serie(domeniu, prev, granularity, tz, filters, kpiGoalName)
         : Promise.resolve(null),
       intrareIesire(domeniu, range, filters),
-      getOnlinePosthog(domeniu),
       toateBreakdownurile(domeniu, range, filters),
       goaluri(domeniu, range, filters),
       utilizatori(domeniu, range, filters),
@@ -572,7 +583,7 @@ export async function getStatsPosthog(opts: {
     rate: cur.visitors ? (g.unici / cur.visitors) * 100 : 0,
   }));
 
-  const rezultat = {
+  return {
     kpis: cur,
     prev: anterior,
     series: puncte,
@@ -582,6 +593,9 @@ export async function getStatsPosthog(opts: {
     users: useri,
     journeys,
   };
+  }
+
+  const [rezultat, online] = await Promise.all([calculeaza(), getOnlinePosthog(domeniu)]);
 
   // Scrierea nu blochează răspunsul: dacă baza e lentă sau pică, pagina a
   // plecat deja cu datele proaspete.

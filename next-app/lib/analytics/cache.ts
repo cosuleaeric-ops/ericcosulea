@@ -45,19 +45,47 @@ export function durata(pana: Date): number {
   return inchisa ? 86_400 : 90;
 }
 
-export async function citeste<T>(cheie: string): Promise<T | null> {
+/**
+ * Cât timp după expirare mai servim rezultatul vechi, reîmprospătându-l în
+ * fundal. Fără asta, prima încărcare de după expirare plătește iar 4-6s — iar
+ * dacă intri pe dashboard la câteva minute distanță, asta e MEREU cazul, deci
+ * cache-ul n-ar folosi la nimic exact când te uiți.
+ */
+const RABDARE_MS = 6 * 3600_000;
+
+export async function citeste<T>(
+  cheie: string,
+): Promise<{ date: T; expirat: boolean } | null> {
   try {
     await pregateste();
     const r = await db.execute(
-      sql`SELECT date FROM ${TABEL} WHERE cheie = ${cheie} AND expira > now() LIMIT 1`,
+      sql`SELECT date, expira FROM ${TABEL}
+          WHERE cheie = ${cheie}
+            AND expira > now() - make_interval(secs => ${RABDARE_MS / 1000})
+          LIMIT 1`,
     );
-    const rand = (r as unknown as { rows?: { date: unknown }[] }).rows?.[0];
-    return rand ? (rand.date as T) : null;
+    const rand = (r as unknown as { rows?: { date: unknown; expira: string }[] }).rows?.[0];
+    if (!rand) return null;
+    return { date: rand.date as T, expirat: new Date(rand.expira).getTime() < Date.now() };
   } catch {
     // Cache-ul nu are voie să doboare dashboardul: la orice problemă,
     // interogăm PostHog ca înainte.
     return null;
   }
+}
+
+/**
+ * Cheile aflate în reîmprospătare pe instanța asta, ca zece cereri simultane
+ * pe un rezultat expirat să nu pornească zece runde de interogări.
+ */
+const inCurs = new Set<string>();
+
+export function reimprospateaza(cheie: string, munca: () => Promise<void>): void {
+  if (inCurs.has(cheie)) return;
+  inCurs.add(cheie);
+  void munca()
+    .catch(() => {})
+    .finally(() => inCurs.delete(cheie));
 }
 
 export async function scrie(cheie: string, date: unknown, secunde: number): Promise<void> {
