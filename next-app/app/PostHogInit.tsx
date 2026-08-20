@@ -24,9 +24,49 @@ function eAdmin(): boolean {
   return document.cookie.split(";").some((c) => c.trim().startsWith("ericcosulea_admin_hint="))
 }
 
+/**
+ * „Nu număra device-ul ăsta" — echivalentul vechiului `?elitedata_ignore=1`.
+ * Deschide o dată `?ph_off=1` pe fiecare browser de-al tău (telefon, laptop de
+ * la cafenea) și marcajul rămâne: e ținut și în localStorage, și într-un cookie
+ * pe domeniul părinte, deci dacă unul se șterge, celălalt îl rescrie.
+ * `?ph_off=0` anulează.
+ */
+const FLAG = "ph_off"
+
+function comutaDupaUrl(): void {
+  const val = new URLSearchParams(location.search).get(FLAG)
+  if (val !== "1" && val !== "0") return
+  const parti = location.hostname.split(".")
+  const domeniu =
+    parti.length < 2 || location.hostname.endsWith("localhost")
+      ? ""
+      : `; domain=.${parti.slice(-2).join(".")}`
+  try {
+    if (val === "1") localStorage.setItem(FLAG, "1")
+    else localStorage.removeItem(FLAG)
+  } catch {
+    /* localStorage blocat (mod privat) — cookie-ul de mai jos e suficient */
+  }
+  document.cookie =
+    val === "1"
+      ? `${FLAG}=1; max-age=63072000; path=/${domeniu}; SameSite=Lax`
+      : `${FLAG}=; max-age=0; path=/${domeniu}`
+}
+
+function nuNumara(): boolean {
+  try {
+    if (localStorage.getItem(FLAG) === "1") return true
+  } catch {
+    /* vezi mai sus */
+  }
+  return document.cookie.split("; ").some((c) => c.trim() === `${FLAG}=1`)
+}
+
 export function PostHogInit() {
   useEffect(() => {
     if (!KEY) return
+    comutaDupaUrl()
+    if (nuNumara()) return
     if (eAdmin()) return
 
     void (async () => {
