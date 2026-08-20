@@ -529,14 +529,24 @@ export async function getStatsPosthog(opts: {
 
   // Rezultatul întreg, luat din cache dacă e proaspăt. „Online acum" NU intră
   // niciodată în cache: se cere separat, mai jos, la fiecare încărcare.
-  // Marginile perioadei se rotunjesc la minut ÎN CHEIE. Fără asta, `range.to`
-  // e momentul curent, deci se schimbă la fiecare milisecundă: fiecare cerere
-  // ar scrie un rând nou și n-ar nimeri niciodată vreunul. Exact așa a picat
-  // prima variantă (21 aug 2026): cache-ul se umplea și nu servea nimic.
-  const laMinut = (d: Date) => Math.floor(d.getTime() / 60_000);
+  // Cheia NU are voie să depindă de ceasul curent.
+  //
+  // Două variante au picat pe rând (21 aug 2026): cu timestampurile brute,
+  // fiecare cerere scria un rând nou și nu nimerea niciodată vreunul; rotunjite
+  // la minut, se năștea o cheie nouă la fiecare minut, deci primul vizitator
+  // al fiecărui minut aștepta 4 secunde și tot ce se cachase înainte devenea
+  // inutil.
+  //
+  // O perioadă CURENTĂ („ultimele 7 zile") e aceeași întrebare indiferent când
+  // o pui, deci primește o ancoră fixă, iar prospețimea o dă durata de viață a
+  // rezultatului plus reîmprospătarea în fundal. Durata perioadei intră în
+  // cheie ca „ultimele 5 minute" să nu se confunde cu „ultimele 30 de zile".
+  // O perioadă ÎNCHISĂ e deja stabilă, deci intră cu marginea ei reală.
+  const eCurenta = Date.now() - range.to.getTime() < 3600_000;
   const cheie = cheieCache([
-    "stats-v1", domeniu, kpiGoalName, tz, granularity, compare, filters,
-    laMinut(range.from), laMinut(range.to),
+    "stats-v2", domeniu, kpiGoalName, tz, granularity, compare, filters,
+    Math.round((range.to.getTime() - range.from.getTime()) / 60_000),
+    eCurenta ? "curenta" : range.to.toISOString(),
   ]);
   const dinCache = await citeste<Record<string, unknown>>(cheie);
   if (dinCache) {
