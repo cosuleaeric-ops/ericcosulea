@@ -183,14 +183,25 @@
       doc ? doc.scrollHeight : 0,
     );
     var vizibil = window.innerHeight || (doc && doc.clientHeight) || 0;
+    // Fără layout încă (tab deschis în fundal, pagină prerandată) toate
+    // dimensiunile sunt 0 — iar 0 <= 0 ar însemna „citit integral". Nu măsurăm.
+    if (inaltimeTotala <= 0 || vizibil <= 0) return -1;
     // Pagină mai scurtă decât ecranul: e citită integral prin definiție.
     if (inaltimeTotala <= vizibil) return 100;
     var derulat = window.pageYOffset || (doc && doc.scrollTop) || 0;
+    // Toleranță de 2px la fundul paginii. Fără ea, pragul de 100 nu se atinge
+    // aproape niciodată: înălțimile subpixel, bara de adrese care se retrage pe
+    // mobil și footerele sticky lasă mereu o fracțiune necitită.
+    if (derulat + vizibil >= inaltimeTotala - 2) return 100;
     return ((derulat + vizibil) / inaltimeTotala) * 100;
   }
 
   function verificaScroll() {
     scrollProgramat = false;
+    // Cât timp pagina încă se încarcă, înălțimea ei e provizorie: imaginile fără
+    // dimensiuni și fonturile care abia vin o cresc. O măsurătoare de acum ar
+    // raporta „citit integral" pentru un articol pe care omul nici nu l-a văzut.
+    if (document.readyState !== "complete") return;
     var p = procentCitit();
     for (var i = 0; i < PRAGURI.length; i++) {
       var prag = PRAGURI[i];
@@ -211,8 +222,15 @@
     },
     { passive: true },
   );
-  // Pagina scurtă (fără scroll posibil) trebuie să conteze tot ca citită.
-  verificaScroll();
+  // Prima măsurătoare abia după `load` (pagina scurtă, fără scroll posibil,
+  // trebuie totuși să conteze drept citită), apoi la fiecare schimbare de
+  // înălțime: conținut lazy, acordeoane deschise, bannere care dispar.
+  if (document.readyState === "complete") verificaScroll();
+  else window.addEventListener("load", verificaScroll);
+  window.addEventListener("resize", verificaScroll, { passive: true });
+  if (window.ResizeObserver && document.body) {
+    new ResizeObserver(verificaScroll).observe(document.body);
+  }
 
   // ── Click-uri pe elementele acționabile, cu textul lor. Elementul marcat cu
   // elite-data-goal trimite deja un goal, deci pe el nu mai punem și click.
