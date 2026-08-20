@@ -3,7 +3,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ControlBar } from "./ControlBar";
 import { KpiRow } from "./KpiRow";
-import { MainChart } from "./MainChart";
+import dynamicImport from "next/dynamic";
+
+// Recharts e 550 KB din cele 1.184 KB de JS ale paginii, iar browserul îl
+// parsează și hidratează ÎNAINTE ca restul dashboardului să devină folosibil —
+// deși primul lucru la care te uiți sunt cifrele KPI de deasupra graficului.
+// Încărcat leneș, cifrele și panourile răspund imediat, iar graficul vine după.
+// Locul lui e rezervat cu shimmer-ul obișnuit, deci layoutul nu sare.
+const MainChart = dynamicImport(
+  () => import("./MainChart").then((m) => m.MainChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="dfa-main-chart" style={{ height: 424 }}>
+        <div className="dfa-chart-shimmer" />
+      </div>
+    ),
+  },
+);
 import { Panels } from "./Panels";
 import { BottomPanel } from "./BottomPanel";
 import {

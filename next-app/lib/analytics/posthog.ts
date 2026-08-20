@@ -48,7 +48,15 @@ async function hogql<T = unknown[]>(query: string): Promise<T[]> {
   }
   const json = (await res.json()) as { results?: T[] };
   // Prima linie a interogării e destul ca s-o recunoști în loguri.
-  const eticheta = query.trim().split("\n")[0].slice(0, 60);
+  // Prima linie e adesea doar „SELECT" — inutil când vrei să știi CARE interogare
+  // a ținut pagina. Lipim liniile până strângem destule caractere ca să fie clar.
+  const eticheta = query
+    .trim()
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 70);
   console.log(`[posthog] ${Date.now() - inceput}ms · ${eticheta}`);
   return json.results ?? [];
 }
@@ -267,12 +275,33 @@ async function toateBreakdownurile(
   filters: Filters,
 ): Promise<Record<string, BreakdownRow[]>> {
   const w = unde(domeniu, range, filters);
-  const ramuri = DIMENSIUNI.map(
-    (d) => `(SELECT ${lit(d)} AS dim, ${DIM[d]} AS cheie, uniq(person_id) AS val
-       FROM events WHERE ${w} AND ${DIM[d]} != ''
-       GROUP BY cheie ORDER BY val DESC, cheie ASC LIMIT 100)`,
-  );
-  const randuri = await hogql<[string, string, number]>(ramuri.join("\nUNION ALL\n"));
+  // O SINGURĂ scanare a evenimentelor, nu una per dimensiune.
+  //
+  // Cu `UNION ALL` erau unsprezece ramuri, deci ClickHouse citea eventurile de
+  // unsprezece ori pentru aceeași fereastră de timp: 2.652ms măsurați pe 21 aug
+  // 2026, adică interogarea care ținea tot dashboardul în loc. `arrayJoin`
+  // desface fiecare eveniment în cele unsprezece perechi (dimensiune, valoare)
+  // dintr-o singură citire, iar `LIMIT 100 BY dim` taie top-100 per dimensiune
+  // fără subinterogări.
+  //
+  // `LIMIT` final e OBLIGATORIU: PostHog pune 100 implicit peste rezultatul
+  // întreg, nu per dimensiune. Fără el, dimensiunile de la coada alfabetului se
+  // taie tăcut — `region` a scăzut de la 21 de rânduri la 2 exact așa, fiindcă
+  // suma celorlalte ajunsese la 100.
+  const perechi = DIMENSIUNI.map((d) => `tuple(${lit(d)}, ${DIM[d]})`).join(",\n      ");
+  const randuri = await hogql<[string, string, number]>(`
+    SELECT p.1 AS dim, p.2 AS cheie, uniq(person_id) AS val
+    FROM (
+      SELECT person_id, arrayJoin([
+      ${perechi}
+      ]) AS p
+      FROM events WHERE ${w}
+    )
+    WHERE p.2 != ''
+    GROUP BY dim, cheie
+    ORDER BY dim ASC, val DESC, cheie ASC
+    LIMIT 100 BY dim
+    LIMIT ${DIMENSIUNI.length * 100}`);
 
   const rezultat: Record<string, BreakdownRow[]> = {};
   for (const d of DIMENSIUNI) rezultat[d] = [];
@@ -374,7 +403,7 @@ async function utilizatori(
       dateDiff('second', min(timestamp), max(timestamp)) AS durata,
       formatDateTime(max(timestamp), '%Y-%m-%dT%H:%i:%SZ') AS ultima
     FROM events WHERE ${unde(domeniu, range, filters)}
-    GROUP BY person_id ORDER BY ultima DESC LIMIT 100
+    GROUP BY person_id ORDER BY max(timestamp) DESC LIMIT 100
   `);
   return randuri.map((r) => ({
     id: String(r[0]),
@@ -403,7 +432,7 @@ async function parcursuri(
       formatDateTime(min(timestamp), '%Y-%m-%dT%H:%i:%SZ') AS inceput,
       arrayMap(x -> x.2, arraySort(x -> x.1, groupArray((timestamp, toString(properties.$pathname))))) AS pagini
     FROM events WHERE ${unde(domeniu, range, filters)} AND ${PAGEVIEW}
-    GROUP BY $session_id ORDER BY inceput DESC LIMIT 50
+    GROUP BY $session_id ORDER BY min(timestamp) DESC LIMIT 50
   `);
   return randuri.map((r) => ({
     id: String(r[0]),

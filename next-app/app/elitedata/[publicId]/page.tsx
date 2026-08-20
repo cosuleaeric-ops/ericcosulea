@@ -18,17 +18,22 @@ export default async function SiteDashboardPage({
   params: Promise<{ publicId: string }>;
 }) {
   const { publicId } = await params;
-  const website = await getWebsiteByPublicId(publicId);
+
+  // Cele trei nu depind una de alta, deci nu se așteaptă la rând. Înlănțuite,
+  // adăugau baza de date de două ori în drumul critic dinaintea lui getStats
+  // (357ms la rece, ~50ms caldă) fără ca nimic să aibă nevoie de ordinea asta.
+  const [website, all, jar] = await Promise.all([
+    getWebsiteByPublicId(publicId),
+    listWebsites(),
+    cookies(),
+  ]);
   if (!website) notFound();
 
-  const all = await listWebsites();
   const sites = all.map((s) => ({
     publicId: s.publicId,
     domain: s.domain,
     faviconUrl: s.faviconUrl,
   }));
-
-  const jar = await cookies();
 
   // Perioada salvată e într-un cookie PER PROIECT (server-readable) ca să randăm
   // din prima vederea corectă — fără flash last7 → 24h de după hidratare.
