@@ -225,8 +225,17 @@
   // Prima măsurătoare abia după `load` (pagina scurtă, fără scroll posibil,
   // trebuie totuși să conteze drept citită), apoi la fiecare schimbare de
   // înălțime: conținut lazy, acordeoane deschise, bannere care dispar.
-  if (document.readyState === "complete") verificaScroll();
-  else window.addEventListener("load", verificaScroll);
+  //
+  // Întârzierea nu e cosmetică: serverul leagă scroll-ul de sesiunea deschisă
+  // de pageview, iar pe o pagină scurtă ambele ar pleca în aceeași clipă. Dacă
+  // scroll-ul ajunge primul, e aruncat — adică am pierde exact paginile citite
+  // integral. O secundă e destul pentru dus-întors, și oricum nimeni nu citește
+  // o pagină mai repede de atât.
+  function primaMasuratoare() {
+    setTimeout(verificaScroll, 1000);
+  }
+  if (document.readyState === "complete") primaMasuratoare();
+  else window.addEventListener("load", primaMasuratoare);
   window.addEventListener("resize", verificaScroll, { passive: true });
   if (window.ResizeObserver && document.body) {
     new ResizeObserver(verificaScroll).observe(document.body);
