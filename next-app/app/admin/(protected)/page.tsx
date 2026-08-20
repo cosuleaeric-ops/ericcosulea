@@ -5,6 +5,7 @@ import { blobUrl } from "@/lib/blob";
 import { Card } from "@/components/ui/card";
 import {
   ArrowUpRight,
+  BarChart3,
   Brain,
   Mail,
   Plus,
@@ -27,6 +28,7 @@ const TOOLS: { href: string; name: string; icon: LucideIcon; chip: string }[] = 
   { href: "/brain", name: "brain", icon: Brain, chip: "bg-[#ecf7f1] text-[#1d9e75]" },
   { href: "/elite-deux", name: "elite deux", icon: Zap, chip: "bg-[#fdf6e7] text-[#ba7517]" },
   { href: "/admin/mail", name: "elitemail", icon: Mail, chip: "bg-[#e8f3fd] text-[#2f7fd0]" },
+  { href: "/elitedata", name: "analytics", icon: BarChart3, chip: "bg-[#f3eefb] text-[#7a4fc9]" },
 ];
 
 const RO_MONTHS_SHORT = ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "noi", "dec"];

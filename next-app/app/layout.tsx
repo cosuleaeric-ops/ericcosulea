@@ -62,6 +62,12 @@ export default function RootLayout({
           gtag('js', new Date());
           gtag('config', 'G-DFK2965G12');
         `}</Script>
+        <Script
+          src="/js/script.js"
+          data-website-id="dfid_eric001"
+          data-domain="ericcosulea.ro"
+          strategy="afterInteractive"
+        />
       </head>
       <body>
         <AdminBarClient />
