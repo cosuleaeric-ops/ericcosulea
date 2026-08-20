@@ -3,7 +3,6 @@ import { useState, type ReactNode } from "react";
 import { Monitor, Smartphone, Tablet, Globe } from "lucide-react";
 import { BreakdownPanel, type TabDef } from "./BreakdownPanel";
 import { BreakdownModal } from "./BreakdownModal";
-import { KeywordTab } from "./KeywordTab";
 import { WorldMap } from "./WorldMap";
 import { TAB_COOKIES, type InitialTabs } from "../period-persistence";
 import type { Breakdowns, BreakdownRow, Filters } from "@/lib/analytics/queries";
@@ -106,14 +105,7 @@ export function Panels({
     setModalRows(rows);
   };
 
-  const sourcesTabs: TabDef[] = [
-    ...SOURCES_TABS,
-    {
-      key: "keyword",
-      label: "Keyword",
-      node: <KeywordTab site={sitePublicId} from={from} to={to} path={pathFilter} />,
-    },
-  ];
+  const sourcesTabs: TabDef[] = SOURCES_TABS;
 
   const geoTabs: TabDef[] = [
     {
