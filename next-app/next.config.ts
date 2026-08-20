@@ -23,6 +23,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // PostHog e proxy-uit same-origin prin /ingest, ca adblockerele să nu taie
+  // telemetria.
+  async rewrites() {
+    return [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
+      },
+    ];
+  },
+  skipTrailingSlashRedirect: true,
   async redirects() {
     return [
       { source: "/analytics", destination: "/elitedata", permanent: true },

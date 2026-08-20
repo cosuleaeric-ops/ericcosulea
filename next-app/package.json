@@ -31,6 +31,7 @@
     "pdfjs-dist": "^5.7.284",
     "pg": "^8.22.0",
     "postgres": "^3.4.9",
+    "posthog-js": "^1.418.6",
     "radix-ui": "^1.6.2",
     "react": "19.2.4",
     "react-chartjs-2": "^5.3.1",

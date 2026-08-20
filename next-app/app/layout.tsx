@@ -4,6 +4,7 @@ import { Crimson_Pro } from "next/font/google";
 import "./globals.css";
 import "./site.css";
 import AdminBarClient from "./AdminBarClient";
+import { PostHogInit } from "./PostHogInit";
 import { ADMIN_BAR_HIDDEN_PREFIXES, ADMIN_HINT_COOKIE } from "@/lib/admin-bar-paths";
 
 const adminBarInitScript = `
@@ -70,6 +71,7 @@ export default function RootLayout({
       </head>
       <body>
         <AdminBarClient />
+        <PostHogInit />
         {children}
       </body>
     </html>
