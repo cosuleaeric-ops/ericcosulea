@@ -38,12 +38,6 @@ const nextConfig: NextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
-  async redirects() {
-    return [
-      { source: "/analytics", destination: "/elitedata", permanent: true },
-      { source: "/analytics/:path*", destination: "/elitedata/:path*", permanent: true },
-    ];
-  },
 };
 
 export default nextConfig;
