@@ -82,6 +82,20 @@ export function PostHogInit() {
         // timpul pe pagină.
         defaults: "2025-05-24",
       })
+
+      // Afișarea INIȚIALĂ, capturată explicit.
+      //
+      // Verificat pe 21 aug 2026: blogul trimitea `$pageleave` dar niciun
+      // `$pageview`, deci în dashboard apărea cu zero vizite deși PostHog rula.
+      // `defaults: "2025-05-24"` cere `capture_pageview: "history_change"`, care
+      // ascultă schimbările de istoric — dar componenta se montează într-un
+      // useEffect, cu documentul deja încărcat, deci prima afișare trecuse.
+      // Celelalte site-uri, cu aceeași versiune, nu pățesc asta: depinde de cât
+      // de târziu ajunge componenta să se monteze în arborele paginii.
+      //
+      // Navigările următoare rămân în grija lui `history_change`, deci nu se
+      // dublează nimic: aici se capturează o singură dată, la montare.
+      posthog.capture("$pageview")
     })()
   }, [])
 
