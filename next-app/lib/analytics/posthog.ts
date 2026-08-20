@@ -33,6 +33,7 @@ export function posthogConfigurat(): boolean {
 }
 
 async function hogql<T = unknown[]>(query: string): Promise<T[]> {
+  const inceput = Date.now();
   const res = await fetch(`${HOST}/api/projects/${PROJECT_ID}/query/`, {
     method: "POST",
     headers: {
@@ -46,6 +47,9 @@ async function hogql<T = unknown[]>(query: string): Promise<T[]> {
     throw new Error(`PostHog ${res.status}: ${(await res.text()).slice(0, 300)}`);
   }
   const json = (await res.json()) as { results?: T[] };
+  // Prima linie a interogării e destul ca s-o recunoști în loguri.
+  const eticheta = query.trim().split("\n")[0].slice(0, 60);
+  console.log(`[posthog] ${Date.now() - inceput}ms · ${eticheta}`);
   return json.results ?? [];
 }
 
@@ -235,45 +239,80 @@ async function serie(
 }
 
 // ───────────────────────────── Breakdown-uri ─────────────────────────────
-async function breakdown(
+const DIMENSIUNI = [
+  "channel",
+  "referrer",
+  "campaign",
+  "page",
+  "hostname",
+  "country",
+  "region",
+  "city",
+  "browser",
+  "os",
+  "device",
+] as const;
+
+/**
+ * TOATE breakdown-urile într-o singură interogare, cu UNION ALL.
+ *
+ * Erau unsprezece cereri separate. Rulau în paralel, deci nu se adunau la
+ * așteptare, dar fiecare plătea handshake-ul, autentificarea și planificarea la
+ * PostHog — și unsprezece cereri pe încărcare intră mult mai repede în plafonul
+ * de 1.200/oră decât una singură.
+ */
+async function toateBreakdownurile(
   domeniu: string,
   range: Range,
   filters: Filters,
-  dim: string,
-): Promise<BreakdownRow[]> {
-  const expr = DIM[dim];
-  const randuri = await hogql<[string, number]>(`
-    SELECT ${expr} AS cheie, uniq(person_id) AS val
-    FROM events WHERE ${unde(domeniu, range, filters)} AND ${expr} != ''
-    GROUP BY cheie ORDER BY val DESC, cheie ASC LIMIT 100
-  `);
-  return randuri.map((r) => ({ key: String(r[0]), value: Number(r[1]) || 0 }));
+): Promise<Record<string, BreakdownRow[]>> {
+  const w = unde(domeniu, range, filters);
+  const ramuri = DIMENSIUNI.map(
+    (d) => `(SELECT ${lit(d)} AS dim, ${DIM[d]} AS cheie, uniq(person_id) AS val
+       FROM events WHERE ${w} AND ${DIM[d]} != ''
+       GROUP BY cheie ORDER BY val DESC, cheie ASC LIMIT 100)`,
+  );
+  const randuri = await hogql<[string, string, number]>(ramuri.join("\nUNION ALL\n"));
+
+  const rezultat: Record<string, BreakdownRow[]> = {};
+  for (const d of DIMENSIUNI) rezultat[d] = [];
+  for (const r of randuri) {
+    (rezultat[String(r[0])] ??= []).push({ key: String(r[1]), value: Number(r[2]) || 0 });
+  }
+  // UNION ALL nu garantează ordinea între ramuri, deci sortăm la loc.
+  for (const d of DIMENSIUNI) rezultat[d].sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
+  return rezultat;
 }
 
-/** Prima și ultima pagină a fiecărei sesiuni. */
+/** Prima și ultima pagină a fiecărei sesiuni, într-o singură trecere. */
 async function intrareIesire(
   domeniu: string,
   range: Range,
   filters: Filters,
 ): Promise<{ entry: BreakdownRow[]; exit: BreakdownRow[] }> {
   const w = `${unde(domeniu, range, filters)} AND ${PAGEVIEW}`;
-  const [intrari, iesiri] = await Promise.all([
-    hogql<[string, number]>(`
-      SELECT cale, count() AS val FROM (
-        SELECT argMin(toString(properties.$pathname), timestamp) AS cale
-        FROM events WHERE ${w} GROUP BY $session_id
-      ) WHERE cale != '' GROUP BY cale ORDER BY val DESC LIMIT 100
-    `),
-    hogql<[string, number]>(`
-      SELECT cale, count() AS val FROM (
-        SELECT argMax(toString(properties.$pathname), timestamp) AS cale
-        FROM events WHERE ${w} GROUP BY $session_id
-      ) WHERE cale != '' GROUP BY cale ORDER BY val DESC LIMIT 100
-    `),
-  ]);
-  const mapeaza = (r: [string, number][]) =>
-    r.map((x) => ({ key: String(x[0]), value: Number(x[1]) || 0 }));
-  return { entry: mapeaza(intrari), exit: mapeaza(iesiri) };
+  const randuri = await hogql<[string, string, number]>(`
+    SELECT 'entry' AS tip, prima AS cale, count() AS val FROM (
+      SELECT argMin(toString(properties.$pathname), timestamp) AS prima,
+             argMax(toString(properties.$pathname), timestamp) AS ultima
+      FROM events WHERE ${w} GROUP BY $session_id
+    ) WHERE prima != '' GROUP BY cale ORDER BY val DESC LIMIT 100
+    UNION ALL
+    SELECT 'exit' AS tip, ultima AS cale, count() AS val FROM (
+      SELECT argMin(toString(properties.$pathname), timestamp) AS prima,
+             argMax(toString(properties.$pathname), timestamp) AS ultima
+      FROM events WHERE ${w} GROUP BY $session_id
+    ) WHERE ultima != '' GROUP BY cale ORDER BY val DESC LIMIT 100
+  `);
+
+  const entry: BreakdownRow[] = [];
+  const exit: BreakdownRow[] = [];
+  for (const r of randuri) {
+    const rand = { key: String(r[1]), value: Number(r[2]) || 0 };
+    (String(r[0]) === "entry" ? entry : exit).push(rand);
+  }
+  const desc = (a: BreakdownRow, b: BreakdownRow) => b.value - a.value || a.key.localeCompare(b.key);
+  return { entry: entry.sort(desc), exit: exit.sort(desc) };
 }
 
 // ──────────────────────────────── Goaluri ────────────────────────────────
@@ -292,12 +331,13 @@ const EVENIMENTE_INTERNE = [
   "$feature_flag_called",
 ];
 
+// `rate` se completează în getStatsPosthog, după ce se știe numărul de
+// vizitatori — altfel interogarea asta ar trebui să aștepte KPI-urile.
 async function goaluri(
   domeniu: string,
   range: Range,
   filters: Filters,
-  vizitatori: number,
-): Promise<GoalRow[]> {
+): Promise<(GoalRow & { unici: number })[]> {
   const excluse = EVENIMENTE_INTERNE.map(lit).join(", ");
   const randuri = await hogql<[string, number, number]>(`
     SELECT event, count() AS total, uniq(person_id) AS unici
@@ -308,7 +348,8 @@ async function goaluri(
     name: String(r[0]),
     displayName: String(r[0]),
     count: Number(r[1]) || 0,
-    rate: vizitatori ? (Number(r[2]) / vizitatori) * 100 : 0,
+    unici: Number(r[2]) || 0,
+    rate: 0,
   }));
 }
 
@@ -396,54 +437,34 @@ export async function getStatsPosthog(opts: {
   const { domeniu, kpiGoalName, tz, range, granularity, compare, filters } = opts;
   const prev = previousRange(range);
 
-  const [cur, anterior, puncte, punctePrev, entryExit, online, ...bd] = await Promise.all([
-    kpiuri(domeniu, range, filters, kpiGoalName),
-    kpiuri(domeniu, prev, filters, kpiGoalName),
-    serie(domeniu, range, granularity, tz, filters, kpiGoalName),
-    compare
-      ? serie(domeniu, prev, granularity, tz, filters, kpiGoalName)
-      : Promise.resolve(null),
-    intrareIesire(domeniu, range, filters),
-    getOnlinePosthog(domeniu),
-    ...[
-      "channel",
-      "referrer",
-      "campaign",
-      "page",
-      "hostname",
-      "country",
-      "region",
-      "city",
-      "browser",
-      "os",
-      "device",
-    ].map((d) => breakdown(domeniu, range, filters, d)),
-  ]);
+  // Un singur val de cereri: breakdown-urile sunt deja unite, iar goalurile,
+  // vizitatorii și parcursurile nu mai așteaptă KPI-urile degeaba (aveau nevoie
+  // doar de numărul de vizitatori, pentru rata de conversie — se aplică la
+  // final, în JS).
+  const [cur, anterior, puncte, punctePrev, entryExit, online, bd, goaleBrute, useri, journeys] =
+    await Promise.all([
+      kpiuri(domeniu, range, filters, kpiGoalName),
+      kpiuri(domeniu, prev, filters, kpiGoalName),
+      serie(domeniu, range, granularity, tz, filters, kpiGoalName),
+      compare
+        ? serie(domeniu, prev, granularity, tz, filters, kpiGoalName)
+        : Promise.resolve(null),
+      intrareIesire(domeniu, range, filters),
+      getOnlinePosthog(domeniu),
+      toateBreakdownurile(domeniu, range, filters),
+      goaluri(domeniu, range, filters),
+      utilizatori(domeniu, range, filters),
+      parcursuri(domeniu, range, filters),
+    ]);
 
-  const chei = [
-    "channel",
-    "referrer",
-    "campaign",
-    "page",
-    "hostname",
-    "country",
-    "region",
-    "city",
-    "browser",
-    "os",
-    "device",
-  ] as const;
-  const breakdowns = Object.fromEntries(
-    chei.map((c, i) => [c, bd[i] as BreakdownRow[]]),
-  ) as unknown as Breakdowns;
+  const breakdowns = bd as unknown as Breakdowns;
   breakdowns.entry = entryExit.entry;
   breakdowns.exit = entryExit.exit;
 
-  const [goale, useri, journeys] = await Promise.all([
-    goaluri(domeniu, range, filters, cur.visitors),
-    utilizatori(domeniu, range, filters),
-    parcursuri(domeniu, range, filters),
-  ]);
+  const goale: GoalRow[] = goaleBrute.map((g) => ({
+    ...g,
+    rate: cur.visitors ? (g.unici / cur.visitors) * 100 : 0,
+  }));
 
   return {
     kpis: cur,
