@@ -85,7 +85,7 @@ export function OPTIONS() {
 
 type Payload = {
   id?: string; // website public id (dfid_xxxx)
-  type?: "pageview" | "custom" | "leave";
+  type?: "pageview" | "custom" | "leave" | "scroll" | "click";
   name?: string;
   url?: string;
   referrer?: string;
@@ -190,20 +190,25 @@ export async function POST(req: NextRequest) {
     .limit(1);
 
   const isLeave = body.type === "leave";
+  // Comportament în pagină (adâncime de scroll, click-uri). Tipuri separate,
+  // NU "custom": custom înseamnă goal în rapoarte, iar astea ar umple lista de
+  // conversii cu zgomot. Ca și "leave", nu pornesc o sesiune nouă și nu sting
+  // bounce-ul — un scroll nu e o a doua pagină.
+  const isBehaviour = body.type === "scroll" || body.type === "click";
 
   let sessionId: string;
   let isBounce: boolean;
   if (recent[0]?.sessionId) {
     sessionId = recent[0].sessionId;
     isBounce = false;
-    if (!isLeave) {
+    if (!isLeave && !isBehaviour) {
       // Continuare de sesiune → nu mai e bounce. Leave nu e engagement, nu flip-uim.
       await db
         .update(events)
         .set({ isBounce: false })
         .where(and(eq(events.websiteId, site.id), eq(events.sessionId, sessionId)));
     }
-  } else if (isLeave) {
+  } else if (isLeave || isBehaviour) {
     // Leave fără sesiune activă (ex. tab redeschis după 30 min) — nu porni o
     // sesiune nouă doar dintr-un leave, ar umfla numărul de sesiuni.
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
@@ -214,8 +219,15 @@ export async function POST(req: NextRequest) {
 
   await db.insert(events).values({
     websiteId: site.id,
-    type: body.type === "custom" ? "custom" : isLeave ? "leave" : "pageview",
-    name: body.type === "custom" ? body.name ?? null : null,
+    type: isBehaviour
+      ? (body.type as string)
+      : body.type === "custom"
+        ? "custom"
+        : isLeave
+          ? "leave"
+          : "pageview",
+    // scroll → pragul atins ("25".."100"); click → textul elementului.
+    name: body.type === "custom" || isBehaviour ? body.name?.slice(0, 120) ?? null : null,
     path,
     hostname,
     referrerRaw: body.referrer || null,
@@ -235,8 +247,10 @@ export async function POST(req: NextRequest) {
   });
 
   // Probă de headere pe pageview-urile care au trecut filtrele. Nu blochează
-  // răspunsul și nu-l poate strica: orice eroare se înghite.
-  if (!isLeave) {
+  // răspunsul și nu-l poate strica: orice eroare se înghite. Doar pe pageview:
+  // scroll-urile și click-urile vin din aceeași navigare, deci ar scrie de mai
+  // multe ori aceleași headere.
+  if (!isLeave && !isBehaviour) {
     const probe: Record<string, string> = {};
     for (const name of PROBE_HEADERS) {
       const v = h.get(name);

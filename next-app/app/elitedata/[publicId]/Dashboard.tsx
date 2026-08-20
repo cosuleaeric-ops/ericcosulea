@@ -7,6 +7,7 @@ import { MainChart } from "./MainChart";
 import { Panels } from "./Panels";
 import { BottomPanel } from "./BottomPanel";
 import { CrawlerSection } from "./CrawlerSection";
+import { BehaviourSection } from "./BehaviourSection";
 import {
   computeRange,
   defaultGranularity,
@@ -401,6 +402,11 @@ export default function Dashboard({
         loading={noData}
         onGoalAdded={() => load("refresh")}
         initialTab={initialTabs.bottom}
+      />
+      <BehaviourSection
+        site={website.publicId}
+        from={range.from.toISOString()}
+        to={range.to.toISOString()}
       />
       <CrawlerSection
         site={website.publicId}

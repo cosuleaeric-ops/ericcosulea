@@ -273,11 +273,13 @@ ev_agg AS (
 ),
 sess AS (
   SELECT b, session_id, EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) AS dur,
-         count(*) FILTER (WHERE type<>'leave')::int AS engaged
+         count(*) FILTER (WHERE type IN ('pageview','custom'))::int AS engaged
   FROM ev WHERE session_id IS NOT NULL GROUP BY b, session_id
 ),
 sess_agg AS (
-  -- bounce = un singur eveniment real (leave-ul dă doar durata, nu e engagement)
+  -- bounce = o singură pagină sau conversie. Leave dă doar durata, iar scroll și
+  -- click sunt comportament în aceeași pagină: dacă ar conta ca engagement,
+  -- bounce rate-ul ar scădea peste noapte și n-ar mai fi comparabil cu istoricul.
   SELECT b, count(*) FILTER (WHERE engaged<=1)::int AS bounced, coalesce(sum(dur),0)::float8 AS dur_sum
   FROM sess GROUP BY b
 )
@@ -738,6 +740,91 @@ export async function getCrawlerStats(
     byCrawler: byCrawler.map((r) => ({ key: r.key, category: r.category, value: Number(r.value) })),
     byCategory: byCategory.map((r) => ({ key: r.key, value: Number(r.value) })),
     byPath: byPath.map((r) => ({ key: r.key, value: Number(r.value) })),
+  };
+}
+
+// ── Comportament în pagină: cât se citește și pe ce se apasă ──────────────────
+// Sursa: evenimentele "scroll" (pragurile 25/50/75/100) și "click" (textul
+// elementului) trimise de script.js. Sunt tipuri separate de "custom" tocmai
+// ca să nu apară ca goaluri în restul rapoartelor.
+
+export type BehaviourStats = {
+  pageviews: number;
+  scrollReach: { key: string; value: number; pct: number }[];
+  scrollByPath: { key: string; value: number; pct: number }[];
+  clicks: { key: string; value: number }[];
+  clicksByPath: { key: string; value: number }[];
+  totalClicks: number;
+};
+
+export async function getBehaviour(
+  websiteId: number,
+  range: Range,
+): Promise<BehaviourStats> {
+  const from = range.from.toISOString();
+  const to = range.to.toISOString();
+  const win = `website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz`;
+  const params = [websiteId, from, to];
+
+  const [pv, reach, byPath, clicks, clickPaths] = await Promise.all([
+    q<{ n: number }>(
+      `SELECT count(*)::int AS n FROM events_human WHERE ${win} AND type='pageview'`,
+      params,
+    ),
+    // Câte vizionări de pagină au ajuns la fiecare prag. Un prag e trimis o
+    // singură dată per pagină, deci numărătoarea e direct comparabilă cu
+    // pageview-urile.
+    q<{ key: string; value: number }>(
+      `SELECT name AS key, count(*)::int AS value
+       FROM events_human WHERE ${win} AND type='scroll' AND name IS NOT NULL
+       GROUP BY name ORDER BY (name)::int`,
+      params,
+    ),
+    // Pe ce pagini se citește până la capăt: pragul 100 raportat la
+    // pageview-urile aceleiași pagini.
+    q<{ key: string; value: number; pv: number }>(
+      `SELECT coalesce(path,'/') AS key,
+              count(*) FILTER (WHERE type='scroll' AND name='100')::int AS value,
+              count(*) FILTER (WHERE type='pageview')::int AS pv
+       FROM events_human WHERE ${win} AND type IN ('pageview','scroll')
+       GROUP BY 1 HAVING count(*) FILTER (WHERE type='pageview') > 0
+       ORDER BY pv DESC LIMIT 100`,
+      params,
+    ),
+    q<{ key: string; value: number }>(
+      `SELECT name AS key, count(*)::int AS value
+       FROM events_human WHERE ${win} AND type='click' AND name IS NOT NULL
+       GROUP BY name ORDER BY value DESC LIMIT 100`,
+      params,
+    ),
+    q<{ key: string; value: number }>(
+      `SELECT coalesce(path,'/') AS key, count(*)::int AS value
+       FROM events_human WHERE ${win} AND type='click'
+       GROUP BY 1 ORDER BY value DESC LIMIT 100`,
+      params,
+    ),
+  ]);
+
+  const pageviews = Number(pv[0]?.n ?? 0);
+  const pct = (n: number, total: number) => (total ? (n / total) * 100 : 0);
+
+  return {
+    pageviews,
+    scrollReach: reach.map((r) => ({
+      key: r.key,
+      value: Number(r.value),
+      pct: pct(Number(r.value), pageviews),
+    })),
+    scrollByPath: byPath
+      .map((r) => ({
+        key: r.key,
+        value: Number(r.value),
+        pct: pct(Number(r.value), Number(r.pv)),
+      }))
+      .sort((a, b) => b.pct - a.pct),
+    clicks: clicks.map((r) => ({ key: r.key, value: Number(r.value) })),
+    clicksByPath: clickPaths.map((r) => ({ key: r.key, value: Number(r.value) })),
+    totalClicks: clicks.reduce((sum, r) => sum + Number(r.value), 0),
   };
 }
 

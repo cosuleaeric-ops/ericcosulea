@@ -4,9 +4,13 @@
     {
       "name": "next-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
-      "cwd": "next-app"
+      "cwd": "next-app",
+      "autoPort": true
     }
   ]
 }

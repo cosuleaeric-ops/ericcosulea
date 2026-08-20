@@ -140,6 +140,7 @@
     var current = location.pathname + location.search;
     if (current === lastUrl) return;
     lastUrl = current;
+    scrollAtins = {};
     send("pageview");
   }
 
@@ -166,6 +167,74 @@
     var el = e.target && e.target.closest && e.target.closest("[elite-data-goal]");
     var name = el && el.getAttribute("elite-data-goal");
     if (name) send("custom", name);
+  });
+
+  // ── Adâncimea de scroll: pragurile 25/50/75/100% din pagină, o dată fiecare
+  // per pagină. Răspunde la „până unde citește lumea", fără să trimită la
+  // fiecare pixel: patru evenimente pe vizită, în cel mai rău caz.
+  var PRAGURI = [25, 50, 75, 100];
+  var scrollAtins = {};
+  var scrollProgramat = false;
+
+  function procentCitit() {
+    var doc = document.documentElement;
+    var inaltimeTotala = Math.max(
+      document.body ? document.body.scrollHeight : 0,
+      doc ? doc.scrollHeight : 0,
+    );
+    var vizibil = window.innerHeight || (doc && doc.clientHeight) || 0;
+    // Pagină mai scurtă decât ecranul: e citită integral prin definiție.
+    if (inaltimeTotala <= vizibil) return 100;
+    var derulat = window.pageYOffset || (doc && doc.scrollTop) || 0;
+    return ((derulat + vizibil) / inaltimeTotala) * 100;
+  }
+
+  function verificaScroll() {
+    scrollProgramat = false;
+    var p = procentCitit();
+    for (var i = 0; i < PRAGURI.length; i++) {
+      var prag = PRAGURI[i];
+      if (p >= prag && !scrollAtins[prag]) {
+        scrollAtins[prag] = true;
+        send("scroll", String(prag));
+      }
+    }
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (scrollProgramat) return;
+      scrollProgramat = true;
+      // requestAnimationFrame, nu un timer: un singur calcul per cadru randat.
+      requestAnimationFrame(verificaScroll);
+    },
+    { passive: true },
+  );
+  // Pagina scurtă (fără scroll posibil) trebuie să conteze tot ca citită.
+  verificaScroll();
+
+  // ── Click-uri pe elementele acționabile, cu textul lor. Elementul marcat cu
+  // elite-data-goal trimite deja un goal, deci pe el nu mai punem și click.
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("[elite-data-goal]")) return;
+    var el = t.closest("a, button, [role='button'], summary");
+    if (!el) return;
+
+    var text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    if (!text) {
+      // Buton fără text (iconiță): cade pe eticheta de accesibilitate, apoi pe
+      // destinație, ca să nu ajungă în rapoarte un rând gol.
+      text =
+        el.getAttribute("aria-label") ||
+        el.getAttribute("title") ||
+        el.getAttribute("href") ||
+        "";
+    }
+    if (!text) return;
+    send("click", text.slice(0, 120));
   });
 
   // ── Durata vizitei: beacon "leave" când pagina devine ascunsă/închisă.
