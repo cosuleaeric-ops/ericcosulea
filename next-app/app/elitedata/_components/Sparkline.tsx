@@ -1,50 +1,28 @@
 "use client";
 import { useId } from "react";
 
-// Spline cubic MONOTON (Fritsch–Carlson): neted, dar nu depășește valorile punctelor.
-function monotoneLine(pts: [number, number][]): string {
+// Spline Catmull-Rom: tangenta fiecarui punct urmeaza directia vecinilor, deci
+// urcarile si coborarile curg in loc sa se franga. Spre deosebire de splineul
+// monoton, poate depasi putin valorile punctelor, asa ca tin punctele de
+// control in banda desenabila — o curba nu are voie sa iasa din grafic.
+function naturalLine(pts: [number, number][], sus: number, jos: number): string {
   const n = pts.length;
   if (n === 0) return "";
   if (n === 1) return `M${pts[0][0]},${pts[0][1]}`;
 
-  const xs = pts.map((p) => p[0]);
-  const ys = pts.map((p) => p[1]);
-  const dx: number[] = [];
-  const delta: number[] = [];
+  const prinde = (v: number) => Math.min(jos, Math.max(sus, v));
+  const f = (v: number) => v.toFixed(1);
+  let d = `M${f(pts[0][0])},${f(pts[0][1])}`;
   for (let i = 0; i < n - 1; i++) {
-    dx[i] = xs[i + 1] - xs[i];
-    delta[i] = (ys[i + 1] - ys[i]) / dx[i];
-  }
-
-  const m: number[] = new Array(n);
-  m[0] = delta[0];
-  m[n - 1] = delta[n - 2];
-  for (let i = 1; i < n - 1; i++) {
-    m[i] = delta[i - 1] * delta[i] <= 0 ? 0 : (delta[i - 1] + delta[i]) / 2;
-  }
-  for (let i = 0; i < n - 1; i++) {
-    if (delta[i] === 0) {
-      m[i] = 0;
-      m[i + 1] = 0;
-      continue;
-    }
-    const a = m[i] / delta[i];
-    const b = m[i + 1] / delta[i];
-    const s = a * a + b * b;
-    if (s > 9) {
-      const t = 3 / Math.sqrt(s);
-      m[i] = t * a * delta[i];
-      m[i + 1] = t * b * delta[i];
-    }
-  }
-
-  let d = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
-  for (let i = 0; i < n - 1; i++) {
-    const c1x = xs[i] + dx[i] / 3;
-    const c1y = ys[i] + (m[i] * dx[i]) / 3;
-    const c2x = xs[i + 1] - dx[i] / 3;
-    const c2y = ys[i + 1] - (m[i + 1] * dx[i]) / 3;
-    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${xs[i + 1].toFixed(1)},${ys[i + 1].toFixed(1)}`;
+    const [x0, y0] = pts[i - 1] ?? pts[i];
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const [x3, y3] = pts[i + 2] ?? pts[i + 1];
+    const c1x = x1 + (x2 - x0) / 6;
+    const c1y = prinde(y1 + (y2 - y0) / 6);
+    const c2x = x2 - (x3 - x1) / 6;
+    const c2y = prinde(y2 - (y3 - y1) / 6);
+    d += ` C${f(c1x)},${f(c1y)} ${f(c2x)},${f(c2y)} ${f(x2)},${f(y2)}`;
   }
   return d;
 }
@@ -69,7 +47,7 @@ export function Sparkline({
   const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
 
   const pts: [number, number][] = data.map((v, i) => [x(i), y(v)]);
-  const line = monotoneLine(pts);
+  const line = naturalLine(pts, y(max), y(0));
   const area = n > 0 ? `${line} L${x(n - 1).toFixed(1)},${h} L${x(0).toFixed(1)},${h} Z` : "";
 
   // draw-in EXACT ca Recharts/DataFast: clip-wipe stânga→dreapta, 1500ms, easing "ease" — pur CSS

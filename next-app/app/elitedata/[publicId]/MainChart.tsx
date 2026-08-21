@@ -313,7 +313,7 @@ export function MainChart({
             {hasCompare && (
               <Area
                 yAxisId="visitors"
-                type="monotone"
+                type="natural"
                 dataKey="compareValue"
                 stroke="var(--dfa-chart-compare)"
                 strokeWidth={1.5}
@@ -327,7 +327,7 @@ export function MainChart({
             )}
             <Area
               yAxisId="visitors"
-              type="monotone"
+              type="natural"
               dataKey="value"
               stroke="var(--dfa-chart)"
               strokeWidth={2.4}

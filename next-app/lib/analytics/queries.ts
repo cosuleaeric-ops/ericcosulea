@@ -920,18 +920,10 @@ export async function getOverview(
     ),
   ]);
 
-  // taie bucketul final incomplet (ex. ora în curs pe "last 24 hours") — altfel sparkline-ul pare mereu în cădere
-  const lastStart = starts[starts.length - 1];
-  const bucketMs =
-    granularity === "minute"
-      ? 60_000
-      : granularity === "hourly"
-        ? 3_600_000
-        : granularity === "daily"
-          ? 86_400_000
-          : new Date(lastStart.getFullYear(), lastStart.getMonth() + 1, 1).getTime() - lastStart.getTime();
-  const sparkStarts =
-    starts.length > 1 && range.to.getTime() < lastStart.getTime() + bucketMs ? starts.slice(0, -1) : starts;
+  // Bucketul în curs rămâne în serie. Îl tăiam ca sparkline-ul să nu pară mereu
+  // în cădere, dar atunci KPI-ul număra o oră pe care graficul nu o arăta: la
+  // 02:00 noaptea singurul vizitator de azi ieșea linie plată.
+  const sparkStarts = starts;
 
   const visBySite = new Map(visRows.map((r) => [Number(r.website_id), Number(r.visitors)]));
   const sparkBySite = new Map<number, Map<number, number>>();
