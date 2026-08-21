@@ -126,8 +126,8 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: var(--dfa-accent);
-  color: var(--dfa-accent-contrast);
+  background: #fff;
+  color: var(--dfa-accent);
   font-weight: 800;
 }
 
