@@ -15,6 +15,7 @@ import type { Deploy } from "@/lib/analytics/vercel";
 import { formatNumber, dayKeyInTz } from "@/lib/analytics/format";
 import { sourceFavicon } from "@/lib/analytics/labels";
 import { DeployPanel } from "./DeployPanel";
+import { curbaLina } from "../_components/curba";
 
 type Row = {
   label: string;
@@ -313,7 +314,7 @@ export function MainChart({
             {hasCompare && (
               <Area
                 yAxisId="visitors"
-                type="natural"
+                type={curbaLina}
                 dataKey="compareValue"
                 stroke="var(--dfa-chart-compare)"
                 strokeWidth={1.5}
@@ -327,7 +328,7 @@ export function MainChart({
             )}
             <Area
               yAxisId="visitors"
-              type="natural"
+              type={curbaLina}
               dataKey="value"
               stroke="var(--dfa-chart)"
               strokeWidth={2.4}
