@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { clientIp, recordOwnIp } from "@/lib/analytics/exclusions";
 import "./elitedata.css";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default async function AnalyticsLayout({
   // Îl ținem minte ca să nu-mi mai contorizăm vizitele pe niciun site urmărit,
   // iar când providerul mi-l rotește, prima deschidere a dashboard-ului îl
   // reînnoiește singură.
+  await recordOwnIp(clientIp(await headers()));
 
   return (
     <div className="dfa">

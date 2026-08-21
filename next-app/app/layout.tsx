@@ -56,6 +56,12 @@ export default function RootLayout({
           strategy="afterInteractive"
           async
         />
+        <Script
+          src="/js/script.js"
+          data-website-id="dfid_eric001"
+          data-domain="ericcosulea.ro"
+          strategy="afterInteractive"
+        />
         <Script id="ga-init" strategy="afterInteractive">{`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}

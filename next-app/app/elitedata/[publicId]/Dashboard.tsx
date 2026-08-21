@@ -5,11 +5,11 @@ import { ControlBar } from "./ControlBar";
 import { KpiRow } from "./KpiRow";
 import dynamicImport from "next/dynamic";
 
-// Recharts e 550 KB din cele 1.184 KB de JS ale paginii, iar browserul îl
-// parsează și hidratează ÎNAINTE ca restul dashboardului să devină folosibil —
-// deși primul lucru la care te uiți sunt cifrele KPI de deasupra graficului.
-// Încărcat leneș, cifrele și panourile răspund imediat, iar graficul vine după.
-// Locul lui e rezervat cu shimmer-ul obișnuit, deci layoutul nu sare.
+// Recharts e ~550 KB, adică jumătate din JS-ul paginii, iar browserul îl
+// parsează și hidratează înainte ca dashboardul să devină folosibil — deși
+// primul lucru la care te uiți sunt cifrele KPI de deasupra graficului.
+// Încărcat leneș, cifrele și panourile răspund imediat. Locul graficului e
+// rezervat cu shimmer-ul obișnuit, ca layoutul să nu sară.
 const MainChart = dynamicImport(
   () => import("./MainChart").then((m) => m.MainChart),
   {
@@ -23,6 +23,8 @@ const MainChart = dynamicImport(
 );
 import { Panels } from "./Panels";
 import { BottomPanel } from "./BottomPanel";
+import { CrawlerSection } from "./CrawlerSection";
+import { BehaviourSection } from "./BehaviourSection";
 import {
   computeRange,
   defaultGranularity,
@@ -417,6 +419,16 @@ export default function Dashboard({
         loading={noData}
         onGoalAdded={() => load("refresh")}
         initialTab={initialTabs.bottom}
+      />
+      <BehaviourSection
+        site={website.publicId}
+        from={range.from.toISOString()}
+        to={range.to.toISOString()}
+      />
+      <CrawlerSection
+        site={website.publicId}
+        from={range.from.toISOString()}
+        to={range.to.toISOString()}
       />
     </div>
   );

@@ -1,7 +1,10 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getWebsiteByPublicId } from "@/lib/analytics/queries";
+import { listExcludedIps } from "@/lib/analytics/exclusions";
 import { SnippetBlock } from "./SnippetBlock";
+import { GscIntegration } from "./GscIntegration";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +17,42 @@ export default async function SettingsPage({
   const website = await getWebsiteByPublicId(publicId);
   if (!website) notFound();
 
+  const ownIps = await listExcludedIps();
+  const optOutUrl = `https://${website.domain}/?elitedata_ignore=1`;
 
-  // Instalarea e prin PostHog (20 aug 2026). Scriptul propriu a plecat; ce
-  // rămâne aici e reamintirea unde stă componenta care îl pornește.
-  const snippet = `// src/components/posthog-init.tsx — pornit din layout-ul public
-posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-  api_host: "/ingest",        // proxy same-origin (rewrites in next.config)
-  ui_host: "https://eu.posthog.com",
-  defaults: "2025-05-24",     // pageview pe navigatia SPA + pageleave
-})`;
+  const appUrl = process.env.APP_URL || "https://www.ericcosulea.ro";
+  const snippet = `<script
+  defer
+  data-website-id="${website.publicId}"
+  data-domain="${website.domain}"
+  src="${appUrl}/js/script.js"
+></script>`;
 
+  // Crawlerele AI (GPTBot, ClaudeBot, PerplexityBot…) nu rulează JS, deci scriptul
+  // de sus nu le vede. Se prind server-side, cu un middleware Next.js/Vercel.
+  const crawlerSnippet = `// middleware.ts — trimite crawlerele AI la EliteData
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 
+const AI_CRAWLER_RE =
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|GoogleOther|Applebot|CCBot|Amazonbot|Bytespider|Meta-External|cohere|DuckAssistBot|YouBot|Diffbot|DeepSeek|QwenBot|xAI|Grok|Bingbot|YandexBot|Baiduspider/i;
+
+export function middleware(request: NextRequest, event: NextFetchEvent) {
+  const ua = request.headers.get("user-agent") ?? "";
+  if (AI_CRAWLER_RE.test(ua)) {
+    event.waitUntil(
+      fetch("${appUrl}/api/crawler", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: "${website.publicId}", path: request.nextUrl.pathname, ua }),
+      }).catch(() => {}),
+    );
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\\\..*).*)"],
+};`;
 
   return (
     <div className="dfa-settings">
@@ -48,16 +76,55 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
         </p>
       </section>
 
+      <section className="dfa-card dfa-settings-card">
+        <h2>Track AI crawlers</h2>
+        <p className="dfa-muted">
+          GPTBot, ClaudeBot, PerplexityBot &amp; co. nu rulează JavaScript — scriptul de sus
+          nu le vede. Pe un site Next.js/Vercel, pune (sau combină) acest{" "}
+          <code>middleware.ts</code> în rădăcina proiectului <strong>{website.domain}</strong>.
+          Vizitele lor apar în secțiunea <strong>Crawlere AI</strong> din dashboard.
+        </p>
+        <SnippetBlock code={crawlerSnippet} />
+      </section>
 
       <section className="dfa-card dfa-settings-card">
         <h2>Exclude vizitele mele</h2>
         <p className="dfa-muted">
-          Se face în cod, nu de aici: componenta care pornește PostHog verifică
-          întâi cookie-ul de admin al site-ului și, dacă e pus, nu încarcă
-          biblioteca deloc. Excluderea pe IP și <code>?elitedata_ignore</code>
-          au plecat odată cu scriptul propriu (20 aug 2026).
+          <strong>Pe IP</strong> — de fiecare dată când deschizi acest dashboard, IP-ul de pe
+          care vii e memorat și traficul de pe el nu se mai contorizează pe niciun site
+          urmărit, în orice browser și de pe orice device din rețeaua aia. Se reînnoiește
+          singur când providerul îți schimbă IP-ul; unul nefolosit 30 de zile e ignorat.
+        </p>
+        {ownIps.length > 0 && (
+          <ul className="dfa-muted" style={{ margin: "0 0 1rem", paddingLeft: "1.1rem" }}>
+            {ownIps.map((r) => (
+              <li key={r.ip}>
+                <code>{r.ip}</code> — {r.active ? "activ" : "expirat"}, ultima dată{" "}
+                {r.lastSeenAt.toLocaleDateString("ro-RO", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="dfa-muted">
+          <strong>Pe browser</strong> — pentru când ești pe altă rețea (mobil, cafenea),
+          deschide o dată link-ul de mai jos pe fiecare browser. Marchează browserul
+          permanent, în localStorage <em>și</em> într-un cookie: dacă una dintre ele se
+          șterge, cealaltă o rescrie. <code>?elitedata_ignore=0</code> anulează.
+        </p>
+        <p>
+          <a href={optOutUrl} target="_blank" rel="noopener noreferrer">
+            {optOutUrl}
+          </a>
         </p>
       </section>
+
+      <Suspense fallback={<div className="dfa-card dfa-settings-card"><div className="dfa-skeleton" style={{ height: 60 }} /></div>}>
+        <GscIntegration sitePublicId={website.publicId} />
+      </Suspense>
     </div>
   );
 }
