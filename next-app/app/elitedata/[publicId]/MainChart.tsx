@@ -306,7 +306,7 @@ export function MainChart({
                 radius={[3, 3, 0, 0]}
                 maxBarSize={22}
                 isAnimationActive={!loading}
-                animationDuration={900}
+                animationDuration={1700}
                 animationEasing="ease-out"
               />
             )}
@@ -321,7 +321,7 @@ export function MainChart({
                 fill="transparent"
                 dot={false}
                 isAnimationActive={!loading}
-                animationDuration={700}
+                animationDuration={1300}
                 animationEasing="ease-out"
               />
             )}
@@ -340,7 +340,7 @@ export function MainChart({
                 strokeWidth: 2,
               }}
               isAnimationActive={!loading}
-              animationDuration={1500}
+              animationDuration={2800}
               animationEasing="ease"
             />
           </ComposedChart>

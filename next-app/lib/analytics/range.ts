@@ -78,23 +78,72 @@ const DAY = 86_400_000;
 export type Range = { from: Date; to: Date };
 export type CustomRange = { from: string; to: string }; // ISO date (yyyy-mm-dd)
 
+// Fusul site-ului. Toate marginile de interval se taie aici, nu în ora
+// procesului: pe client aia e ora ta, dar pe Vercel e UTC, iar "azi" ieșea
+// atunci de la 03:00 și înghițea o bucată din ziua de ieri.
+const TZ = "Europe/Bucharest";
+
+const CEAS = new Intl.DateTimeFormat("en-US", {
+  timeZone: TZ,
+  hour12: false,
+  weekday: "short",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+});
+
+const ZILE = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+type Ceas = { y: number; mo: number; d: number; h: number; mi: number; s: number; dow: number };
+
+// Ora de perete din TZ, la instantul dat.
+function ceas(d: Date): Ceas {
+  const p: Record<string, string> = {};
+  for (const { type, value } of CEAS.formatToParts(d)) p[type] = value;
+  return {
+    y: +p.year,
+    mo: +p.month,
+    d: +p.day,
+    h: +p.hour % 24,
+    mi: +p.minute,
+    s: +p.second,
+    dow: ZILE.indexOf(p.weekday), // luni = 0
+  };
+}
+
+// Instantul care, citit în TZ, arată exact ora de perete cerută.
+function dinCeas(y: number, mo: number, d: number, h = 0, mi = 0, s = 0): Date {
+  const ghicit = Date.UTC(y, mo - 1, d, h, mi, s);
+  const decalaj = (x: number) => {
+    const c = ceas(new Date(x));
+    return Date.UTC(c.y, c.mo - 1, c.d, c.h, c.mi, c.s) - x;
+  };
+  const o1 = decalaj(ghicit);
+  const o2 = decalaj(ghicit - o1); // a doua trecere prinde zilele cu schimbare de oră
+  return new Date(ghicit - o2);
+}
+
 function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+  const c = ceas(d);
+  return dinCeas(c.y, c.mo, c.d);
 }
 function addDays(d: Date, n: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
+  const c = ceas(d);
+  return dinCeas(c.y, c.mo, c.d + n, c.h, c.mi, c.s);
 }
 function startOfWeek(d: Date): Date {
-  const x = startOfDay(d);
-  const dow = (x.getDay() + 6) % 7; // luni = 0
-  return addDays(x, -dow);
+  const c = ceas(d);
+  return dinCeas(c.y, c.mo, c.d - c.dow);
 }
 function startOfMonth(d: Date, monthOffset = 0): Date {
-  return new Date(d.getFullYear(), d.getMonth() + monthOffset, 1);
+  const c = ceas(d);
+  return dinCeas(c.y, c.mo + monthOffset, 1);
+}
+function startOfYear(d: Date, yearOffset = 0): Date {
+  return dinCeas(ceas(d).y + yearOffset, 1, 1);
 }
 
 export function computeRange(
@@ -135,12 +184,14 @@ export function computeRange(
     case "mtd":
       return { from: startOfMonth(now), to: now };
     case "ytd":
-      return { from: new Date(now.getFullYear(), 0, 1), to: now };
+      return { from: startOfYear(now), to: now };
     case "alltime":
-      return { from: new Date(now.getFullYear() - 2, 0, 1), to: now };
+      return { from: startOfYear(now, -2), to: now };
     case "custom": {
-      const from = custom ? new Date(custom.from + "T00:00:00") : today;
-      const to = custom ? new Date(custom.to + "T23:59:59") : now;
+      const from = custom ? dinCeas(...(custom.from.split("-").map(Number) as [number, number, number])) : today;
+      const to = custom
+        ? dinCeas(...(custom.to.split("-").map(Number) as [number, number, number]), 23, 59, 59)
+        : now;
       return { from, to };
     }
   }
@@ -186,8 +237,8 @@ export function bucketStarts(r: Range, g: Granularity): Date[] {
       cur = startOfMonth(cur, 1);
     }
   } else if (g === "daily") {
-    // r.from vine deja aliniat la miezul nopții local (client) — NU re-floora pe
-    // server (UTC), altfel apare o zi-bucket în plus la stânga și se decalează.
+    // r.from vine deja aliniat la miezul nopții din TZ, la fel pe client și pe
+    // server — NU re-floora, altfel apare o zi-bucket în plus la stânga.
     let cur = new Date(r.from);
     while (cur.getTime() < r.to.getTime()) {
       out.push(new Date(cur));
