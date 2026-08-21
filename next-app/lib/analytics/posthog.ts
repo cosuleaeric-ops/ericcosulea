@@ -154,6 +154,13 @@ const CANAL = `multiIf(
 const DIM: Record<string, string> = {
   channel: CANAL,
   referrer: SURSA,
+  // Aceeași dimensiune, sub numele pe care îl trimite clientul.
+  //
+  // Panoul se numește „Referrer", dar filtrul pleacă din interfață ca `source`
+  // (vezi FILTER_KEYS din queries.ts). `unde()` sare tăcut peste orice cheie pe
+  // care n-o găsește în DIM, deci click pe „Google" punea eticheta pe ecran și
+  // nu filtra nimic — cifrele rămâneau cele nefiltrate. Găsit pe 21 aug 2026.
+  source: SURSA,
   campaign: "toString(properties.utm_campaign)",
   path: "toString(properties.$pathname)",
   page: "toString(properties.$pathname)",
