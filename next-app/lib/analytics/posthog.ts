@@ -201,7 +201,16 @@ function unde(domeniu: string, range: Range, filters: Filters): string {
     SURSA_UNICA,
   ];
   for (const [cheie, val] of Object.entries(filters)) {
-    if (!val || !DIM[cheie]) continue;
+    if (!val) continue;
+    // Un filtru necunoscut e o nepotrivire între FILTER_KEYS și DIM, adică un
+    // bug de-al nostru, nu o intrare de la utilizator: ruta API acceptă doar
+    // cheile din FILTER_KEYS. Tăcerea de dinainte a ascuns exact asta —
+    // filtrul pe referrer punea eticheta pe ecran și nu filtra nimic.
+    if (!DIM[cheie]) {
+      throw new Error(
+        `Filtru fără dimensiune: „${cheie}". Adaugă-l în DIM din lib/analytics/posthog.ts.`,
+      );
+    }
     bucati.push(`${DIM[cheie]} = ${lit(val)}`);
   }
   return bucati.join(" AND ");
@@ -311,6 +320,9 @@ async function serie(
 }
 
 // ───────────────────────────── Breakdown-uri ─────────────────────────────
+/** Dimensiunile după care se poate filtra; verificate la pornire în queries.ts. */
+export const DIMENSIUNI_FILTRABILE = Object.freeze(Object.keys(DIM));
+
 const DIMENSIUNI = [
   "channel",
   "referrer",

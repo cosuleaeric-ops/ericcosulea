@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, sqlQuery } from "@/lib/db";
 import { websites, goals, funnels } from "@/lib/db/schema";
-import { getStatsPosthog, getOverviewPosthog } from "./posthog";
+import { getStatsPosthog, getOverviewPosthog, DIMENSIUNI_FILTRABILE } from "./posthog";
 import {
   type Range,
   type Granularity,
@@ -38,6 +38,19 @@ export const FILTER_KEYS: (keyof Filters)[] = [
   "channel",
   "campaign",
 ];
+
+// Prinde la pornire nepotrivirea care a făcut filtrul pe referrer să nu
+// filtreze nimic: cheia pleca din interfață ca `source`, dar dimensiunea era
+// înregistrată doar ca `referrer`, iar condiția o ignora tăcut. Aici se vede
+// imediat, nu după ce te uiți la cifre greșite.
+{
+  const lipsa = FILTER_KEYS.filter((k) => !DIMENSIUNI_FILTRABILE.includes(k));
+  if (lipsa.length > 0) {
+    throw new Error(
+      `FILTER_KEYS fără dimensiune în posthog.ts: ${lipsa.join(", ")}`,
+    );
+  }
+}
 
 // ───────────────────────── tipuri publice (neschimbate) ─────────────────────────
 export type Kpis = {
