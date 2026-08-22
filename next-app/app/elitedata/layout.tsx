@@ -4,22 +4,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { clientIp, recordOwnIp } from "@/lib/analytics/exclusions";
 import "./elitedata.css";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: { default: "EliteData", template: "%s · EliteData" },
   icons: { icon: "/elitedata/favicon.svg" },
 };
 
-function ownerName(): string {
-  const email = process.env.ADMIN_EMAIL ?? "";
-  const local = email.split("@")[0] ?? "";
-  if (!local) return "there";
-  return local.charAt(0).toUpperCase() + local.slice(1);
-}
-
-function ownerInitial(): string {
-  return (process.env.ADMIN_EMAIL ?? "E").charAt(0).toUpperCase();
-}
+const NUME = "Eric";
 
 export default async function AnalyticsLayout({
   children,
@@ -58,8 +50,14 @@ export default async function AnalyticsLayout({
             EliteData
           </a>
           <div className="dfa-user">
-            <span>{ownerName()}</span>
-            <span className="dfa-avatar">{ownerInitial()}</span>
+            <span>{NUME}</span>
+            <Image
+              className="dfa-avatar"
+              src="/assets/avatar.jpeg"
+              alt={NUME}
+              width={60}
+              height={60}
+            />
           </div>
         </header>
         <main className="dfa-main">{children}</main>

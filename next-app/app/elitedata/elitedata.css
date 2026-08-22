@@ -140,15 +140,10 @@
 }
 
 .dfa-avatar {
-  display: grid;
-  place-items: center;
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--dfa-accent), #b23e6b);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  object-fit: cover;
 }
 
 .dfa-main {
