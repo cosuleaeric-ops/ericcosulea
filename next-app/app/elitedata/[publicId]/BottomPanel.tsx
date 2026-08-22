@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Smartphone, Monitor, Tablet, ChevronRight, Target } from "lucide-react";
+import { Plus, Smartphone, Monitor, Tablet, ChevronRight, Target, Trash2 } from "lucide-react";
 import type {
   GoalRow,
   FunnelData,
@@ -110,6 +110,9 @@ function GoalTab({
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // Goal-ul în curs de ștergere: rândul lui cere confirmare pe loc, fără
+  // dialog. Un click greșit pe o iconiță mică nu trebuie să șteargă nimic.
+  const [confirming, setConfirming] = useState<string | null>(null);
   const max = goals.length ? Math.max(...goals.map((g) => g.count)) : 0;
 
   async function add() {
@@ -124,6 +127,21 @@ function GoalTab({
       });
       setName("");
       setAdding(false);
+      onGoalAdded();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(goalName: string) {
+    setBusy(true);
+    try {
+      await fetch("/api/analytics/goals", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ site: sitePublicId, name: goalName }),
+      });
+      setConfirming(null);
       onGoalAdded();
     } finally {
       setBusy(false);
@@ -153,6 +171,33 @@ function GoalTab({
               {formatNumber(g.count)}
               <span className="dfa-goal-rate">{g.rate.toFixed(2)}%</span>
             </span>
+            {confirming === g.name ? (
+              <span className="dfa-goal-confirm">
+                <button
+                  className="dfa-goal-confirm-no"
+                  onClick={() => setConfirming(null)}
+                  disabled={busy}
+                >
+                  Renunță
+                </button>
+                <button
+                  className="dfa-goal-confirm-yes"
+                  onClick={() => remove(g.name)}
+                  disabled={busy}
+                >
+                  Șterge
+                </button>
+              </span>
+            ) : (
+              <button
+                className="dfa-goal-del"
+                title={`Șterge goal-ul ${g.displayName}`}
+                aria-label={`Șterge goal-ul ${g.displayName}`}
+                onClick={() => setConfirming(g.name)}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
         );
       })}
