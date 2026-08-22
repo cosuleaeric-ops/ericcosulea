@@ -186,7 +186,7 @@
 .reguli-prose h3 {
   font-weight: 650;
   line-height: 1.25;
-  margin: 1em 0 0.3em;
+  margin: 0.85em 0 0.25em;
 }
 .reguli-prose > :first-child {
   margin-top: 0;
@@ -212,7 +212,7 @@
   margin: 0.05em 0;
 }
 .reguli-prose hr {
-  margin: 0.9em 0;
+  margin: 0.7em 0;
   border: 0;
   border-top: 1px solid var(--border);
 }
