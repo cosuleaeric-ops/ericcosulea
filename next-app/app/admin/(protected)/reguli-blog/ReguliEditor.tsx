@@ -23,10 +23,16 @@ function ButonSalvare({ nemodificat }: { nemodificat: boolean }) {
   );
 }
 
-// Cât scrie înăuntru, numărat pe text, nu pe HTML.
+// Cât scrie înăuntru, numărat în cuvinte, pe text, nu pe HTML.
+// Româna cere „de” când ultimele două cifre ies din 1-19: 19 cuvinte, 20 de cuvinte.
 function cat(html: string): string {
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return text.length === 0 ? "gol" : `${text.length.toLocaleString("ro-RO")} caractere`;
+  if (text === "") return "gol";
+  const n = text.split(" ").length;
+  if (n === 1) return "1 cuvânt";
+  const rest = n % 100;
+  const de = rest >= 1 && rest <= 19 ? "" : "de ";
+  return `${n.toLocaleString("ro-RO")} ${de}cuvinte`;
 }
 
 export default function ReguliEditor({ initial, saveAction }: Props) {
