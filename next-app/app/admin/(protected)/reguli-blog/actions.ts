@@ -16,7 +16,9 @@ export async function salveazaReguliAction(
 
   const acum = new Date();
   for (const [nume, cheie] of Object.entries(CHEI)) {
-    const valoare = String(formData.get(nume) ?? "");
+    // Trimiterea formularului transformă \n în \r\n, conform specificației HTML.
+    // Le normalizez, altfel textul crește cu un caracter pe linie la fiecare salvare.
+    const valoare = String(formData.get(nume) ?? "").replace(/\r\n/g, "\n");
     await db
       .insert(siteTexts)
       .values({ textKey: cheie, textValue: valoare, updatedAt: acum })

@@ -5,9 +5,9 @@ import { useFormStatus } from "react-dom";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { SECUNDARE, type NumeReguli, type Reguli } from "./reguli";
 import type { StareSalvare } from "./actions";
+import EditorBogat from "./EditorBogat";
 
 type Props = {
   initial: Reguli;
@@ -23,64 +23,61 @@ function ButonSalvare({ nemodificat }: { nemodificat: boolean }) {
   );
 }
 
-// Cât scrie înăuntru, ca să se vadă fără să deschizi secțiunea.
-function cat(text: string): string {
-  const n = text.trim().length;
-  return n === 0 ? "gol" : `${n} caractere`;
+// Cât scrie înăuntru, numărat pe text, nu pe HTML.
+function cat(html: string): string {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return text.length === 0 ? "gol" : `${text.length.toLocaleString("ro-RO")} caractere`;
 }
 
 export default function ReguliEditor({ initial, saveAction }: Props) {
   const [state, formAction] = useActionState(saveAction, undefined);
   const [valori, setValori] = useState<Reguli>(initial);
 
-  const scrie = (nume: NumeReguli, text: string) =>
-    setValori((v) => ({ ...v, [nume]: text }));
+  const scrie = (nume: NumeReguli, html: string) =>
+    setValori((v) => (v[nume] === html ? v : { ...v, [nume]: html }));
 
   const nemodificat = (Object.keys(initial) as NumeReguli[]).every(
     (k) => valori[k] === initial[k],
   );
 
   return (
-    <form action={formAction} className="mt-6">
+    <form action={formAction} className="mt-5">
+      {(Object.keys(valori) as NumeReguli[]).map((nume) => (
+        <input key={nume} type="hidden" name={nume} value={valori[nume]} />
+      ))}
+
       <div>
-        <Label htmlFor="blog" className="mb-2">
-          reguli blog
-        </Label>
-        <Textarea
-          id="blog"
-          name="blog"
-          value={valori.blog}
-          onChange={(e) => scrie("blog", e.target.value)}
-          className="min-h-[320px] leading-relaxed"
-          placeholder="Încă goale."
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <Label>reguli blog</Label>
+          <span className="text-[11px] text-muted-foreground">{cat(valori.blog)}</span>
+        </div>
+        <EditorBogat
+          valoare={initial.blog}
+          onChange={(html) => scrie("blog", html)}
+          minHeight={460}
         />
       </div>
 
-      <div className="mt-5 divide-y divide-border rounded-md border border-border">
+      <div className="mt-4 divide-y divide-border rounded-md border border-border">
         {SECUNDARE.map(({ nume, eticheta }) => (
           <details key={nume} className="group">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm hover:bg-secondary">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm hover:bg-secondary">
               <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" />
               <span className="font-medium">{eticheta}</span>
-              <span className="ml-auto text-[11px] text-muted-foreground">
-                {cat(valori[nume])}
-              </span>
+              <span className="ml-auto text-[11px] text-muted-foreground">{cat(valori[nume])}</span>
             </summary>
-            <div className="px-4 pb-4">
-              <Textarea
-                id={nume}
-                name={nume}
-                value={valori[nume]}
-                onChange={(e) => scrie(nume, e.target.value)}
-                className="min-h-[180px] leading-relaxed"
-                placeholder="Încă goale."
+            <div className="px-3 pb-3">
+              <EditorBogat
+                valoare={initial[nume]}
+                onChange={(html) => scrie(nume, html)}
+                minHeight={200}
               />
             </div>
           </details>
         ))}
       </div>
 
-      <div className="mt-5 flex items-center gap-3">
+      <div className="mt-4 flex items-center gap-3">
         <ButonSalvare nemodificat={nemodificat} />
         {state?.error ? (
           <span className="text-xs text-destructive">{state.error}</span>

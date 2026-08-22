@@ -169,3 +169,59 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Editorul de reguli. Spațiere mai strânsă decât .admin-prose: ghidul are 72 de
+   secțiuni, iar cu spațierea de articol ar cere de două ori mai mult scroll. */
+.reguli-prose {
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+.reguli-prose p,
+.reguli-prose ul,
+.reguli-prose ol {
+  margin: 0.3em 0;
+}
+.reguli-prose h1,
+.reguli-prose h2,
+.reguli-prose h3 {
+  font-weight: 650;
+  line-height: 1.25;
+  margin: 1em 0 0.3em;
+}
+.reguli-prose > :first-child {
+  margin-top: 0;
+}
+.reguli-prose h1 {
+  font-size: 1.25em;
+}
+.reguli-prose h2 {
+  font-size: 1.1em;
+}
+.reguli-prose h3 {
+  font-size: 1em;
+}
+.reguli-prose ul {
+  list-style: disc;
+  padding-left: 1.2em;
+}
+.reguli-prose ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.reguli-prose li {
+  margin: 0.05em 0;
+}
+.reguli-prose hr {
+  margin: 0.9em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.reguli-prose strong {
+  font-weight: 650;
+}
+.reguli-prose code {
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: var(--muted);
+  font-size: 0.9em;
+}
