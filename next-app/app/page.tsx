@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getProjectsForHome, getLatestImages } from "@/lib/db/queries";
 import { blobUrl } from "@/lib/blob";
 import OldProjects from "./old-projects";
+import { cuRef } from "@/lib/ref";
 
 export const revalidate = 86400; // o dată pe zi — publicarea dă revalidatePath, restul e static (Neon compute)
 
@@ -48,7 +49,7 @@ export default async function Home() {
         <h2>La ce lucrez</h2>
         <div className="projects">
           {projects.map((proj) => (
-            <a key={proj.id} className="project" href={proj.url} target="_blank" rel="noopener noreferrer">
+            <a key={proj.id} className="project" href={cuRef(proj.url)} target="_blank" rel="noopener noreferrer">
               <img className="project-icon-img" src={proj.logo} alt="" />
               <span className="project-text">
                 <span className="project-name">{proj.name}</span>

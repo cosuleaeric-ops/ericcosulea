@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { projects } from "@/lib/db/schema";
+import { cuRef } from "@/lib/ref";
 
 type Project = typeof projects.$inferSelect;
 
@@ -24,7 +25,7 @@ export default function OldProjects({ projects }: { projects: Project[] }) {
       {open && (
         <div className="projects old-projects-list">
           {projects.map((proj) => (
-            <a key={proj.id} className="project" href={proj.url} target="_blank" rel="noopener noreferrer">
+            <a key={proj.id} className="project" href={cuRef(proj.url)} target="_blank" rel="noopener noreferrer">
               <img className="project-icon-img" src={proj.logo} alt="" />
               <span className="project-text">
                 <span className="project-name">{proj.name}</span>

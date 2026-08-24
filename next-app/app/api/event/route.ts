@@ -92,6 +92,20 @@ type Payload = {
   visitor_id?: string;
 };
 
+// Valoarea lui ?ref= din URL, trecută prin aceeași mapare ca un referrer real,
+// ca „ericcosulea.ro” să arate la fel indiferent de unde a venit.
+function refDinUrl(url: string | undefined, selfDomain: string | null): string | null {
+  if (!url) return null;
+  try {
+    const ref = new URL(url, "https://x").searchParams.get("ref");
+    if (!ref) return null;
+    const sursa = referrerSource(`https://${ref.replace(/^https?:\/\//, "")}`, selfDomain);
+    return sursa === "Direct/None" ? null : sursa;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   let body: Payload;
   try {
@@ -165,7 +179,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
   }
 
-  const refSource = referrerSource(body.referrer, site.domain);
+  // Când lipsește referrerul, iau ?ref= din URL. Linkurile dintre site-urile
+  // mele au rel="noreferrer", care taie antetul Referer, deci fără asta ar
+  // intra toate ca Direct/None.
+  const dinAntet = referrerSource(body.referrer, site.domain);
+  const refSource =
+    dinAntet === "Direct/None" ? (refDinUrl(body.url, site.domain) ?? dinAntet) : dinAntet;
   const utm = parseUtm(body.url);
 
   // ── Geo din headerele Vercel ──
