@@ -169,10 +169,10 @@
     if (name) send("custom", name);
   });
 
-  // ── Adâncimea de scroll: pragurile 25/50/75/100% din pagină, o dată fiecare
+  // ── Adâncimea de scroll: pragurile 10/20/.../100% din pagină, o dată fiecare
   // per pagină. Răspunde la „până unde citește lumea", fără să trimită la
-  // fiecare pixel: patru evenimente pe vizită, în cel mai rău caz.
-  var PRAGURI = [25, 50, 75, 100];
+  // fiecare pixel: zece evenimente pe vizită, în cel mai rău caz.
+  var PRAGURI = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   var scrollAtins = {};
   var scrollProgramat = false;
 

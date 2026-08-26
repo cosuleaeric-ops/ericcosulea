@@ -763,7 +763,7 @@ export async function getCrawlerStats(
 }
 
 // ── Comportament în pagină: cât se citește și pe ce se apasă ──────────────────
-// Sursa: evenimentele "scroll" (pragurile 25/50/75/100) și "click" (textul
+// Sursa: evenimentele "scroll" (pragurile 10/20/.../100) și "click" (textul
 // elementului) trimise de script.js. Sunt tipuri separate de "custom" tocmai
 // ca să nu apară ca goaluri în restul rapoartelor.
 

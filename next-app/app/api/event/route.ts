@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
         : isLeave
           ? "leave"
           : "pageview",
-    // scroll → pragul atins ("25".."100"); click → textul elementului.
+    // scroll → pragul atins ("10".."100"); click → textul elementului.
     name: body.type === "custom" || isBehaviour ? body.name?.slice(0, 120) ?? null : null,
     path,
     hostname,
