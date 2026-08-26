@@ -143,6 +143,7 @@ export type UserRow = {
   referrerSource: string | null;
   sessions: number;
   pageviews: number;
+  clicks: string[];
   duration: number; // secunde, suma duratelor sesiunilor din perioadă
   lastSeen: string;
 };
@@ -652,10 +653,19 @@ firstref AS (
   FROM events_human e JOIN per USING (visitor_id)
   WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
   ORDER BY e.visitor_id, e.created_at ASC, e.id ASC
+),
+clicks AS (
+  SELECT visitor_id, array_agg(name ORDER BY created_at DESC, id DESC) FILTER (WHERE name IS NOT NULL) AS clicks
+  FROM events_human e JOIN per USING (visitor_id)
+  WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
+    AND e.type='click'
+  GROUP BY visitor_id
 )
 SELECT p.visitor_id AS id, l.country, l.device, l.os, l.browser,
-       f.referrer_source AS "referrerSource", p.sessions, p.pageviews, p.duration, p.last_seen AS "lastSeen"
+       f.referrer_source AS "referrerSource", p.sessions, p.pageviews, coalesce(c.clicks, '{}') AS clicks,
+       p.duration, p.last_seen AS "lastSeen"
 FROM per p JOIN latest l USING (visitor_id) JOIN firstref f USING (visitor_id)
+LEFT JOIN clicks c USING (visitor_id)
 ORDER BY p.last_seen DESC`;
   type Row = Omit<UserRow, "lastSeen"> & { lastSeen: string | Date };
   const rows = await q<Row>(text, params);

@@ -38,7 +38,7 @@ import {
 import type { StatsPayload, Kpis, Deltas, Filters } from "@/lib/analytics/queries";
 import type { Deploy } from "@/lib/analytics/vercel";
 import { countryName } from "@/lib/analytics/labels";
-import { dashPeriodCookie, type InitialTabs } from "../period-persistence";
+import { DASH_PERIOD_COOKIE, writeCookie, type InitialTabs } from "../period-persistence";
 
 const FILTER_LABEL: Record<string, string> = {
   path: "Page",
@@ -87,15 +87,8 @@ type WebsiteProp = SiteLite & {
 };
 type Custom = { from: string; to: string };
 
-// Perioada aleasă persistă într-un cookie PER PROIECT (citit și pe server, ca să
-// randăm din prima vederea corectă, fără flash last7 → 24h). Doar preset-uri.
-function persistPeriod(publicId: string, p: PeriodKey) {
-  try {
-    document.cookie = `${dashPeriodCookie(publicId)}=${p};path=/;max-age=31536000;SameSite=Lax`;
-  } catch {
-    /* ignore */
-  }
-}
+// Perioada aleasă persistă global pentru EliteData: overview + toate site-urile.
+const persistPeriod = (p: PeriodKey) => writeCookie(DASH_PERIOD_COOKIE, p);
 
 const EMPTY_KPIS: Kpis = {
   visitors: 0,
@@ -285,7 +278,7 @@ export default function Dashboard({
     setOffset(0);
     setCustom(null);
     setGranularity(defaultGranularity(p));
-    persistPeriod(website.publicId, p);
+    persistPeriod(p);
   }
 
   function applyCustom(from: string, to: string) {

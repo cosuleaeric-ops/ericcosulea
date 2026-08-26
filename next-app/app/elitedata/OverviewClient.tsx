@@ -2,12 +2,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, ChevronDown } from "lucide-react";
-import { computeRange, type PeriodKey } from "@/lib/analytics/range";
+import {
+  computeRange,
+  defaultGranularity,
+  PERIOD_LABELS,
+  type PeriodKey,
+} from "@/lib/analytics/range";
 import { formatNumber } from "@/lib/analytics/format";
 import { Sparkline } from "./_components/Sparkline";
 import { Dropdown } from "./_components/Dropdown";
 import { AddWebsite } from "./AddWebsite";
-import { OV_PERIOD_COOKIE } from "./period-persistence";
+import { DASH_PERIOD_COOKIE, SAVED_PERIODS, writeCookie } from "./period-persistence";
 
 type SortKey = "views" | "alpha";
 const SORT_OPTS: { key: SortKey; label: string }[] = [
@@ -28,12 +33,10 @@ type Site = {
 };
 type Data = { totalVisitors: number; sites: Site[] };
 
-const OPTS: { key: PeriodKey; label: string }[] = [
-  { key: "today", label: "today" },
-  { key: "last24h", label: "last 24 hours" },
-  { key: "last7", label: "last 7 days" },
-  { key: "last30", label: "last 30 days" },
-];
+const OPTS: { key: PeriodKey; label: string }[] = SAVED_PERIODS.map((key) => ({
+  key,
+  label: PERIOD_LABELS[key].toLowerCase(),
+}));
 const LABELS: Record<string, string> = Object.fromEntries(
   OPTS.map((o) => [o.key, o.label]),
 );
@@ -56,11 +59,7 @@ export function OverviewClient({
 
   function selectPeriod(k: PeriodKey) {
     setPeriod(k);
-    try {
-      document.cookie = `${OV_PERIOD_COOKIE}=${k};path=/;max-age=31536000;SameSite=Lax`;
-    } catch {
-      /* ignore */
-    }
+    writeCookie(DASH_PERIOD_COOKIE, k);
   }
 
   const sortedSites = useMemo(() => {
@@ -76,7 +75,7 @@ export function OverviewClient({
       return; // randarea inițială folosește datele de la server
     }
     const r = computeRange(period);
-    const granularity = period === "last24h" || period === "today" ? "hourly" : "daily";
+    const granularity = defaultGranularity(period);
     const params = new URLSearchParams({
       from: r.from.toISOString(),
       to: r.to.toISOString(),

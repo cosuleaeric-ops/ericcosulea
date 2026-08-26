@@ -1,20 +1,22 @@
 // Persistența perioadei selectate — cookie-uri citite atât pe server (pentru
 // randarea inițială corectă, fără flash) cât și pe client (scriere la schimbare).
 // Modul pur, fără "use client", ca să poată fi importat din server components.
-import type { PeriodKey } from "@/lib/analytics/range";
+import { PERIOD_ORDER, type PeriodKey } from "@/lib/analytics/range";
 
 export const DASH_PERIOD_COOKIE = "dfa_dash_period";
 export const OV_PERIOD_COOKIE = "dfa_ov_period";
 
-// Perioada pe dashboard se salvează PER PROIECT (altfel outglow și cesaicumpar
-// s-ar suprascrie reciproc). Numele cookie-ului include publicId-ul site-ului.
-export const dashPeriodCookie = (publicId: string) =>
+// Istoric: dashboard-ul salva perioada per site. Le citim ca fallback o vreme,
+// dar orice schimbare nouă se scrie global, ca overview-ul și toate site-urile
+// să rămână pe aceeași perioadă.
+export const legacyDashPeriodCookie = (publicId: string) =>
   `${DASH_PERIOD_COOKIE}_${publicId}`;
 
-// Perioadele disponibile pe homepage (overview) — subset din PeriodKey.
-export const OVERVIEW_PERIODS = ["today", "last24h", "last7", "last30"] as const;
-export const isOverviewPeriod = (k: string): k is PeriodKey =>
-  (OVERVIEW_PERIODS as readonly string[]).includes(k);
+// Preset-urile comune pentru overview + dashboard. `custom` rămâne doar în
+// dashboard, randat separat cu calendarul, deci nu intră aici.
+export const SAVED_PERIODS = PERIOD_ORDER;
+export const isSavedPeriod = (k: string): k is PeriodKey =>
+  (SAVED_PERIODS as readonly string[]).includes(k);
 
 // Tab-ul selectat în fiecare panou persistă tot prin cookie (server-readable),
 // ca panoul să se randeze din prima pe tab-ul corect — fără fade la reload.

@@ -278,6 +278,7 @@ export function MainChart({
             />
             <XAxis
               dataKey="label"
+              padding={{ left: 0, right: 0 }}
               tickLine={false}
               axisLine={false}
               minTickGap={28}

@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { getStats, getWebsiteByPublicId, listWebsites } from "@/lib/analytics/queries";
-import { computeRange, defaultGranularity, PERIOD_ORDER, type PeriodKey } from "@/lib/analytics/range";
+import { computeRange, defaultGranularity, type PeriodKey } from "@/lib/analytics/range";
 import Dashboard from "./Dashboard";
 import {
-  dashPeriodCookie,
+  DASH_PERIOD_COOKIE,
+  isSavedPeriod,
+  legacyDashPeriodCookie,
   TAB_COOKIES,
   type InitialTabs,
   type TabGroup,
@@ -35,11 +37,14 @@ export default async function SiteDashboardPage({
     faviconUrl: s.faviconUrl,
   }));
 
-  // Perioada salvată e într-un cookie PER PROIECT (server-readable) ca să randăm
-  // din prima vederea corectă — fără flash last7 → 24h de după hidratare.
-  const saved = jar.get(dashPeriodCookie(publicId))?.value as PeriodKey | undefined;
+  // Perioada salvată e globală pentru EliteData, ca overview-ul și toate site-urile
+  // să pornească pe aceeași alegere. Cookie-ul vechi per site rămâne doar fallback.
+  const saved = (
+    jar.get(DASH_PERIOD_COOKIE)?.value ??
+    jar.get(legacyDashPeriodCookie(publicId))?.value
+  ) as PeriodKey | undefined;
   const period: PeriodKey =
-    saved && PERIOD_ORDER.includes(saved) ? saved : "last7";
+    saved && isSavedPeriod(saved) ? saved : "last7";
 
   // Tab-ul selectat în fiecare panou (Channel/Referrer…, Hostname/Page…, etc.).
   const initialTabs: InitialTabs = {};
