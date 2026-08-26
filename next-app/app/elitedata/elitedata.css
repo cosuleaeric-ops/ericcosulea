@@ -1449,7 +1449,7 @@
 .dfa-utable-head,
 .dfa-utable-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1.1fr) minmax(120px, 0.9fr) 82px 64px minmax(160px, 1.2fr) 80px 100px;
+  grid-template-columns: minmax(130px, 1.2fr) minmax(130px, 0.9fr) 92px 74px 74px 86px 108px;
 }
 .dfa-utable {
   display: flex;
@@ -1480,12 +1480,6 @@
 .dfa-anon {
   font-family: var(--dfa-mono);
   font-size: 12.5px;
-}
-.dfa-user-clicks {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Journeys */
