@@ -144,6 +144,7 @@ export type UserRow = {
   sessions: number;
   pageviews: number;
   clicks: number;
+  scrollPct: number;
   duration: number; // secunde, suma duratelor sesiunilor din perioadă
   lastSeen: string;
 };
@@ -660,12 +661,20 @@ clicks AS (
   WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
     AND e.type='click'
   GROUP BY visitor_id
+),
+scrolls AS (
+  SELECT visitor_id, max((name)::int)::int AS "scrollPct"
+  FROM events_human e JOIN per USING (visitor_id)
+  WHERE e.website_id=$1 AND e.created_at>=$2::timestamptz AND e.created_at<$3::timestamptz
+    AND e.type='scroll' AND e.name ~ '^[0-9]+$'
+  GROUP BY visitor_id
 )
 SELECT p.visitor_id AS id, l.country, l.device, l.os, l.browser,
        f.referrer_source AS "referrerSource", p.sessions, p.pageviews, coalesce(c.clicks, 0)::int AS clicks,
-       p.duration, p.last_seen AS "lastSeen"
+       coalesce(s."scrollPct", 0)::int AS "scrollPct", p.duration, p.last_seen AS "lastSeen"
 FROM per p JOIN latest l USING (visitor_id) JOIN firstref f USING (visitor_id)
 LEFT JOIN clicks c USING (visitor_id)
+LEFT JOIN scrolls s USING (visitor_id)
 ORDER BY p.last_seen DESC`;
   type Row = Omit<UserRow, "lastSeen"> & { lastSeen: string | Date };
   const rows = await q<Row>(text, params);

@@ -272,6 +272,7 @@ function UserTab({ users }: { users: UserRow[] }) {
         <span className="dfa-th-num">Sessions</span>
         <span className="dfa-th-num">Views</span>
         <span className="dfa-th-num">Clicks</span>
+        <span className="dfa-th-num">Scroll</span>
         <span className="dfa-th-num">Time</span>
         <span className="dfa-th-num">Last seen</span>
       </div>
@@ -286,6 +287,7 @@ function UserTab({ users }: { users: UserRow[] }) {
           <span className="dfa-th-num">{u.sessions}</span>
           <span className="dfa-th-num">{u.pageviews}</span>
           <span className="dfa-th-num">{u.clicks}</span>
+          <span className="dfa-th-num">{u.scrollPct}%</span>
           <span className="dfa-th-num dfa-muted">{formatDuration(u.duration)}</span>
           <span className="dfa-th-num dfa-muted">{formatRelative(u.lastSeen)}</span>
         </div>
