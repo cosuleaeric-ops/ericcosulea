@@ -42,6 +42,7 @@ const ADMIN_API_PREFIXES = [
   "/api/auth-status",
   "/api/brain",
   "/api/elite-deux",
+  "/api/pnlpersonal",
   "/api/analytics",
   "/api/logout",
   "/api/track/emails",
@@ -60,6 +61,8 @@ function isAdminOnlyAllowed(pathname: string): boolean {
     pathname.startsWith("/admin/") ||
     pathname === "/elite-deux" ||
     pathname.startsWith("/elite-deux/") ||
+    pathname === "/pnlpersonal" ||
+    pathname.startsWith("/pnlpersonal/") ||
     pathname === "/elitedata" ||
     pathname.startsWith("/elitedata/") ||
     PUBLIC_ELITEDATA_FILES.has(pathname) ||
