@@ -423,10 +423,10 @@ GROUP BY b.idx, ev.src`;
 
 // ───────────────────────── Breakdowns + goals (un singur scan materializat) ─────────────────────────
 const DISTINCT_ID = "count(DISTINCT coalesce(visitor_id, session_id, '?'))::int";
-const SIMPLE_DIMS: { dim: keyof Breakdowns; keyExpr: string; notNull?: string }[] = [
-  { dim: "channel", keyExpr: CHANNEL_CASE },
-  { dim: "referrer", keyExpr: "coalesce(referrer_source,'Direct/None')" },
-  { dim: "campaign", keyExpr: "utm_campaign", notNull: "utm_campaign" },
+const SIMPLE_DIMS: { dim: keyof Breakdowns; keyExpr: string; notNull?: string; sessionEntry?: boolean }[] = [
+  { dim: "channel", keyExpr: CHANNEL_CASE, sessionEntry: true },
+  { dim: "referrer", keyExpr: "coalesce(referrer_source,'Direct/None')", sessionEntry: true },
+  { dim: "campaign", keyExpr: "utm_campaign", notNull: "utm_campaign", sessionEntry: true },
   { dim: "page", keyExpr: "path", notNull: "path" },
   { dim: "hostname", keyExpr: "hostname", notNull: "hostname" },
   { dim: "country", keyExpr: "country", notNull: "country" },
@@ -446,16 +446,23 @@ async function fetchBreakdownsAndGoals(
   const fc = buildFilterClause(filters, params);
   const branches = SIMPLE_DIMS.map((b) => {
     const where = b.notNull ? ` WHERE ${b.notNull} IS NOT NULL AND ${b.notNull} <> ''` : "";
-    return `(SELECT '${b.dim}'::text dim, ${b.keyExpr} key, ${DISTINCT_ID} value FROM base${where} GROUP BY 2 ORDER BY 3 DESC, 2 ASC LIMIT 100)`;
+    const source = b.sessionEntry ? "session_entry" : "base";
+    return `(SELECT '${b.dim}'::text dim, ${b.keyExpr} key, ${DISTINCT_ID} value FROM ${source}${where} GROUP BY 2 ORDER BY 3 DESC, 2 ASC LIMIT 100)`;
   });
   branches.push(
     `(SELECT 'goal'::text dim, name key, ${DISTINCT_ID} value FROM base WHERE type='custom' AND name IS NOT NULL GROUP BY 2)`,
   );
   const text = `
 WITH base AS MATERIALIZED (
-  SELECT visitor_id, session_id, type, name, referrer_source, utm_medium, utm_campaign,
+  SELECT id, created_at, visitor_id, session_id, type, name, referrer_source, utm_medium, utm_campaign,
          path, hostname, country, region, city, browser, os, device
   FROM events_human WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
+),
+session_entry AS MATERIALIZED (
+  SELECT DISTINCT ON (session_id) visitor_id, session_id, referrer_source, utm_medium, utm_campaign
+  FROM base
+  WHERE session_id IS NOT NULL
+  ORDER BY session_id, created_at ASC, id ASC
 )
 ${branches.join("\nUNION ALL\n")}`;
   const rows = await q<{ dim: string; key: string; value: number }>(text, params);
