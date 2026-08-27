@@ -15,6 +15,9 @@ const PUBLIC_ELITEDATA_FILES = new Set([
   "/elitedata/favicon.svg",
   "/assets/avatar.jpeg",
 ]);
+const PUBLIC_SITE_FILES = new Set([
+  "/assets/Logo3.png",
+]);
 const PUBLIC_TRACKING_PATHS = new Set([
   "/js/script.js",
   "/api/event",
@@ -65,6 +68,7 @@ function isAdminOnlyAllowed(pathname: string): boolean {
     pathname.startsWith("/pnlpersonal/") ||
     pathname === "/elitedata" ||
     pathname.startsWith("/elitedata/") ||
+    PUBLIC_SITE_FILES.has(pathname) ||
     PUBLIC_ELITEDATA_FILES.has(pathname) ||
     PUBLIC_TRACKING_PATHS.has(pathname) ||
     ADMIN_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
