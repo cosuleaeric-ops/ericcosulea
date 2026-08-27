@@ -217,6 +217,7 @@ type KpiAgg = {
   pageviews: number;
   bounced: number;
   dur_sum: number;
+  timed_sessions: number;
   conv_visitors: number;
   kpi1_value: number;
 };
@@ -229,7 +230,7 @@ function kpisFromAgg(a: KpiAgg | undefined, kpiGoalName: string | null): Kpis {
     sessions,
     pageviews: Number(a.pageviews),
     bounceRate: sessions ? (Number(a.bounced) / sessions) * 100 : 0,
-    sessionTime: sessions ? Number(a.dur_sum) / sessions : 0,
+    sessionTime: Number(a.timed_sessions) ? Number(a.dur_sum) / Number(a.timed_sessions) : 0,
     conversions: Number(a.conv_visitors),
     conversionRate: visitors ? (Number(a.conv_visitors) / visitors) * 100 : 0,
     kpi1Name: kpiGoalName,
@@ -258,11 +259,11 @@ async function fetchKpis(
   const conv = `e.type='custom' AND (${k}::text IS NULL OR e.name=${k})`;
   const text = `
 WITH ev AS (
-  SELECT 'cur' AS b, visitor_id, session_id, type, name, created_at, duration_seconds FROM events_human
-   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
+  SELECT 'cur' AS b, id, visitor_id, session_id, type, name, created_at FROM events_human
+   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND type<>'heartbeat'${fc}
   UNION ALL
-  SELECT 'prev' AS b, visitor_id, session_id, type, name, created_at, duration_seconds FROM events_human
-   WHERE website_id=$1 AND created_at>=$4::timestamptz AND created_at<$5::timestamptz${fc}
+  SELECT 'prev' AS b, id, visitor_id, session_id, type, name, created_at FROM events_human
+   WHERE website_id=$1 AND created_at>=$4::timestamptz AND created_at<$5::timestamptz AND type<>'heartbeat'${fc}
 ),
 ev_agg AS (
   SELECT b,
@@ -273,22 +274,38 @@ ev_agg AS (
     count(*) FILTER (WHERE ${conv})::int AS kpi1_value
   FROM ev e GROUP BY b
 ),
+ev_time AS (
+  SELECT b, id, session_id, created_at,
+         lead(created_at) OVER (PARTITION BY b, session_id ORDER BY created_at, id) AS next_at
+  FROM ev WHERE session_id IS NOT NULL
+),
 sess AS (
-  SELECT b, session_id,
-         CASE WHEN max(duration_seconds) > 0 THEN max(duration_seconds)
-              ELSE EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) END AS dur,
-         count(*) FILTER (WHERE type IN ('pageview','custom'))::int AS engaged
-  FROM ev WHERE session_id IS NOT NULL GROUP BY b, session_id
+  SELECT ev.b, ev.session_id,
+         coalesce(sum(CASE
+           WHEN ev_time.next_at IS NULL THEN 0
+           WHEN ev_time.next_at - ev.created_at > interval '10 minutes' THEN 0
+           ELSE EXTRACT(EPOCH FROM (ev_time.next_at - ev.created_at))
+         END), 0) AS dur,
+         count(*) FILTER (WHERE ev.type IN ('pageview','custom'))::int AS engaged,
+         count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews,
+         count(*) FILTER (WHERE ev.type='click')::int AS clicks,
+         count(*) FILTER (WHERE ev.type='scroll')::int AS scrolls,
+         count(*) FILTER (WHERE ev.type='custom')::int AS customs,
+         bool_or(ev.type IN ('click','scroll')) AS interacted
+  FROM ev LEFT JOIN ev_time USING (b, id, session_id, created_at)
+  WHERE ev.session_id IS NOT NULL
+  GROUP BY ev.b, ev.session_id
 ),
 sess_agg AS (
-  -- bounce = o singură pagină sau conversie. Leave dă doar durata, iar scroll și
-  -- click sunt comportament în aceeași pagină: dacă ar conta ca engagement,
-  -- bounce rate-ul ar scădea peste noapte și n-ar mai fi comparabil cu istoricul.
-  SELECT b, count(*) FILTER (WHERE engaged<=1)::int AS bounced, coalesce(sum(dur),0)::float8 AS dur_sum
+  SELECT b,
+         count(*) FILTER (WHERE pageviews<=1 AND clicks=0 AND scrolls=0 AND customs=0)::int AS bounced,
+         coalesce(sum(dur) FILTER (WHERE interacted AND pageviews>=greatest(1, ceil(dur / 600.0))),0)::float8 AS dur_sum,
+         count(*) FILTER (WHERE interacted AND pageviews>=greatest(1, ceil(dur / 600.0)))::int AS timed_sessions
   FROM sess GROUP BY b
 )
 SELECT e.b, e.visitors, e.sessions, e.pageviews, e.conv_visitors, e.kpi1_value,
-       coalesce(s.bounced,0)::int AS bounced, coalesce(s.dur_sum,0)::float8 AS dur_sum
+       coalesce(s.bounced,0)::int AS bounced, coalesce(s.dur_sum,0)::float8 AS dur_sum,
+       coalesce(s.timed_sessions,0)::int AS timed_sessions
 FROM ev_agg e LEFT JOIN sess_agg s ON s.b=e.b`;
   const rows = await q<KpiAgg & { b: string }>(text, params);
   const curRow = rows.find((r) => r.b === "cur");
@@ -629,22 +646,45 @@ async function fetchUsers(websiteId: number, range: Range, filters: Filters): Pr
   const params: unknown[] = [websiteId, range.from.toISOString(), range.to.toISOString()];
   const fc = buildFilterClause(filters, params);
   const text = `
-WITH per AS (
+WITH ev AS (
+  SELECT id, visitor_id, session_id, type, created_at
+  FROM events_human
+  WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
+    AND visitor_id IS NOT NULL AND type<>'heartbeat'${fc}
+),
+ev_time AS (
+  SELECT id, session_id, created_at,
+         lead(created_at) OVER (PARTITION BY session_id ORDER BY created_at, id) AS next_at
+  FROM ev WHERE session_id IS NOT NULL
+),
+session_raw AS (
+  SELECT ev.visitor_id, ev.session_id,
+    coalesce(sum(CASE
+      WHEN ev_time.next_at IS NULL THEN 0
+      WHEN ev_time.next_at - ev.created_at > interval '10 minutes' THEN 0
+      ELSE extract(epoch FROM (ev_time.next_at - ev.created_at))
+    END), 0)::int AS duration,
+    count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews,
+    bool_or(ev.type IN ('click','scroll')) AS interacted
+  FROM ev LEFT JOIN ev_time USING (id, session_id, created_at)
+  WHERE ev.session_id IS NOT NULL
+  GROUP BY ev.visitor_id, ev.session_id
+),
+session_times AS (
+  SELECT visitor_id, session_id,
+    CASE WHEN interacted AND pageviews>=greatest(1, ceil(duration / 600.0)) THEN duration ELSE 0 END AS duration
+  FROM session_raw
+),
+per AS (
   SELECT visitor_id,
     count(DISTINCT session_id)::int AS sessions,
     count(*) FILTER (WHERE type='pageview')::int AS pageviews,
     max(created_at) AS last_seen,
-    coalesce(sum(dur) FILTER (WHERE rn=1 AND session_id IS NOT NULL), 0)::int AS duration
-  FROM (
-    SELECT visitor_id, session_id, type, created_at,
-      CASE WHEN max(duration_seconds) OVER (PARTITION BY session_id) > 0
-           THEN max(duration_seconds) OVER (PARTITION BY session_id)
-           ELSE extract(epoch FROM max(created_at) OVER (PARTITION BY session_id)
-                           - min(created_at) OVER (PARTITION BY session_id)) END AS dur,
-      row_number() OVER (PARTITION BY session_id ORDER BY created_at, id) AS rn
-    FROM events_human
-    WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
-  ) s
+    coalesce(max(times.duration), 0)::int AS duration
+  FROM ev
+  LEFT JOIN (
+    SELECT visitor_id, sum(duration)::int AS duration FROM session_times GROUP BY visitor_id
+  ) times USING (visitor_id)
   GROUP BY visitor_id ORDER BY last_seen DESC LIMIT 30
 ),
 latest AS (
