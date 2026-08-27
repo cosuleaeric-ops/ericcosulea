@@ -15,10 +15,28 @@ const SESSION_WINDOW_MS = 30 * 60 * 1000;
 // Boți/crawlere/monitoare/headless — ca DataFast/Plausible. Traficul lor nu intră în DB.
 const BOT_UA =
   /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|embedly|quora link preview|pinterest|bitlybot|nuzzel|vkshare|w3c_validator|redditbot|applebot|whatsapp|telegrambot|discordbot|googlebot|bingbot|yandex|duckduckbot|baiduspider|semrush|ahrefs|mj12|dotbot|petalbot|headless|phantomjs|puppeteer|playwright|lighthouse|pagespeed|gtmetrix|pingdom|uptimerobot|statuscake|monitor|preview|prerender|python-requests|axios|curl|wget|okhttp|java\/|go-http|node-fetch|scrapy/i;
+const POSTHOG_BLOCKED_UA = [
+  "amazonbot", "amazonproductbot", "app.hypefactors.com", "applebot", "archive.org_bot",
+  "awariobot", "backlinksextendedbot", "baiduspider", "bingbot", "bingpreview",
+  "chrome-lighthouse", "dataforseobot", "deepscan", "duckduckbot", "facebookexternal",
+  "facebookcatalog", "http://yandex.com/bots", "hubspot", "ia_archiver", "leikibot",
+  "linkedinbot", "meta-externalagent", "mj12bot", "msnbot", "nessus", "petalbot",
+  "pinterest", "prerender", "rogerbot", "screaming frog", "sebot-wa", "sitebulb",
+  "slackbot", "slurp", "trendictionbot", "turnitin", "twitterbot", "vercel-screenshot",
+  "vercelbot", "yahoo! slurp", "yandexbot", "zoombot", "bot.htm", "bot.php", "(bot;",
+  "bot/", "crawler", "ahrefsbot", "ahrefssiteaudit", "semrushbot", "siteauditbot",
+  "splitsignalbot", "gptbot", "oai-searchbot", "chatgpt-user", "perplexitybot",
+  "better uptime bot", "sentryuptimebot", "uptimerobot", "headlesschrome", "cypress",
+  "google-hoteladsverifier", "adsbot-google", "apis-google", "duplexweb-google",
+  "feedfetcher-google", "google favicon", "google web preview", "google-read-aloud",
+  "googlebot", "googleother", "google-cloudvertexbot", "googleweblight",
+  "mediapartners-google", "storebot-google", "google-inspectiontool", "bytespider",
+];
 
 function isBot(ua: string | null): boolean {
   if (!ua) return true; // fără user-agent = aproape sigur bot/script
-  return BOT_UA.test(ua);
+  const lower = ua.toLowerCase();
+  return BOT_UA.test(ua) || POSTHOG_BLOCKED_UA.some((part) => lower.includes(part));
 }
 
 // Boți cu UA spoofat: UA-ul zice Chrome modern, dar headerele nu sunt de
@@ -85,14 +103,23 @@ export function OPTIONS() {
 
 type Payload = {
   id?: string; // website public id (dfid_xxxx)
-  type?: "pageview" | "custom" | "leave" | "scroll" | "click";
+  type?: "pageview" | "custom" | "leave" | "scroll" | "click" | "change" | "submit";
   name?: string;
   url?: string;
   referrer?: string;
   visitor_id?: string;
+  session_id?: string;
 };
 
-const EVENT_TYPES = new Set(["pageview", "custom", "leave", "scroll", "click"]);
+const EVENT_TYPES = new Set(["pageview", "custom", "leave", "scroll", "click", "change", "submit"]);
+const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function validPostHogSessionId(value: string | undefined): string | null {
+  if (!value || !UUID_V7.test(value)) return null;
+  const startedAt = Number.parseInt(value.replaceAll("-", "").slice(0, 12), 16);
+  const age = Date.now() - startedAt;
+  return age >= -60_000 && age <= 24 * 60 * 60 * 1000 ? value : null;
+}
 
 // Valoarea lui ?ref= din URL, trecută prin aceeași mapare ca un referrer real,
 // ca „ericcosulea.ro” să arate la fel indiferent de unde a venit.
@@ -198,31 +225,39 @@ export async function POST(req: NextRequest) {
   const region = h.get("x-vercel-ip-country-region") || null;
   const city = decodeHeader(h.get("x-vercel-ip-city"));
 
-  // ── Sesiune + bounce (fereastră de 30 min pe vizitator) ──
+  // Sesiunile noi vin din browser, ca în PostHog: UUIDv7, 30 minute idle,
+  // maximum 24h și aceeași sesiune în toate taburile. Fallback-ul de mai jos
+  // ține compatibil scriptul vechi cât timp cache-urile CDN/browser expiră.
+  const clientSessionId = validPostHogSessionId(body.session_id);
   const since = new Date(Date.now() - SESSION_WINDOW_MS);
-  const recent = await db
-    .select({ sessionId: events.sessionId })
-    .from(events)
-    .where(
-      and(
-        eq(events.websiteId, site.id),
-        eq(events.visitorId, visitorId),
-        gt(events.createdAt, since),
-      ),
-    )
-    .orderBy(desc(events.createdAt))
-    .limit(1);
+  const recent = clientSessionId
+    ? []
+    : await db
+        .select({ sessionId: events.sessionId })
+        .from(events)
+        .where(
+          and(
+            eq(events.websiteId, site.id),
+            eq(events.visitorId, visitorId),
+            gt(events.createdAt, since),
+          ),
+        )
+        .orderBy(desc(events.createdAt))
+        .limit(1);
 
   const isLeave = body.type === "leave";
   // Comportament în pagină (adâncime de scroll, click-uri). Tipuri separate,
   // NU "custom": custom înseamnă goal în rapoarte, iar astea ar umple lista de
   // conversii cu zgomot. Ca și "leave", nu pornesc o sesiune nouă și nu sting
   // bounce-ul — un scroll nu e o a doua pagină.
-  const isBehaviour = body.type === "scroll" || body.type === "click";
+  const isBehaviour = ["scroll", "click", "change", "submit"].includes(body.type);
 
   let sessionId: string;
   let isBounce: boolean;
-  if (recent[0]?.sessionId) {
+  if (clientSessionId) {
+    sessionId = clientSessionId;
+    isBounce = true; // câmp legacy; rapoartele calculează bounce-ul din sesiune.
+  } else if (recent[0]?.sessionId) {
     sessionId = recent[0].sessionId;
     isBounce = false;
     if (!isLeave && !isBehaviour) {

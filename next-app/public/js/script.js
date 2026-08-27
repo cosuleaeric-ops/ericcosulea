@@ -20,7 +20,7 @@
   var apiBase = "";
   try {
     apiBase = new URL(script.src).origin;
-  } catch (e) {}
+  } catch {}
 
   // Exclude localhost by default (override cu data-include-localhost="true").
   var includeLocalhost = script.getAttribute("data-include-localhost") === "true";
@@ -50,7 +50,7 @@
     var stored = null;
     try {
       stored = localStorage.getItem(IGNORE_KEY);
-    } catch (e) {}
+    } catch {}
     if (stored === "true") return true;
     return document.cookie.split(";").some(function (c) {
       return c.trim() === IGNORE_KEY + "=true";
@@ -61,7 +61,7 @@
     try {
       if (on) localStorage.setItem(IGNORE_KEY, "true");
       else localStorage.removeItem(IGNORE_KEY);
-    } catch (e) {}
+    } catch {}
     document.cookie = on
       ? IGNORE_KEY + "=true;max-age=34560000;path=/;SameSite=Lax"
       : IGNORE_KEY + "=;max-age=0;path=/;SameSite=Lax";
@@ -72,7 +72,7 @@
     if (ignoreParam !== null) {
       writeIgnore(ignoreParam !== "0" && ignoreParam !== "false");
     }
-  } catch (e) {}
+  } catch {}
 
   if (readIgnore()) {
     writeIgnore(true); // rescrie stocarea care lipsește
@@ -86,9 +86,38 @@
 
   // ── Visitor id persistent (localStorage, fallback cookie) ──
   var VKEY = "dfa_visitor_id";
+  var SKEY = "dfa_session_id";
+  var SESSION_TIMEOUT = 30 * 60 * 1000;
+  var SESSION_MAX_LENGTH = 24 * 60 * 60 * 1000;
+  var ACTIVITY_WRITE_GRANULARITY = 5000;
   function uuid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return "v-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+  function uuidv7(now) {
+    var bytes = new Uint8Array(16);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+    else for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    for (var j = 0; j < 6; j++) bytes[j] = Math.floor(now / Math.pow(256, 5 - j)) & 255;
+    bytes[6] = (bytes[6] & 15) | 112;
+    bytes[8] = (bytes[8] & 63) | 128;
+    var hex = Array.prototype.map.call(bytes, function (b) {
+      return (b + 256).toString(16).slice(1);
+    }).join("");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" +
+      hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+  function readStored(key) {
+    try {
+      var stored = localStorage.getItem(key);
+      if (stored) return stored;
+    } catch {}
+    var m = document.cookie.match(new RegExp("(?:^|;\\s*)" + key + "=([^;]+)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function writeStored(key, value, maxAge) {
+    try { localStorage.setItem(key, value); } catch {}
+    document.cookie = key + "=" + encodeURIComponent(value) + ";max-age=" + maxAge + ";path=/;SameSite=Lax";
   }
   var visitorId;
   try {
@@ -97,7 +126,7 @@
       visitorId = uuid();
       localStorage.setItem(VKEY, visitorId);
     }
-  } catch (e) {
+  } catch {
     var m = document.cookie.match(/(?:^|;\s*)dfa_visitor_id=([^;]+)/);
     if (m) {
       visitorId = decodeURIComponent(m[1]);
@@ -108,6 +137,29 @@
     }
   }
 
+  function sessionId() {
+    var now = Date.now();
+    var raw = readStored(SKEY);
+    var session = null;
+    if (raw) {
+      try { session = JSON.parse(raw); } catch {}
+    }
+    if (
+      !session || !session.id || !session.t || !session.s ||
+      Math.abs(now - session.t) > SESSION_TIMEOUT ||
+      Math.abs(now - session.s) > SESSION_MAX_LENGTH
+    ) {
+      session = { id: uuidv7(now), t: now, s: now };
+      writeStored(SKEY, JSON.stringify(session), 63072000);
+      return session.id;
+    }
+    if (Math.abs(now - session.t) >= ACTIVITY_WRITE_GRANULARITY) {
+      session.t = now;
+      writeStored(SKEY, JSON.stringify(session), 63072000);
+    }
+    return session.id;
+  }
+
   function send(type, name) {
     var payload = {
       id: websiteId,
@@ -116,6 +168,7 @@
       url: location.href,
       referrer: document.referrer || "",
       visitor_id: visitorId,
+      session_id: sessionId(),
     };
     var body = JSON.stringify(payload);
     var url = apiBase + "/api/event";
@@ -131,7 +184,7 @@
           headers: { "Content-Type": "text/plain" },
         });
       }
-    } catch (e) {}
+    } catch {}
   }
 
   // ── Pageviews (inclusiv SPA / History API) ──
@@ -160,14 +213,6 @@
   window.elitedata = function (name) {
     if (name) send("custom", String(name));
   };
-
-  // ── Goal pe click: orice element cu elite-data-goal="nume" ──
-  // Delegat pe document, prinde și click pe copiii elementului marcat.
-  document.addEventListener("click", function (e) {
-    var el = e.target && e.target.closest && e.target.closest("[elite-data-goal]");
-    var name = el && el.getAttribute("elite-data-goal");
-    if (name) send("custom", name);
-  });
 
   // ── Adâncimea de scroll: pragurile 10/20/.../100% din pagină, o dată fiecare
   // per pagină. Răspunde la „până unde citește lumea", fără să trimită la
@@ -241,28 +286,52 @@
     new ResizeObserver(verificaScroll).observe(document.body);
   }
 
-  // ── Click-uri pe elementele acționabile, cu textul lor. Elementul marcat cu
-  // elite-data-goal trimite deja un goal, deci pe el nu mai punem și click.
+  // Autocapture PostHog: click, change și submit pe elemente acționabile.
+  // Un element marcat ca goal trimite atât goal-ul explicit, cât și autocapture.
+  function sensitive(el) {
+    if (!el || !el.closest) return true;
+    if (el.closest(".ph-no-autocapture,[data-ph-no-autocapture],.ph-no-capture,.ph-sensitive")) return true;
+    var type = (el.getAttribute("type") || "").toLowerCase();
+    if (type === "password" || type === "hidden") return true;
+    var name = (el.getAttribute("name") || el.getAttribute("id") || "").replace(/[^a-z0-9]/gi, "");
+    return /^(cc|cardnum|ccnum|creditcard|csc|cvc|cvv|exp|pass|pwd|routing|seccode|securitycode|securitynum|socialsec|socsec|ssn)/i.test(name);
+  }
+  function actionable(target, eventType) {
+    if (!target || !target.closest) return null;
+    var selector = eventType === "submit" ? "form" :
+      eventType === "change" ? "input,select,textarea" :
+      "a,button,input,select,textarea,label,[contenteditable='true'],[role='button']";
+    var el = target.closest(selector);
+    if (!el && eventType === "click") {
+      for (var p = target; p && p !== document.body; p = p.parentElement) {
+        try { if (getComputedStyle(p).cursor === "pointer") { el = p; break; } } catch {}
+      }
+    }
+    return el && !sensitive(el) ? el : null;
+  }
+  function labelFor(el, eventType) {
+    var text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    return (text || el.getAttribute("aria-label") || el.getAttribute("title") ||
+      el.getAttribute("href") || el.getAttribute("name") || eventType).slice(0, 120);
+  }
+
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
-    if (t.closest("[elite-data-goal]")) return;
-    var el = t.closest("a, button, [role='button'], summary");
+    var goal = t.closest("[elite-data-goal]");
+    if (goal) send("custom", goal.getAttribute("elite-data-goal"));
+    var el = actionable(t, "click");
     if (!el) return;
-
-    var text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-    if (!text) {
-      // Buton fără text (iconiță): cade pe eticheta de accesibilitate, apoi pe
-      // destinație, ca să nu ajungă în rapoarte un rând gol.
-      text =
-        el.getAttribute("aria-label") ||
-        el.getAttribute("title") ||
-        el.getAttribute("href") ||
-        "";
-    }
-    if (!text) return;
-    send("click", text.slice(0, 120));
-  });
+    send("click", labelFor(el, "click"));
+  }, true);
+  document.addEventListener("change", function (e) {
+    var el = actionable(e.target, "change");
+    if (el) send("change", labelFor(el, "change"));
+  }, true);
+  document.addEventListener("submit", function (e) {
+    var el = actionable(e.target, "submit");
+    if (el) send("submit", labelFor(el, "submit"));
+  }, true);
 
   // Ultimul eveniment închide intervalul de timp măsurat pentru sesiune.
   var leaveSent = false;
@@ -271,11 +340,7 @@
     leaveSent = true;
     send("leave");
   }
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") leave();
-    else leaveSent = false;
-  });
-  window.addEventListener("pagehide", leave);
+  window.addEventListener("onpagehide" in window ? "pagehide" : "unload", leave);
 
   // Pageview inițial
   pageview();

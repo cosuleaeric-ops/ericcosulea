@@ -268,40 +268,26 @@ WITH ev AS (
 ev_agg AS (
   SELECT b,
     count(DISTINCT visitor_id)::int AS visitors,
-    count(DISTINCT session_id)::int AS sessions,
+    count(DISTINCT session_id) FILTER (WHERE type='pageview')::int AS sessions,
     count(*) FILTER (WHERE type='pageview')::int AS pageviews,
     count(DISTINCT visitor_id) FILTER (WHERE ${conv})::int AS conv_visitors,
     count(*) FILTER (WHERE ${conv})::int AS kpi1_value
   FROM ev e GROUP BY b
 ),
-ev_time AS (
-  SELECT b, id, session_id, created_at,
-         lead(created_at) OVER (PARTITION BY b, session_id ORDER BY created_at, id) AS next_at
-  FROM ev WHERE session_id IS NOT NULL
-),
 sess AS (
   SELECT ev.b, ev.session_id,
-         coalesce(sum(CASE
-           WHEN ev_time.next_at IS NULL THEN 0
-           WHEN ev_time.next_at - ev.created_at > interval '10 minutes' THEN 0
-           ELSE EXTRACT(EPOCH FROM (ev_time.next_at - ev.created_at))
-         END), 0) AS dur,
-         count(*) FILTER (WHERE ev.type IN ('pageview','custom'))::int AS engaged,
+         floor(extract(epoch FROM (max(ev.created_at)-min(ev.created_at)))) AS dur,
          count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews,
-         count(*) FILTER (WHERE ev.type='click')::int AS clicks,
-         count(*) FILTER (WHERE ev.type='scroll')::int AS scrolls,
-         count(*) FILTER (WHERE ev.type='custom')::int AS customs,
-         count(*) FILTER (WHERE ev.type='leave')::int AS leaves,
-         bool_or(ev.type IN ('click','scroll')) AS interacted
-  FROM ev LEFT JOIN ev_time USING (b, id, session_id, created_at)
+         count(*) FILTER (WHERE ev.type IN ('click','change','submit'))::int AS autocaptures
+  FROM ev
   WHERE ev.session_id IS NOT NULL
   GROUP BY ev.b, ev.session_id
 ),
 sess_agg AS (
   SELECT b,
-         count(*) FILTER (WHERE pageviews<=1 AND clicks=0 AND scrolls=0 AND customs=0)::int AS bounced,
-         coalesce(sum(dur) FILTER (WHERE (interacted OR leaves>0) AND pageviews>=greatest(1, ceil(dur / 600.0))),0)::float8 AS dur_sum,
-         count(*) FILTER (WHERE (interacted OR leaves>0) AND pageviews>=greatest(1, ceil(dur / 600.0)))::int AS timed_sessions
+         count(*) FILTER (WHERE pageviews>0 AND pageviews<2 AND autocaptures=0 AND dur<10)::int AS bounced,
+         coalesce(sum(dur) FILTER (WHERE pageviews>0),0)::float8 AS dur_sum,
+         count(*) FILTER (WHERE pageviews>0)::int AS timed_sessions
   FROM sess GROUP BY b
 )
 SELECT e.b, e.visitors, e.sessions, e.pageviews, e.conv_visitors, e.kpi1_value,
@@ -653,29 +639,16 @@ WITH ev AS (
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz
     AND visitor_id IS NOT NULL AND type<>'heartbeat'${fc}
 ),
-ev_time AS (
-  SELECT id, session_id, created_at,
-         lead(created_at) OVER (PARTITION BY session_id ORDER BY created_at, id) AS next_at
-  FROM ev WHERE session_id IS NOT NULL
-),
 session_raw AS (
   SELECT ev.visitor_id, ev.session_id,
-    coalesce(sum(CASE
-      WHEN ev_time.next_at IS NULL THEN 0
-      WHEN ev_time.next_at - ev.created_at > interval '10 minutes' THEN 0
-      ELSE extract(epoch FROM (ev_time.next_at - ev.created_at))
-    END), 0)::int AS duration,
-    count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews,
-    bool_or(ev.type='leave') AS ended,
-    bool_or(ev.type IN ('click','scroll')) AS interacted
-  FROM ev LEFT JOIN ev_time USING (id, session_id, created_at)
+    floor(extract(epoch FROM (max(ev.created_at)-min(ev.created_at))))::int AS duration,
+    count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews
+  FROM ev
   WHERE ev.session_id IS NOT NULL
   GROUP BY ev.visitor_id, ev.session_id
 ),
 session_times AS (
-  SELECT visitor_id, session_id,
-    CASE WHEN (interacted OR ended) AND pageviews>=greatest(1, ceil(duration / 600.0)) THEN duration ELSE 0 END AS duration
-  FROM session_raw
+  SELECT visitor_id, session_id, duration FROM session_raw WHERE pageviews>0
 ),
 per AS (
   SELECT visitor_id,
