@@ -108,6 +108,48 @@
     }
   }
 
+  // Timp activ în tab, păstrat între navigările din aceeași sesiune. Heartbeat-ul
+  // limitează pierderea la cel mult 15s dacă browserul nu livrează beacon-ul final.
+  var ACTIVE_KEY = "dfa_active_session_" + websiteId;
+  var SESSION_GAP_MS = 30 * 60 * 1000;
+  var activeMs = 0;
+  var visibleSince = document.visibilityState === "hidden" ? null : Date.now();
+  try {
+    var savedActive = JSON.parse(sessionStorage.getItem(ACTIVE_KEY) || "null");
+    if (savedActive && Date.now() - Number(savedActive.lastAt) < SESSION_GAP_MS) {
+      activeMs = Math.max(0, Number(savedActive.activeMs) || 0);
+    }
+  } catch (e) {}
+
+  function currentActiveMs() {
+    return activeMs + (visibleSince === null ? 0 : Date.now() - visibleSince);
+  }
+
+  function persistActive() {
+    try {
+      sessionStorage.setItem(
+        ACTIVE_KEY,
+        JSON.stringify({ activeMs: currentActiveMs(), lastAt: Date.now() }),
+      );
+    } catch (e) {}
+  }
+
+  function pauseActive() {
+    if (visibleSince !== null) {
+      activeMs += Date.now() - visibleSince;
+      visibleSince = null;
+    }
+    persistActive();
+  }
+
+  function resumeActive() {
+    if (visibleSince === null) visibleSince = Date.now();
+  }
+
+  function activeDurationSeconds() {
+    return Math.max(0, Math.floor(currentActiveMs() / 1000));
+  }
+
   function send(type, name) {
     var payload = {
       id: websiteId,
@@ -116,6 +158,7 @@
       url: location.href,
       referrer: document.referrer || "",
       visitor_id: visitorId,
+      duration_seconds: activeDurationSeconds(),
     };
     var body = JSON.stringify(payload);
     var url = apiBase + "/api/event";
@@ -264,8 +307,7 @@
     send("click", text.slice(0, 120));
   });
 
-  // ── Durata vizitei: beacon "leave" când pagina devine ascunsă/închisă.
-  // Fără el, o vizită de o pagină are un singur eveniment și durată 0.
+  // ── Durata vizitei: timp activ + heartbeat, cu beacon final la ascundere.
   var leaveSent = false;
   function leave() {
     if (leaveSent) return;
@@ -273,10 +315,25 @@
     send("leave");
   }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") leave();
-    else leaveSent = false; // revenit în tab → următoarea plecare contează iar
+    if (document.visibilityState === "hidden") {
+      pauseActive();
+      leave();
+    } else {
+      resumeActive();
+      leaveSent = false; // revenit în tab → următoarea plecare contează iar
+    }
   });
-  window.addEventListener("pagehide", leave);
+  window.addEventListener("pagehide", function () {
+    pauseActive();
+    leave();
+  });
+  window.addEventListener("pageshow", resumeActive);
+  setInterval(function () {
+    if (document.visibilityState !== "hidden") {
+      send("heartbeat");
+      persistActive();
+    }
+  }, 15000);
 
   // Pageview inițial
   pageview();

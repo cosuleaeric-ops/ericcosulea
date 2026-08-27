@@ -85,11 +85,12 @@ export function OPTIONS() {
 
 type Payload = {
   id?: string; // website public id (dfid_xxxx)
-  type?: "pageview" | "custom" | "leave" | "scroll" | "click";
+  type?: "pageview" | "custom" | "leave" | "scroll" | "click" | "heartbeat";
   name?: string;
   url?: string;
   referrer?: string;
   visitor_id?: string;
+  duration_seconds?: number;
 };
 
 // Valoarea lui ?ref= din URL, trecută prin aceeași mapare ca un referrer real,
@@ -209,6 +210,7 @@ export async function POST(req: NextRequest) {
     .limit(1);
 
   const isLeave = body.type === "leave";
+  const isHeartbeat = body.type === "heartbeat";
   // Comportament în pagină (adâncime de scroll, click-uri). Tipuri separate,
   // NU "custom": custom înseamnă goal în rapoarte, iar astea ar umple lista de
   // conversii cu zgomot. Ca și "leave", nu pornesc o sesiune nouă și nu sting
@@ -220,14 +222,14 @@ export async function POST(req: NextRequest) {
   if (recent[0]?.sessionId) {
     sessionId = recent[0].sessionId;
     isBounce = false;
-    if (!isLeave && !isBehaviour) {
+    if (!isLeave && !isBehaviour && !isHeartbeat) {
       // Continuare de sesiune → nu mai e bounce. Leave nu e engagement, nu flip-uim.
       await db
         .update(events)
         .set({ isBounce: false })
         .where(and(eq(events.websiteId, site.id), eq(events.sessionId, sessionId)));
     }
-  } else if (isLeave || isBehaviour) {
+  } else if (isLeave || isBehaviour || isHeartbeat) {
     // Leave fără sesiune activă (ex. tab redeschis după 30 min) — nu porni o
     // sesiune nouă doar dintr-un leave, ar umfla numărul de sesiuni.
     return NextResponse.json({ ok: true }, { status: 202, headers: CORS });
@@ -238,7 +240,7 @@ export async function POST(req: NextRequest) {
 
   await db.insert(events).values({
     websiteId: site.id,
-    type: isBehaviour
+    type: isBehaviour || isHeartbeat
       ? (body.type as string)
       : body.type === "custom"
         ? "custom"
@@ -263,13 +265,17 @@ export async function POST(req: NextRequest) {
     visitorId,
     sessionId,
     isBounce,
+    durationSeconds:
+      typeof body.duration_seconds === "number" && Number.isFinite(body.duration_seconds)
+        ? Math.min(86_400, Math.max(0, Math.floor(body.duration_seconds)))
+        : 0,
   });
 
   // Probă de headere pe pageview-urile care au trecut filtrele. Nu blochează
   // răspunsul și nu-l poate strica: orice eroare se înghite. Doar pe pageview:
   // scroll-urile și click-urile vin din aceeași navigare, deci ar scrie de mai
   // multe ori aceleași headere.
-  if (!isLeave && !isBehaviour) {
+  if (body.type === "pageview") {
     const probe: Record<string, string> = {};
     for (const name of PROBE_HEADERS) {
       const v = h.get(name);

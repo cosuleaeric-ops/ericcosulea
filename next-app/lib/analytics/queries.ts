@@ -258,10 +258,10 @@ async function fetchKpis(
   const conv = `e.type='custom' AND (${k}::text IS NULL OR e.name=${k})`;
   const text = `
 WITH ev AS (
-  SELECT 'cur' AS b, visitor_id, session_id, type, name, created_at FROM events_human
+  SELECT 'cur' AS b, visitor_id, session_id, type, name, created_at, duration_seconds FROM events_human
    WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz${fc}
   UNION ALL
-  SELECT 'prev' AS b, visitor_id, session_id, type, name, created_at FROM events_human
+  SELECT 'prev' AS b, visitor_id, session_id, type, name, created_at, duration_seconds FROM events_human
    WHERE website_id=$1 AND created_at>=$4::timestamptz AND created_at<$5::timestamptz${fc}
 ),
 ev_agg AS (
@@ -274,7 +274,9 @@ ev_agg AS (
   FROM ev e GROUP BY b
 ),
 sess AS (
-  SELECT b, session_id, EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) AS dur,
+  SELECT b, session_id,
+         CASE WHEN max(duration_seconds) > 0 THEN max(duration_seconds)
+              ELSE EXTRACT(EPOCH FROM (max(created_at)-min(created_at))) END AS dur,
          count(*) FILTER (WHERE type IN ('pageview','custom'))::int AS engaged
   FROM ev WHERE session_id IS NOT NULL GROUP BY b, session_id
 ),
@@ -635,8 +637,10 @@ WITH per AS (
     coalesce(sum(dur) FILTER (WHERE rn=1 AND session_id IS NOT NULL), 0)::int AS duration
   FROM (
     SELECT visitor_id, session_id, type, created_at,
-      extract(epoch FROM max(created_at) OVER (PARTITION BY session_id)
-                  - min(created_at) OVER (PARTITION BY session_id)) AS dur,
+      CASE WHEN max(duration_seconds) OVER (PARTITION BY session_id) > 0
+           THEN max(duration_seconds) OVER (PARTITION BY session_id)
+           ELSE extract(epoch FROM max(created_at) OVER (PARTITION BY session_id)
+                           - min(created_at) OVER (PARTITION BY session_id)) END AS dur,
       row_number() OVER (PARTITION BY session_id ORDER BY created_at, id) AS rn
     FROM events_human
     WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
