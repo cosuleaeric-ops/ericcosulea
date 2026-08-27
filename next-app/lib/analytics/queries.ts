@@ -291,6 +291,7 @@ sess AS (
          count(*) FILTER (WHERE ev.type='click')::int AS clicks,
          count(*) FILTER (WHERE ev.type='scroll')::int AS scrolls,
          count(*) FILTER (WHERE ev.type='custom')::int AS customs,
+         count(*) FILTER (WHERE ev.type='leave')::int AS leaves,
          bool_or(ev.type IN ('click','scroll')) AS interacted
   FROM ev LEFT JOIN ev_time USING (b, id, session_id, created_at)
   WHERE ev.session_id IS NOT NULL
@@ -299,8 +300,8 @@ sess AS (
 sess_agg AS (
   SELECT b,
          count(*) FILTER (WHERE pageviews<=1 AND clicks=0 AND scrolls=0 AND customs=0)::int AS bounced,
-         coalesce(sum(dur) FILTER (WHERE interacted AND pageviews>=greatest(1, ceil(dur / 600.0))),0)::float8 AS dur_sum,
-         count(*) FILTER (WHERE interacted AND pageviews>=greatest(1, ceil(dur / 600.0)))::int AS timed_sessions
+         coalesce(sum(dur) FILTER (WHERE (interacted OR leaves>0) AND pageviews>=greatest(1, ceil(dur / 600.0))),0)::float8 AS dur_sum,
+         count(*) FILTER (WHERE (interacted OR leaves>0) AND pageviews>=greatest(1, ceil(dur / 600.0)))::int AS timed_sessions
   FROM sess GROUP BY b
 )
 SELECT e.b, e.visitors, e.sessions, e.pageviews, e.conv_visitors, e.kpi1_value,
@@ -665,6 +666,7 @@ session_raw AS (
       ELSE extract(epoch FROM (ev_time.next_at - ev.created_at))
     END), 0)::int AS duration,
     count(*) FILTER (WHERE ev.type='pageview')::int AS pageviews,
+    bool_or(ev.type='leave') AS ended,
     bool_or(ev.type IN ('click','scroll')) AS interacted
   FROM ev LEFT JOIN ev_time USING (id, session_id, created_at)
   WHERE ev.session_id IS NOT NULL
@@ -672,7 +674,7 @@ session_raw AS (
 ),
 session_times AS (
   SELECT visitor_id, session_id,
-    CASE WHEN interacted AND pageviews>=greatest(1, ceil(duration / 600.0)) THEN duration ELSE 0 END AS duration
+    CASE WHEN (interacted OR ended) AND pageviews>=greatest(1, ceil(duration / 600.0)) THEN duration ELSE 0 END AS duration
   FROM session_raw
 ),
 per AS (
