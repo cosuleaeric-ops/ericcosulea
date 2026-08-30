@@ -914,22 +914,22 @@ export async function getOverview(
   const startISO = starts.map((d) => d.toISOString());
 
   const [visRows, sparkRows] = await Promise.all([
-    // vizitatori distincți / site (tot intervalul)
+    // vizite/sesiuni totale / site (tot intervalul)
     q<{ website_id: number; visitors: number }>(
-      `SELECT website_id, count(DISTINCT visitor_id)::int AS visitors FROM events_human
-       WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz AND visitor_id IS NOT NULL GROUP BY website_id`,
+      `SELECT website_id, count(DISTINCT session_id) FILTER (WHERE session_id IS NOT NULL)::int AS visitors FROM events_human
+       WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz GROUP BY website_id`,
       [from, to],
     ),
-    // sparkline: vizitatori / site / bucket — pe granițele EXACTE bucketStarts (tz-agnostic)
+    // sparkline: vizite/sesiuni / site / bucket — pe granițele EXACTE bucketStarts (tz-agnostic)
     q<{ website_id: number; idx: number; value: number }>(
       `WITH bnd AS (
          SELECT ord-1 AS idx, lo::timestamptz AS lo,
                 coalesce(lead(lo) OVER (ORDER BY ord), $2::timestamptz) AS hi
          FROM unnest($3::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
        )
-       SELECT e.website_id, b.idx, count(DISTINCT e.visitor_id)::int AS value
+       SELECT e.website_id, b.idx, count(DISTINCT e.session_id) FILTER (WHERE e.session_id IS NOT NULL)::int AS value
        FROM bnd b JOIN events_human e ON e.created_at >= b.lo AND e.created_at < b.hi
-       WHERE e.created_at>=$1::timestamptz AND e.created_at<$2::timestamptz AND e.visitor_id IS NOT NULL
+       WHERE e.created_at>=$1::timestamptz AND e.created_at<$2::timestamptz
        GROUP BY e.website_id, b.idx`,
       [from, to, startISO],
     ),
