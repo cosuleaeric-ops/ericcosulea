@@ -267,7 +267,7 @@ WITH ev AS (
 ),
 ev_agg AS (
   SELECT b,
-    count(DISTINCT visitor_id)::int AS visitors,
+    count(DISTINCT session_id) FILTER (WHERE session_id IS NOT NULL)::int AS visitors,
     count(DISTINCT session_id) FILTER (WHERE type='pageview')::int AS sessions,
     count(*) FILTER (WHERE type='pageview')::int AS pageviews,
     count(DISTINCT visitor_id) FILTER (WHERE ${conv})::int AS conv_visitors,
@@ -337,7 +337,7 @@ bnd AS (
   FROM unnest($${bndIdx}::timestamptz[]) WITH ORDINALITY AS u(lo, ord)
 )
 SELECT b.idx,
-  count(DISTINCT ev.visitor_id)::int AS value,
+  count(DISTINCT ev.session_id) FILTER (WHERE ev.session_id IS NOT NULL)::int AS value,
   count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen >= b.lo)::int AS newv,
   count(DISTINCT ev.visitor_id) FILTER (WHERE f.first_seen < b.lo)::int AS retv,
   count(*) FILTER (WHERE $${goalIdx}::text IS NOT NULL AND ev.type='custom' AND ev.name=$${goalIdx})::int AS goalv
