@@ -323,7 +323,7 @@ async function fetchSeries(
   const goalIdx = params.length; // NULL ⇒ goalv = 0 peste tot
   const text = `
 WITH ev AS (
-  SELECT visitor_id, created_at, type, name FROM events_human
+  SELECT visitor_id, session_id, created_at, type, name FROM events_human
   WHERE website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz AND visitor_id IS NOT NULL${fc}
 ),
 firsts AS (
