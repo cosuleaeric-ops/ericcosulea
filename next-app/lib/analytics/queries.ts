@@ -739,55 +739,6 @@ GROUP BY pv.session_id ORDER BY "startedAt" DESC`;
   }));
 }
 
-// ───────────────────────── Crawlere AI ─────────────────────────
-export type CrawlerStats = {
-  total: number;
-  uniqueCrawlers: number;
-  byCrawler: { key: string; category: string; value: number }[];
-  byCategory: { key: string; value: number }[];
-  byPath: { key: string; value: number }[];
-};
-
-export async function getCrawlerStats(
-  websiteId: number,
-  range: Range,
-): Promise<CrawlerStats> {
-  const from = range.from.toISOString();
-  const to = range.to.toISOString();
-  const win = `website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz`;
-  const params = [websiteId, from, to];
-
-  const [totals, byCrawler, byCategory, byPath] = await Promise.all([
-    q<{ total: number; uniq: number }>(
-      `SELECT count(*)::int AS total, count(DISTINCT crawler)::int AS uniq FROM crawler_events WHERE ${win}`,
-      params,
-    ),
-    q<{ key: string; category: string; value: number }>(
-      `SELECT crawler AS key, max(category) AS category, count(*)::int AS value
-       FROM crawler_events WHERE ${win} GROUP BY crawler ORDER BY value DESC LIMIT 100`,
-      params,
-    ),
-    q<{ key: string; value: number }>(
-      `SELECT category AS key, count(*)::int AS value
-       FROM crawler_events WHERE ${win} GROUP BY category ORDER BY value DESC`,
-      params,
-    ),
-    q<{ key: string; value: number }>(
-      `SELECT coalesce(path, '/') AS key, count(*)::int AS value
-       FROM crawler_events WHERE ${win} GROUP BY path ORDER BY value DESC LIMIT 100`,
-      params,
-    ),
-  ]);
-
-  return {
-    total: Number(totals[0]?.total ?? 0),
-    uniqueCrawlers: Number(totals[0]?.uniq ?? 0),
-    byCrawler: byCrawler.map((r) => ({ key: r.key, category: r.category, value: Number(r.value) })),
-    byCategory: byCategory.map((r) => ({ key: r.key, value: Number(r.value) })),
-    byPath: byPath.map((r) => ({ key: r.key, value: Number(r.value) })),
-  };
-}
-
 // ── Comportament în pagină: cât se citește și pe ce se apasă ──────────────────
 // Sursa: evenimentele "scroll" (pragurile 10/20/.../100) și "click" (textul
 // elementului) trimise de script.js. Sunt tipuri separate de "custom" tocmai
@@ -798,6 +749,7 @@ export type BehaviourStats = {
   scrollReach: { key: string; value: number; pct: number }[];
   scrollByPath: { key: string; value: number; pct: number }[];
   clicks: { key: string; value: number }[];
+  rawClicks: { key: string; value: number }[];
   clicksByPath: { key: string; value: number }[];
   totalClicks: number;
 };
@@ -805,13 +757,15 @@ export type BehaviourStats = {
 export async function getBehaviour(
   websiteId: number,
   range: Range,
+  rawClicks = false,
+  normalizeClickLabels = false,
 ): Promise<BehaviourStats> {
   const from = range.from.toISOString();
   const to = range.to.toISOString();
   const win = `website_id=$1 AND created_at>=$2::timestamptz AND created_at<$3::timestamptz`;
   const params = [websiteId, from, to];
 
-  const [pv, reach, byPath, clicks, clickPaths] = await Promise.all([
+  const [pv, reach, byPath, clicks, clickPaths, rawClicksData] = await Promise.all([
     q<{ n: number }>(
       `SELECT count(*)::int AS n FROM events_human WHERE ${win} AND type='pageview'`,
       params,
@@ -837,15 +791,29 @@ export async function getBehaviour(
       params,
     ),
     q<{ key: string; value: number }>(
-      `SELECT name AS key, count(*)::int AS value
+      `SELECT ${rawClicks || !normalizeClickLabels ? "name" : `CASE
+                WHEN name ~ '^[0-9]{1,2} [A-Z]{3} ' THEN trim(regexp_replace(regexp_replace(name, '^[0-9]{1,2} [A-Z]{3} (NOU )?', ''), '\\s+(Luni|Marți|Miercuri|Joi|Vineri|Sâmbătă|Duminică),.*$', ''))
+                ELSE name
+              END`} AS key,
+              count(*)::int AS value
        FROM events_human WHERE ${win} AND type='click' AND name IS NOT NULL
-       GROUP BY name ORDER BY value DESC LIMIT 100`,
+       GROUP BY 1 ORDER BY value DESC${rawClicks ? "" : " LIMIT 100"}`,
       params,
     ),
     q<{ key: string; value: number }>(
       `SELECT coalesce(path,'/') AS key, count(*)::int AS value
        FROM events_human WHERE ${win} AND type='click'
        GROUP BY 1 ORDER BY value DESC LIMIT 100`,
+      params,
+    ),
+    q<{ key: string; value: number }>(
+      `SELECT ${normalizeClickLabels ? `CASE
+                WHEN name ~ '^[0-9]{1,2} [A-Z]{3} ' THEN trim(regexp_replace(regexp_replace(name, '^[0-9]{1,2} [A-Z]{3} (NOU )?', ''), '\\s+(Luni|Marți|Miercuri|Joi|Vineri|Sâmbătă|Duminică),.*$', ''))
+                ELSE name
+              END` : "name"} AS key,
+              count(*)::int AS value
+       FROM events_human WHERE ${win} AND type='click' AND name IS NOT NULL
+       GROUP BY 1 ORDER BY value DESC`,
       params,
     ),
   ]);
@@ -868,6 +836,7 @@ export async function getBehaviour(
       }))
       .sort((a, b) => b.pct - a.pct),
     clicks: clicks.map((r) => ({ key: r.key, value: Number(r.value) })),
+    rawClicks: rawClicksData.map((r) => ({ key: r.key, value: Number(r.value) })),
     clicksByPath: clickPaths.map((r) => ({ key: r.key, value: Number(r.value) })),
     totalClicks: clicks.reduce((sum, r) => sum + Number(r.value), 0),
   };

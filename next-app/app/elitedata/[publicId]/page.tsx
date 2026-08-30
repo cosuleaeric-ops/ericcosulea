@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { getStats, getWebsiteByPublicId, listWebsites } from "@/lib/analytics/queries";
+import { applyCasutaClickKpi, applyCesaicumparClickKpi } from "@/lib/analytics/casuta-clicks";
 import { computeRange, defaultGranularity, type PeriodKey } from "@/lib/analytics/range";
 import Dashboard from "./Dashboard";
 import {
@@ -55,15 +56,30 @@ export default async function SiteDashboardPage({
 
   // Randăm pe server datele pentru perioada salvată ca să eliminăm fetch-ul
   // client de după hidratare — fără el, dashboard-ul stă pe skeleton.
+  const initialRange = computeRange(period, 0);
   const initialData = await getStats({
     websiteId: website.id,
     kpiGoalName: website.kpiGoalName,
     tz: website.timezone,
-    range: computeRange(period, 0),
+    range: initialRange,
     granularity: defaultGranularity(period),
     compare: false,
     filters: {},
   });
+  if (website.domain === "casutasmart.ro" && website.kpiGoalName === "click_afiliat") {
+    try {
+      await applyCasutaClickKpi(initialData, initialRange);
+    } catch (error) {
+      console.error("Failed to load Căsuța Smart click KPI", error);
+    }
+  }
+  if (website.domain === "cesaicumpar.ro" && website.kpiGoalName === "affiliate_click") {
+    try {
+      await applyCesaicumparClickKpi(initialData, initialRange);
+    } catch (error) {
+      console.error("Failed to load Cesaicumpar click KPI", error);
+    }
+  }
 
   return (
     <Dashboard

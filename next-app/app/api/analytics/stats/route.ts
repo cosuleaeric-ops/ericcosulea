@@ -6,6 +6,7 @@ import {
   FILTER_KEYS,
   type Filters,
 } from "@/lib/analytics/queries";
+import { applyCasutaClickKpi, applyCesaicumparClickKpi } from "@/lib/analytics/casuta-clicks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,21 @@ export async function GET(req: Request) {
     compare,
     filters,
   });
+
+  if (website.domain === "casutasmart.ro" && website.kpiGoalName === "click_afiliat") {
+    try {
+      await applyCasutaClickKpi(stats, { from, to });
+    } catch (error) {
+      console.error("Failed to load Căsuța Smart click KPI", error);
+    }
+  }
+  if (website.domain === "cesaicumpar.ro" && website.kpiGoalName === "affiliate_click") {
+    try {
+      await applyCesaicumparClickKpi(stats, { from, to });
+    } catch (error) {
+      console.error("Failed to load Cesaicumpar click KPI", error);
+    }
+  }
 
   return NextResponse.json(stats);
 }

@@ -29,6 +29,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  const stats = await getBehaviour(website.id, { from, to });
+  const stats = await getBehaviour(
+    website.id,
+    { from, to },
+    false,
+    website.domain === "cursurilapahar.ro",
+  );
   return NextResponse.json(stats);
 }

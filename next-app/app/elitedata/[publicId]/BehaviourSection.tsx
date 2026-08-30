@@ -12,14 +12,16 @@ import type { BehaviourStats } from "@/lib/analytics/queries";
 function BarList({
   rows,
   suffix,
+  limit = 8,
 }: {
   rows: { key: string; value: number; pct?: number }[];
   suffix?: (row: { value: number; pct?: number }) => string;
+  limit?: number;
 }) {
   const max = rows.length ? Math.max(...rows.map((r) => r.value)) : 0;
   return (
     <div className="dfa-crawler-list">
-      {rows.slice(0, 8).map((row) => {
+      {rows.slice(0, limit).map((row) => {
         const width = max ? (row.value / max) * 100 : 0;
         return (
           <div key={row.key} className="dfa-row" title={row.key}>
@@ -53,6 +55,8 @@ export function BehaviourSection({
 }) {
   const [data, setData] = useState<BehaviourStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAllClicks, setShowAllClicks] = useState(false);
+  const [tab, setTab] = useState<"clicks" | "scroll">("clicks");
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +77,17 @@ export function BehaviourSection({
 
   const gol =
     !loading && (!data || (data.scrollReach.length === 0 && data.clicks.length === 0));
+  const scrollRows = data
+    ? Array.from({ length: 10 }, (_, index) => {
+        const threshold = (index + 1) * 10;
+        const row = data.scrollReach.find((item) => Number(item.key) === threshold);
+        return {
+          key: `${threshold}% din pagină`,
+          value: row?.pct ?? 0,
+          pct: row?.pct ?? 0,
+        };
+      })
+    : [];
 
   return (
     <div className="dfa-card dfa-crawler-card">
@@ -103,29 +118,56 @@ export function BehaviourSection({
         </div>
       ) : (
         <>
-          {data!.scrollReach.length > 0 && (
-            <div className="dfa-crawler-cats">
-              {data!.scrollReach.map((r) => (
-                <span key={r.key} className="dfa-crawler-cat">
-                  {r.key}% din pagină
-                  <strong>{Math.round(r.pct)}%</strong>
-                </span>
-              ))}
+          <div className="dfa-behaviour-tabs" role="tablist" aria-label="Comportament">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "clicks"}
+              className={`dfa-behaviour-tab${tab === "clicks" ? " is-active" : ""}`}
+              onClick={() => setTab("clicks")}
+            >
+              Clicks
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "scroll"}
+              className={`dfa-behaviour-tab${tab === "scroll" ? " is-active" : ""}`}
+              onClick={() => setTab("scroll")}
+            >
+              Scroll
+            </button>
+          </div>
+          {tab === "clicks" ? (
+            <div className="dfa-crawler-cols dfa-crawler-cols-single">
+              <div>
+                <div className="dfa-crawler-col-title">Pe ce se apasă</div>
+                <BarList rows={showAllClicks ? data!.rawClicks : data!.clicks} limit={showAllClicks ? data!.rawClicks.length : 8} />
+                <button
+                  type="button"
+                  className="dfa-clicks-toggle"
+                  aria-pressed={showAllClicks}
+                  onClick={() => setShowAllClicks((value) => !value)}
+                >
+                  {showAllClicks ? "Arată clickurile comasate ↑" : "Arată toate clickurile ↓"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="dfa-crawler-cols dfa-crawler-cols-single">
+              <div>
+                <div className="dfa-crawler-col-title dfa-crawler-col-title-with-value">
+                  <span>Scroll pe pagină</span>
+                  <span>10% - 100%</span>
+                </div>
+                <BarList
+                  rows={scrollRows}
+                  suffix={(r) => `${Math.round(r.value)}%`}
+                  limit={10}
+                />
+              </div>
             </div>
           )}
-          <div className="dfa-crawler-cols">
-            <div>
-              <div className="dfa-crawler-col-title">Pe ce se apasă</div>
-              <BarList rows={data!.clicks} />
-            </div>
-            <div>
-              <div className="dfa-crawler-col-title">Citit până la capăt</div>
-              <BarList
-                rows={data!.scrollByPath}
-                suffix={(r) => `${Math.round(r.pct ?? 0)}%`}
-              />
-            </div>
-          </div>
         </>
       )}
     </div>

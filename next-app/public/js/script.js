@@ -310,6 +310,8 @@
     return el && !sensitive(el) ? el : null;
   }
   function labelFor(el, eventType) {
+    var explicit = el.getAttribute("data-ph-label");
+    if (explicit) return explicit.slice(0, 120);
     var text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
     return (text || el.getAttribute("aria-label") || el.getAttribute("title") ||
       el.getAttribute("href") || el.getAttribute("name") || eventType).slice(0, 120);
