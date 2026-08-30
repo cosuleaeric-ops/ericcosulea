@@ -447,7 +447,8 @@ async function fetchBreakdownsAndGoals(
   const branches = SIMPLE_DIMS.map((b) => {
     const where = b.notNull ? ` WHERE ${b.notNull} IS NOT NULL AND ${b.notNull} <> ''` : "";
     const source = b.sessionEntry ? "session_entry" : "base";
-    return `(SELECT '${b.dim}'::text dim, ${b.keyExpr} key, ${DISTINCT_ID} value FROM ${source}${where} GROUP BY 2 ORDER BY 3 DESC, 2 ASC LIMIT 100)`;
+    const count = b.sessionEntry ? "count(*)::int" : DISTINCT_ID;
+    return `(SELECT '${b.dim}'::text dim, ${b.keyExpr} key, ${count} value FROM ${source}${where} GROUP BY 2 ORDER BY 3 DESC, 2 ASC LIMIT 100)`;
   });
   branches.push(
     `(SELECT 'goal'::text dim, name key, ${DISTINCT_ID} value FROM base WHERE type='custom' AND name IS NOT NULL GROUP BY 2)`,
