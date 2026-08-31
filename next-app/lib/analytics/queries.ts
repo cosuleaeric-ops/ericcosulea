@@ -61,12 +61,16 @@ const FILTER_COLUMN: Record<string, string> = {
   country: "country",
   region: "region",
   city: "city",
-  source: "referrer_source",
   device: "device",
   os: "os",
   browser: "browser",
-  campaign: "utm_campaign",
 };
+
+const SESSION_ENTRY_FILTER = `(SELECT DISTINCT ON (session_id)
+  session_id, referrer_source, utm_medium, utm_campaign
+  FROM events_human
+  WHERE website_id=$1 AND session_id IS NOT NULL
+  ORDER BY session_id, created_at ASC, id ASC)`;
 
 // Construiește predicatele de filtrare (valori parametrizate $N; coloane din whitelist).
 function buildFilterClause(f: Filters, params: unknown[]): string {
@@ -78,9 +82,18 @@ function buildFilterClause(f: Filters, params: unknown[]): string {
       parts.push(`${col} = $${params.length}`);
     }
   }
-  if (f.channel) {
-    params.push(f.channel);
-    parts.push(`${CHANNEL_CASE} = $${params.length}`);
+  const sessionDimensions: [string | undefined, string][] = [
+    [f.source, "coalesce(referrer_source,'Direct/None')"],
+    [f.campaign, "utm_campaign"],
+    [f.channel, CHANNEL_CASE],
+  ];
+  for (const [value, expression] of sessionDimensions) {
+    if (!value) continue;
+    params.push(value);
+    parts.push(`session_id IN (
+      SELECT session_id FROM ${SESSION_ENTRY_FILTER} AS filtered_session_entry
+      WHERE ${expression} = $${params.length}
+    )`);
   }
   return parts.length ? " AND " + parts.join(" AND ") : "";
 }
