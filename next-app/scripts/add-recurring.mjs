@@ -23,7 +23,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const RULES = [
   {
     id: uid(),
-    text: "Fă P&L Cursuri la Pahar",
+    text: "P&L #cursurilapahar",
     everyN: 1,
     unit: "month",
     startDate: "2026-07-15",
@@ -31,7 +31,7 @@ const RULES = [
   },
   {
     id: uid(),
-    text: "Fă P&L Cursuri la Pahar",
+    text: "P&L #cursurilapahar",
     everyN: 1,
     unit: "month",
     startDate: "2026-07-30",
