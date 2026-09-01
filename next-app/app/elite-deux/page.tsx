@@ -202,7 +202,7 @@ window.ELITE_DEUX_CONFIG = { stateUrl: "/api/elite-deux/state", wipUrl: "/api/el
         <span className="trash-label">Trage aici pentru a șterge</span>
       </div>
 
-      <Script src="/elite-deux/app.js?v=29" strategy="afterInteractive" />
+      <Script src="/elite-deux/app.js?v=30" strategy="afterInteractive" />
     </>
   );
 }

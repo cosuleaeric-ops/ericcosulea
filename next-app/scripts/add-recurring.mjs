@@ -55,13 +55,29 @@ if (rows.length === 0) {
 }
 
 const existing = Array.isArray(rows[0].recurring) ? rows[0].recurring : [];
+const missing = RULES.filter(
+  (rule) =>
+    !existing.some(
+      (current) =>
+        current.text === rule.text &&
+        current.everyN === rule.everyN &&
+        current.unit === rule.unit &&
+        current.startDate === rule.startDate,
+    ),
+);
 console.log(`lastSeenDate: ${rows[0].last_seen}`);
 console.log(`Reguli recurente existente: ${existing.length}`);
 existing.forEach((r) => console.log(`  - ${r.text} (la ${r.everyN} ${r.unit}, din ${r.startDate})`));
 
 if (!write) {
   console.log("\nDry-run. Aș adăuga:");
-  RULES.forEach((r) => console.log(`  + ${r.text} (la ${r.everyN} ${r.unit}, din ${r.startDate})`));
+  missing.forEach((r) => console.log(`  + ${r.text} (la ${r.everyN} ${r.unit}, din ${r.startDate})`));
+  await client.end();
+  process.exit(0);
+}
+
+if (missing.length === 0) {
+  console.log("\nToate regulile există deja. Nu scriu nimic.");
   await client.end();
   process.exit(0);
 }
@@ -73,24 +89,27 @@ const backupPath =
 writeFileSync(backupPath, JSON.stringify(full.rows[0].state, null, 2));
 console.log(`\nBackup scris în ${backupPath}`);
 
-const duplicates = existing.filter((r) => RULES.some((n) => n.text === r.text));
-if (duplicates.length > 0) {
-  console.error(`Există deja ${duplicates.length} regulă/reguli cu același text. Nu scriu nimic.`);
-  await client.end();
-  process.exit(1);
-}
+const now = Date.now();
 
 const result = await client.query(
   `UPDATE elite_deux_state
       SET state = jsonb_set(
-            state,
-            '{recurring}',
-            COALESCE(state->'recurring', '[]'::jsonb) || $1::jsonb
+            jsonb_set(
+              jsonb_set(
+                state,
+                '{recurring}',
+                COALESCE(state->'recurring', '[]'::jsonb) || $1::jsonb
+              ),
+              '{recurringUpdatedAt}',
+              to_jsonb($2::bigint)
+            ),
+            '{savedAt}',
+            to_jsonb($2::bigint)
           ),
           updated_at = now()
     WHERE id = 1
     RETURNING jsonb_array_length(state->'recurring') AS total`,
-  [JSON.stringify(RULES)],
+  [JSON.stringify(missing), now],
 );
 
 console.log(`Scris. Reguli recurente acum: ${result.rows[0].total}`);

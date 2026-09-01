@@ -68,6 +68,7 @@ const state = {
   // Reguli de repetare: [{id, text, everyN, unit, startDate, materialized:[dateKey]}].
   // Nu sunt task-uri, ci șabloane — instanțele se generează în tasksByDate.
   recurring: [],
+  recurringUpdatedAt: 0,
   settings: { ...SETTINGS_DEFAULTS },
   ui: {
     prefsOpen: false,
@@ -316,7 +317,9 @@ async function init() {
   const localSnapshot = readLocalSnapshot();
   if (localSnapshot) {
     applyStateSnapshot(localSnapshot);
-    runDailyRollover({ save: false });
+    if (runDailyRollover({ save: false })) {
+      recurringDirty = true;
+    }
     normalizeAllLists({ save: false });
   }
   syncSettingsUI();
@@ -380,7 +383,7 @@ function startRemotePolling() {
       return;
     }
 
-    const before = JSON.stringify(state.tasksByDate);
+    const before = stateFingerprint();
     let remote;
     try {
       remote = await fetchRemoteSnapshot();
@@ -389,20 +392,34 @@ function startRemotePolling() {
     }
 
     // Dacă între timp s-a schimbat ceva local, câștigă localul.
-    if (!remote || remoteSaveTimer || JSON.stringify(state.tasksByDate) !== before) {
+    if (!remote || remoteSaveTimer || stateFingerprint() !== before) {
       return;
     }
 
-    if (JSON.stringify(remote.tasksByDate) === before) {
+    if (snapshotFingerprint(remote) === before) {
       return;
     }
 
-    state.tasksByDate = remote.tasksByDate;
+    applyRemoteAndRender(remote);
     persistLocalSnapshot();
-    renderWeek();
     // 15s, nu 3s: singurul scriitor din afară e alt tab sau alt dispozitiv, iar
     // 3s însemnau 28.800 de interogări pe zi dintr-un tab lăsat deschis.
   }, 15000);
+}
+
+function snapshotFingerprint(snapshot) {
+  return JSON.stringify({
+    tasksByDate: snapshot.tasksByDate,
+    lists: snapshot.lists,
+    recurring: snapshot.recurring,
+    recurringUpdatedAt: snapshot.recurringUpdatedAt,
+    settings: snapshot.settings,
+    lastSeenDate: snapshot.lastSeenDate,
+  });
+}
+
+function stateFingerprint() {
+  return snapshotFingerprint(state);
 }
 
 function countTasksInSnapshot(snapshot) {
@@ -465,7 +482,9 @@ async function reconcileWithServer() {
 
 function applyRemoteAndRender(snapshot) {
   applyStateSnapshot(snapshot);
-  runDailyRollover({ save: false });
+  if (runDailyRollover({ save: false })) {
+    recurringDirty = true;
+  }
   normalizeAllLists({ save: false });
   syncSettingsUI();
   applyVisualSettings();
@@ -492,6 +511,7 @@ function applyStateSnapshot(snapshot) {
   state.tasksByDate = snapshot.tasksByDate;
   state.lists = snapshot.lists;
   state.recurring = snapshot.recurring || [];
+  state.recurringUpdatedAt = snapshot.recurringUpdatedAt || 0;
   state.settings = snapshot.settings;
   state.lastSeenDate = snapshot.lastSeenDate;
 }
@@ -553,6 +573,7 @@ function sanitizeStateSnapshot(source = {}) {
     tasksByDate: nextByDate,
     lists: sanitizeLists(source.lists),
     recurring: sanitizeRecurrences(source.recurring),
+    recurringUpdatedAt: Number(source.recurringUpdatedAt) || 0,
     settings: sanitizeSettings(source.settings || {}),
     lastSeenDate: parseDateKey(source.lastSeenDate) ? source.lastSeenDate : formatDateKey(new Date()),
     savedAt: typeof source.savedAt === "number" ? source.savedAt : 0,
@@ -564,6 +585,7 @@ function buildStateSnapshot() {
     tasksByDate: state.tasksByDate,
     lists: state.lists,
     recurring: state.recurring,
+    recurringUpdatedAt: state.recurringUpdatedAt,
     settings: state.settings,
     lastSeenDate: state.lastSeenDate,
     savedAt: Date.now(),
@@ -744,9 +766,35 @@ async function pushStateToRemote(snapshot, fetchOptions = {}) {
     if (typeof payload?.version === "number") {
       remoteVersion = payload.version;
     }
+    applyServerRecurrence(payload);
   } catch {
     /* raspuns fara JSON (ex. keepalive) — ignoram */
   }
+}
+
+function applyServerRecurrence(payload) {
+  if (!Array.isArray(payload?.recurring)) {
+    return;
+  }
+
+  const serverUpdatedAt = Number(payload.recurringUpdatedAt) || 0;
+  if (serverUpdatedAt < state.recurringUpdatedAt) {
+    return;
+  }
+
+  const recurring = sanitizeRecurrences(payload.recurring);
+  const changed =
+    serverUpdatedAt !== state.recurringUpdatedAt ||
+    JSON.stringify(recurring) !== JSON.stringify(state.recurring);
+  if (!changed) {
+    return;
+  }
+
+  state.recurring = recurring;
+  state.recurringUpdatedAt = serverUpdatedAt;
+  persistLocalSnapshot();
+  renderRecurringList();
+  renderWeek();
 }
 
 function setStorageStatus(message) {
@@ -787,13 +835,21 @@ async function importStateFromFile(file) {
 
 function runDailyRollover(options = {}) {
   const today = startOfDay(new Date());
+  const todayKey = formatDateKey(today);
   const parsedLastSeen = parseDateKey(state.lastSeenDate);
   let cursor = parsedLastSeen && parsedLastSeen < today ? parsedLastSeen : today;
+  let changed = state.lastSeenDate !== todayKey;
 
   while (cursor < today) {
     const fromKey = formatDateKey(cursor);
     const toDate = addDays(cursor, 1);
     const toKey = formatDateKey(toDate);
+
+    // Dacă aplicația nu a fost deschisă în ziua scadenței, creează instanța
+    // înainte de rollover. Altfel ziua trecea fără ca task-ul să existe vreodată.
+    if (materializeRecurring([fromKey], { allowPast: true })) {
+      changed = true;
+    }
 
     const tasks = state.tasksByDate[fromKey] || [];
     const incomplete = tasks.filter((task) => !task.completed);
@@ -807,15 +863,26 @@ function runDailyRollover(options = {}) {
 
       state.tasksByDate[toKey] = [...moved, ...existing];
       state.tasksByDate[fromKey] = tasks.filter((task) => task.completed);
+      changed = true;
     }
 
     cursor = toDate;
   }
 
-  state.lastSeenDate = formatDateKey(today);
+  state.recurring.forEach((rule) => {
+    const retained = rule.materialized.filter((key) => key >= todayKey);
+    if (retained.length !== rule.materialized.length) {
+      rule.materialized = retained;
+      changed = true;
+    }
+  });
+
+  state.lastSeenDate = todayKey;
   if (options.save !== false) {
     saveState();
   }
+
+  return changed;
 }
 
 // Cade regula pe ziua asta? Se numără de la startDate (ziua în care ai creat-o).
@@ -844,22 +911,20 @@ function isRecurrenceDue(rule, dateKey) {
   return days >= 0 && days % step === 0;
 }
 
-// Creează instanțele regulilor pentru zilele cerute. Nu generează în trecut —
-// zilele trecute sunt treaba rollover-ului.
-function materializeRecurring(dateKeys) {
+// Creează instanțele regulilor pentru zilele cerute. Trecutul este permis doar
+// din rollover, ca o zi în care aplicația n-a fost deschisă să nu fie sărită.
+function materializeRecurring(dateKeys, options = {}) {
   if (!state.recurring.length) {
     return false;
   }
 
   const today = formatDateKey(new Date());
+  const allowPast = options.allowPast === true;
   let changed = false;
 
   state.recurring.forEach((rule) => {
-    // Zilele trecute nu mai pot fi generate, deci nu mai trebuie ținute minte.
-    rule.materialized = rule.materialized.filter((key) => key >= today);
-
     dateKeys.forEach((dateKey) => {
-      if (dateKey < today || rule.materialized.includes(dateKey)) {
+      if ((!allowPast && dateKey < today) || rule.materialized.includes(dateKey)) {
         return;
       }
 
@@ -939,6 +1004,7 @@ function addRecurrence(text, everyN, unit) {
       materialized: [],
     }),
   );
+  state.recurringUpdatedAt = Date.now();
 
   saveState();
   renderRecurringList();
@@ -948,6 +1014,7 @@ function addRecurrence(text, everyN, unit) {
 // Șterge doar regula; instanțele deja create rămân în zilele lor.
 function removeRecurrence(ruleId) {
   state.recurring = state.recurring.filter((rule) => rule.id !== ruleId);
+  state.recurringUpdatedAt = Date.now();
   saveState();
   renderRecurringList();
 }

@@ -41,6 +41,52 @@ function countTasks(state: unknown): number {
   return n;
 }
 
+type StatePayload = Record<string, unknown>;
+
+function statePayload(value: unknown): StatePayload {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as StatePayload)
+    : {};
+}
+
+function recurringUpdatedAt(state: StatePayload): number {
+  const value = Number(state.recurringUpdatedAt);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+// Un tab/dispozitiv vechi poate salva întregul blob fără regulile primite între
+// timp. Recurențele au propria versiune, astfel încât o salvare veche nu le poate
+// goli; o adăugare sau ștergere explicită din client crește această versiune.
+function preserveNewerRecurring(existing: unknown, incoming: StatePayload): StatePayload {
+  const current = statePayload(existing);
+  const currentUpdatedAt = recurringUpdatedAt(current);
+  const incomingUpdatedAt = recurringUpdatedAt(incoming);
+  const currentRecurring = Array.isArray(current.recurring) ? current.recurring : [];
+  const incomingRecurring = Array.isArray(incoming.recurring) ? incoming.recurring : [];
+  const preserveLegacyRules =
+    currentUpdatedAt === 0 &&
+    incomingUpdatedAt === 0 &&
+    currentRecurring.length > 0 &&
+    incomingRecurring.length === 0;
+
+  if (currentUpdatedAt > incomingUpdatedAt || preserveLegacyRules) {
+    return {
+      ...incoming,
+      recurring: currentRecurring,
+      recurringUpdatedAt: currentUpdatedAt,
+    };
+  }
+
+  return incoming;
+}
+
+function recurringResponse(state: StatePayload) {
+  return {
+    recurring: Array.isArray(state.recurring) ? state.recurring : [],
+    recurringUpdatedAt: recurringUpdatedAt(state),
+  };
+}
+
 export async function GET(req: Request) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -87,13 +133,15 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const state = (body as { state?: unknown })?.state;
-  if (!state || typeof state !== "object") {
+  const rawState = (body as { state?: unknown })?.state;
+  if (!rawState || typeof rawState !== "object" || Array.isArray(rawState)) {
     return NextResponse.json({ error: "Invalid state payload" }, { status: 400 });
   }
+  const incomingState = rawState as StatePayload;
 
   const existing = await db.select().from(eliteDeuxState).where(eq(eliteDeuxState.id, ROW_ID)).limit(1);
   const updatedAt = new Date();
+  const state = preserveNewerRecurring(existing[0]?.state, incomingState);
   if (existing[0]) {
     const existingTasks = countTasks(existing[0].state);
     const newTasks = countTasks(state);
@@ -105,5 +153,5 @@ export async function POST(req: Request) {
     await db.insert(eliteDeuxState).values({ id: ROW_ID, state, updatedAt });
   }
   // Versiunea rezultată — clientul o reține ca să nu redescarce ce tocmai a scris.
-  return NextResponse.json({ ok: true, version: updatedAt.getTime() });
+  return NextResponse.json({ ok: true, version: updatedAt.getTime(), ...recurringResponse(state) });
 }
