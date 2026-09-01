@@ -309,8 +309,6 @@ export default function Dashboard({
 
   const kpis = data?.kpis ?? EMPTY_KPIS;
   const deltas = data?.deltas ?? EMPTY_DELTAS;
-  const noData = loading && !data;
-
   return (
     <div className="dfa-dashboard">
       <ControlBar
@@ -379,14 +377,14 @@ export default function Dashboard({
       )}
 
       <div className="dfa-card dfa-kpi-chart-panel">
-        <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={noData} />
+        <KpiRow kpis={kpis} deltas={deltas} online={data?.online ?? 0} loading={loading} />
         <MainChart
           key={drawGen}
           series={data?.series ?? []}
           compareSeries={data?.compareSeries ?? null}
           deploysByDay={showDeploys && gran === "daily" ? deploysByDay : {}}
           tz={tz}
-          loading={noData || refreshing}
+          loading={loading || refreshing}
           goalName={kpis.kpi1Name}
           showGoal={showGoalBars}
           onDrill={drillTo}
@@ -394,7 +392,7 @@ export default function Dashboard({
       </div>
       <Panels
         breakdowns={data?.breakdowns ?? null}
-        loading={noData}
+        loading={loading}
         onFilter={addFilter}
         sitePublicId={website.publicId}
         from={range.from.toISOString()}
@@ -408,7 +406,7 @@ export default function Dashboard({
         funnel={data?.funnel ?? null}
         users={data?.users ?? []}
         journeys={data?.journeys ?? []}
-        loading={noData}
+        loading={loading}
         onGoalAdded={() => load("refresh")}
         initialTab={initialTabs.bottom}
       />

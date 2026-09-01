@@ -196,6 +196,7 @@ export const events = pgTable("events", {
   index("events_website_created_idx").on(t.websiteId, t.createdAt),
   index("events_website_type_idx").on(t.websiteId, t.type),
   index("events_website_name_idx").on(t.websiteId, t.name),
+  index("events_website_session_entry_idx").on(t.websiteId, t.sessionId, t.createdAt, t.id),
 ]);
 
 // Probă temporară de headere (pusă 9 aug 2026). Fleet-urile cu proxy rezidențial

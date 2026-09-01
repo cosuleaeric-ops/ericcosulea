@@ -66,12 +66,6 @@ const FILTER_COLUMN: Record<string, string> = {
   browser: "browser",
 };
 
-const SESSION_ENTRY_FILTER = `(SELECT DISTINCT ON (session_id)
-  session_id, referrer_source, utm_medium, utm_campaign
-  FROM events_human
-  WHERE website_id=$1 AND session_id IS NOT NULL
-  ORDER BY session_id, created_at ASC, id ASC)`;
-
 // Construiește predicatele de filtrare (valori parametrizate $N; coloane din whitelist).
 function buildFilterClause(f: Filters, params: unknown[]): string {
   const parts: string[] = [];
@@ -90,8 +84,16 @@ function buildFilterClause(f: Filters, params: unknown[]): string {
   for (const [value, expression] of sessionDimensions) {
     if (!value) continue;
     params.push(value);
-    parts.push(`session_id IN (
-      SELECT session_id FROM ${SESSION_ENTRY_FILTER} AS filtered_session_entry
+    parts.push(`EXISTS (
+      SELECT 1
+      FROM LATERAL (
+        SELECT referrer_source, utm_medium, utm_campaign
+        FROM events_human AS session_entry
+        WHERE session_entry.website_id=$1
+          AND session_entry.session_id=events_human.session_id
+        ORDER BY session_entry.created_at ASC, session_entry.id ASC
+        LIMIT 1
+      ) AS filtered_session_entry
       WHERE ${expression} = $${params.length}
     )`);
   }
