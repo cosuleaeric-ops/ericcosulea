@@ -14,7 +14,6 @@ admin/config.php
 # State/date locale (sqlite legacy + Elite Deux) — sursa reala e Neon
 data/
 pnlpersonal/data/
-reviewsdogu/data/
 
 # Uploaded files
 clp/uploads/*.pdf

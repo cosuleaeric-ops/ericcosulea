@@ -116,7 +116,7 @@ const SITES: SiteCfg[] = [
     publicId: "dfid_eric001",
     domain: "ericcosulea.ro",
     name: "Eric Cosulea",
-    paths: ["/", "/", "/blog", "/tools", "/dogu", "/de-ce", "/chatgpt", "/mai-2023", "/inspo"],
+    paths: ["/", "/", "/blog", "/tools", "/de-ce", "/chatgpt", "/mai-2023", "/inspo"],
     customEvents: [
       { name: "faq_what_do_i_get", display: "FAQ: what do I get", rate: 0.05 },
       { name: "faq_need_shipfast", display: "FAQ: need ShipFast", rate: 0.04 },
@@ -125,18 +125,6 @@ const SITES: SiteCfg[] = [
     ],
     lastWeek: 120,
     older: 330,
-  },
-  {
-    publicId: "dfid_dogu001",
-    domain: "dogu.ro",
-    name: "Dogu Reviews",
-    paths: ["/", "/", "/reviews", "/produs/glovo", "/produs/tazz", "/produs/bolt-food", "/despre"],
-    customEvents: [
-      { name: "click_review", display: "Click review", rate: 0.1 },
-      { name: "filter_used", display: "Filter used", rate: 0.05 },
-    ],
-    lastWeek: 72,
-    older: 165,
   },
 ];
 

@@ -59,19 +59,6 @@ CREATE TABLE "elite_deux_state" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "email_events" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"email_id" text NOT NULL,
-	"type" text NOT NULL,
-	"link_idx" integer,
-	"link_url" text,
-	"user_agent" text,
-	"ip" text,
-	"is_bot" boolean DEFAULT false NOT NULL,
-	"alert" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "events" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"website_id" integer NOT NULL,
@@ -134,27 +121,6 @@ CREATE TABLE "integrations_gsc" (
 	CONSTRAINT "integrations_gsc_website_id_unique" UNIQUE("website_id")
 );
 --> statement-breakpoint
-CREATE TABLE "orders" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"platform" text NOT NULL,
-	"order_id" text NOT NULL,
-	"restaurant_key" text NOT NULL,
-	"restaurant_name" text NOT NULL,
-	"order_date" text NOT NULL,
-	"order_time" text DEFAULT '' NOT NULL,
-	"status" text NOT NULL,
-	"order_amount" real DEFAULT 0 NOT NULL,
-	"rating" integer,
-	"rating_comment" text DEFAULT '' NOT NULL,
-	"waiting_tax" real DEFAULT 0 NOT NULL,
-	"refund_amount" real DEFAULT 0 NOT NULL,
-	"cancel_reason" text DEFAULT '' NOT NULL,
-	"cancel_responsible" text DEFAULT '' NOT NULL,
-	"has_complaint" boolean DEFAULT false NOT NULL,
-	"complaint_reason" text DEFAULT '' NOT NULL,
-	"imported_at" timestamp with time zone NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "pages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"slug" text NOT NULL,
@@ -203,18 +169,6 @@ CREATE TABLE "site_texts" (
 	CONSTRAINT "site_texts_text_key_unique" UNIQUE("text_key")
 );
 --> statement-breakpoint
-CREATE TABLE "tracked_emails" (
-	"id" text PRIMARY KEY NOT NULL,
-	"account" text,
-	"recipient" text,
-	"subject" text,
-	"thread_id" text,
-	"links" jsonb NOT NULL,
-	"sender_ip" text,
-	"owner_seen_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "venit_categorii" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nume" text NOT NULL,
@@ -253,9 +207,7 @@ CREATE TABLE "websites" (
 --> statement-breakpoint
 CREATE INDEX "crawler_events_website_created_idx" ON "crawler_events" USING btree ("website_id","created_at");--> statement-breakpoint
 CREATE INDEX "crawler_events_website_crawler_idx" ON "crawler_events" USING btree ("website_id","crawler");--> statement-breakpoint
-CREATE INDEX "email_events_email_idx" ON "email_events" USING btree ("email_id","created_at");--> statement-breakpoint
 CREATE INDEX "events_website_created_idx" ON "events" USING btree ("website_id","created_at");--> statement-breakpoint
 CREATE INDEX "events_website_type_idx" ON "events" USING btree ("website_id","type");--> statement-breakpoint
 CREATE INDEX "events_website_name_idx" ON "events" USING btree ("website_id","name");--> statement-breakpoint
 CREATE UNIQUE INDEX "goals_website_name_unique" ON "goals" USING btree ("website_id","name");--> statement-breakpoint
-CREATE UNIQUE INDEX "orders_platform_order_id_unique" ON "orders" USING btree ("platform","order_id");

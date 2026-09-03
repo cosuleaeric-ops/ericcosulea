@@ -28,7 +28,6 @@
     "iron-session": "^8.0.4",
     "lucide-react": "^1.21.0",
     "next": "16.2.4",
-    "pdfjs-dist": "^5.7.284",
     "pg": "^8.22.0",
     "postgres": "^3.4.9",
     "posthog-js": "^1.418.6",
@@ -42,8 +41,7 @@
     "resend": "^6.12.2",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
-    "topojson-client": "^3.1.0",
-    "xlsx": "^0.18.5"
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

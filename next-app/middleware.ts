@@ -22,21 +22,11 @@ const PUBLIC_TRACKING_PATHS = new Set([
   "/js/script.js",
   "/api/event",
 ]);
-const PUBLIC_TRACKING_PREFIXES = [
-  "/t/o",
-  "/t/c",
-  "/api/track",
-];
-
 // Paginile care cer autentificare (fostul matcher). Restul trec liber.
 // /admin, /brain și /elitedata sunt gate-uite AICI, nu doar în layout: în App
 // Router pagina se randează concurent cu layout-ul, deci un scanner care
 // lovește /admin pornea query-urile paginii în Neon deși primea redirect.
 const PROTECTED_PREFIXES = [
-  "/dogu",
-  "/vanzaridogu",
-  "/raportpnldogu",
-  "/reviewsdogu",
   "/elite-deux",
   "/pnlpersonal",
   "/admin",
@@ -53,7 +43,6 @@ const ADMIN_API_PREFIXES = [
   "/api/pnlpersonal",
   "/api/analytics",
   "/api/logout",
-  "/api/track/emails",
 ];
 
 function hiddenPageResponse(): Response {
@@ -76,7 +65,6 @@ function isAdminOnlyAllowed(pathname: string): boolean {
     PUBLIC_SITE_FILES.has(pathname) ||
     PUBLIC_ELITEDATA_FILES.has(pathname) ||
     PUBLIC_TRACKING_PATHS.has(pathname) ||
-    PUBLIC_TRACKING_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     ADMIN_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     pathname.startsWith("/_next/")
   );

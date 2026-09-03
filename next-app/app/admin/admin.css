@@ -10,9 +10,6 @@
 @source "../../components";
 @source "../../lib";
 
-/* dark: doar pe clasă (mail), nu pe prefers-color-scheme — adminul e light-only. */
-@custom-variant dark (&:is(.dark *));
-
 /* Tema shadcn — paleta caldă a site-ului.
    IMPORTANT: scoped pe .admin-app, NU pe :root — site.css folosește aceleași nume
    de variabile (--muted, --accent, --card) și le-ar suprascrie pe site-ul public. */
@@ -38,29 +35,6 @@
   --ring: #cfc9ba;
   --radius: 0.625rem;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-/* EliteMail — tema dark (aceleași tokens ca /elitedata), scoped. */
-.dark {
-  --background: #0a0a0b;
-  --foreground: #ededf0;
-  --card: #15161a;
-  --card-foreground: #ededf0;
-  --popover: #15161a;
-  --popover-foreground: #ededf0;
-  --primary: #e16540;
-  --primary-foreground: #0a0a0b;
-  --secondary: #191a1f;
-  --secondary-foreground: #b7bbc2;
-  --muted: #191a1f;
-  --muted-foreground: #8b8f98;
-  --accent: #1d1f25;
-  --accent-foreground: #ededf0;
-  --destructive: #ef4444;
-  --destructive-foreground: #ededf0;
-  --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #3a3d45;
 }
 
 @theme inline {

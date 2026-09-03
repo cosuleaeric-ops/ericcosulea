@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ["chart.js", "react-chartjs-2", "xlsx", "lucide-react"],
+    optimizePackageImports: ["chart.js", "react-chartjs-2", "lucide-react"],
   },
   async headers() {
     return [

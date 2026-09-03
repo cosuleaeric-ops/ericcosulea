@@ -49,29 +49,6 @@ export const siteTexts = pgTable("site_texts", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
-  platform: text("platform").notNull(),
-  orderId: text("order_id").notNull(),
-  restaurantKey: text("restaurant_key").notNull(),
-  restaurantName: text("restaurant_name").notNull(),
-  orderDate: text("order_date").notNull(),
-  orderTime: text("order_time").notNull().default(""),
-  status: text("status").notNull(),
-  orderAmount: real("order_amount").notNull().default(0),
-  rating: integer("rating"),
-  ratingComment: text("rating_comment").notNull().default(""),
-  waitingTax: real("waiting_tax").notNull().default(0),
-  refundAmount: real("refund_amount").notNull().default(0),
-  cancelReason: text("cancel_reason").notNull().default(""),
-  cancelResponsible: text("cancel_responsible").notNull().default(""),
-  hasComplaint: boolean("has_complaint").notNull().default(false),
-  complaintReason: text("complaint_reason").notNull().default(""),
-  importedAt: timestamp("imported_at", { withTimezone: true }).notNull(),
-}, (t) => [
-  uniqueIndex("orders_platform_order_id_unique").on(t.platform, t.orderId),
-]);
-
 export const venituri = pgTable("venituri", {
   id: serial("id").primaryKey(),
   data: text("data").notNull(),
@@ -272,34 +249,3 @@ export const integrationsGsc = pgTable("integrations_gsc", {
   tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
   connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
 });
-
-// ───────────────────────────── EliteMail (clonă MailSuite, uz personal) ─────────────────────────────
-// Extensia Chrome injectează un pixel + rescrie linkurile la trimitere din Gmail.
-// `id` e generat de extensie și apare în URL-urile de pixel (/t/o/{id}) și click (/t/c/{id}?l=N).
-
-export const trackedEmails = pgTable("tracked_emails", {
-  id: text("id").primaryKey(), // generat de extensie (nanoid), public în URL-uri
-  account: text("account"), // adresa expeditor (care dintre conturi)
-  recipient: text("recipient"), // To (poate fi listă separată prin virgulă)
-  subject: text("subject"),
-  threadId: text("thread_id"), // threadId Gmail (reply vs compose nou)
-  links: jsonb("links").$type<string[]>().notNull(), // destinațiile reale; indexul = parametrul ?l=
-  senderIp: text("sender_ip"), // IP-ul expeditorului la trimitere — filtrează propriile deschideri
-  ownerSeenAt: timestamp("owner_seen_at", { withTimezone: true }), // când proprietarul a văzut ultima dată emailul (extensia raportează) — suprimă propriile deschideri
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const emailEvents = pgTable("email_events", {
-  id: serial("id").primaryKey(),
-  emailId: text("email_id").notNull(),
-  type: text("type").notNull(), // open | click
-  linkIdx: integer("link_idx"), // doar la click
-  linkUrl: text("link_url"), // denormalizat, pentru afișare
-  userAgent: text("user_agent"),
-  ip: text("ip"),
-  isBot: boolean("is_bot").notNull().default(false), // prefetch/scanner (Apple MPP, SafeLinks…)
-  alert: text("alert"), // null | reopen_week | high_count — semnal notificabil pe deschiderea asta
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("email_events_email_idx").on(t.emailId, t.createdAt),
-]);
