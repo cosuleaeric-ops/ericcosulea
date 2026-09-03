@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 const TOOLS: { href: string; name: string; icon: LucideIcon; chip: string }[] = [
   { href: "/pnlpersonal", name: "p&l personal", icon: Wallet, chip: "bg-[#eef1fd] text-[#5469d4]" },
-  { href: "/brain", name: "brain", icon: Brain, chip: "bg-[#ecf7f1] text-[#1d9e75]" },
+  { href: "/admin/brain", name: "brain", icon: Brain, chip: "bg-[#ecf7f1] text-[#1d9e75]" },
   { href: "/elite-deux", name: "elite deux", icon: Zap, chip: "bg-[#fdf6e7] text-[#ba7517]" },
   { href: "/elitedata", name: "analytics", icon: BarChart3, chip: "bg-[#f3eefb] text-[#7a4fc9]" },
 ];

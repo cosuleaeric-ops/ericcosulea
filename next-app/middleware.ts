@@ -23,14 +23,13 @@ const PUBLIC_TRACKING_PATHS = new Set([
   "/api/event",
 ]);
 // Paginile care cer autentificare (fostul matcher). Restul trec liber.
-// /admin, /brain și /elitedata sunt gate-uite AICI, nu doar în layout: în App
+// /admin și /elitedata sunt gate-uite AICI, nu doar în layout: în App
 // Router pagina se randează concurent cu layout-ul, deci un scanner care
 // lovește /admin pornea query-urile paginii în Neon deși primea redirect.
 const PROTECTED_PREFIXES = [
   "/elite-deux",
   "/pnlpersonal",
   "/admin",
-  "/brain",
   "/elitedata",
 ];
 

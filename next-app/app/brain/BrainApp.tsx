@@ -642,7 +642,7 @@ export default function BrainApp({
   return (
     <div className="brain-shell" ref={shellRef}>
       <header className="brain-topbar">
-        <a className="brain-brand" href="/brain" onClick={(e) => { e.preventDefault(); go({ kind: "home" }); }}>
+        <a className="brain-brand" href="/admin/brain" onClick={(e) => { e.preventDefault(); go({ kind: "home" }); }}>
           <span className="brain-brand-dot" /> Brain
         </a>
         <nav className="brain-nav">
