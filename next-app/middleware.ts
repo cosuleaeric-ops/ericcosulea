@@ -22,6 +22,11 @@ const PUBLIC_TRACKING_PATHS = new Set([
   "/js/script.js",
   "/api/event",
 ]);
+const PUBLIC_TRACKING_PREFIXES = [
+  "/t/o",
+  "/t/c",
+  "/api/track",
+];
 
 // Paginile care cer autentificare (fostul matcher). Restul trec liber.
 // /admin, /brain și /elitedata sunt gate-uite AICI, nu doar în layout: în App
@@ -71,6 +76,7 @@ function isAdminOnlyAllowed(pathname: string): boolean {
     PUBLIC_SITE_FILES.has(pathname) ||
     PUBLIC_ELITEDATA_FILES.has(pathname) ||
     PUBLIC_TRACKING_PATHS.has(pathname) ||
+    PUBLIC_TRACKING_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     ADMIN_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     pathname.startsWith("/_next/")
   );
